@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient, CURATED_MODELS } from '@/lib/openrouter'
+import { 
+  withSecurity, 
+  withRateLimit, 
+  SECURITY_CONFIG 
+} from '@/lib/security'
 
-export async function GET(request: NextRequest) {
+async function handleModelsRequest(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') || 'curated'
@@ -39,3 +44,10 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+// Apply security middleware
+export const GET = withSecurity(
+  withRateLimit(SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS.MODELS)(
+    handleModelsRequest
+  )
+);

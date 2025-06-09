@@ -14,7 +14,14 @@ const envSchema = z.object({
   OPENROUTER_API_KEY: z
     .string()
     .min(1, 'OpenRouter API key is required')
-    .startsWith('sk-or-v1-', 'Invalid OpenRouter API key format'),
+    .refine(
+      (key) => key.startsWith('sk-or-v1-') || key.startsWith('sk_or_'),
+      'Invalid OpenRouter API key format (should start with sk-or-v1- or sk_or_)'
+    )
+    .refine(
+      (key) => key.length >= 45,
+      'OpenRouter API key appears to be too short'
+    ),
 
   // Database Configuration
   DATABASE_URL: z
