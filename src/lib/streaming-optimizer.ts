@@ -43,10 +43,9 @@ export class StreamingOptimizer {
     };
 
     this.activeStreams.set(streamId, metrics);
-    const self = this;
     
     return new ReadableStream({
-      async start(controller) {
+      start: async (controller) => {
         const encoder = new TextEncoder();
         let buffer = '';
 
@@ -57,8 +56,8 @@ export class StreamingOptimizer {
             metrics.chunksProcessed++;
 
             // Process buffer when it reaches optimal size or stream ends
-            if (buffer.length >= self.config.chunkSize) {
-              await self.processBuffer(controller, encoder, buffer, metrics);
+            if (buffer.length >= this.config.chunkSize) {
+              await this.processBuffer(controller, encoder, buffer, metrics);
               buffer = '';
             }
 
@@ -68,7 +67,7 @@ export class StreamingOptimizer {
 
           // Process remaining buffer
           if (buffer.length > 0) {
-            await self.processBuffer(controller, encoder, buffer, metrics);
+            await this.processBuffer(controller, encoder, buffer, metrics);
           }
 
           controller.close();
@@ -82,12 +81,12 @@ export class StreamingOptimizer {
           
           controller.error(error);
         } finally {
-          self.activeStreams.delete(streamId);
+          this.activeStreams.delete(streamId);
         }
       },
 
-      cancel() {
-        self.activeStreams.delete(streamId);
+      cancel: () => {
+        this.activeStreams.delete(streamId);
       }
     });
   }
