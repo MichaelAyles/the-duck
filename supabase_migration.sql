@@ -1,6 +1,5 @@
--- 🦆 The Duck - Supabase Migration (Legacy)
--- This is the original Supabase migration for reference
--- For new deployments, use the Drizzle migrations instead
+-- 🦆 The Duck - Supabase Migration
+-- Complete database schema for The Duck chat application with authentication
 
 -- Create chat_sessions table
 CREATE TABLE IF NOT EXISTS public.chat_sessions (
@@ -10,7 +9,8 @@ CREATE TABLE IF NOT EXISTS public.chat_sessions (
     model TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    is_active BOOLEAN DEFAULT true
+    is_active BOOLEAN DEFAULT true,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
 -- Create chat_summaries table
@@ -28,22 +28,73 @@ CREATE TABLE IF NOT EXISTS public.chat_summaries (
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_created_at ON public.chat_sessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_is_active ON public.chat_sessions(is_active);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON public.chat_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_summaries_session_id ON public.chat_summaries(session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_summaries_created_at ON public.chat_summaries(created_at DESC);
 
--- Enable Row Level Security (RLS) if you plan to add authentication later
+-- Enable Row Level Security (RLS)
 ALTER TABLE public.chat_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chat_summaries ENABLE ROW LEVEL SECURITY;
 
--- Create policies to allow all operations for now (you can restrict these later)
--- Drop existing policies if they exist, then create new ones
-DROP POLICY IF EXISTS "Allow all operations on chat_sessions" ON public.chat_sessions;
-CREATE POLICY "Allow all operations on chat_sessions" ON public.chat_sessions
-    FOR ALL USING (true) WITH CHECK (true);
+-- Create RLS policies for chat_sessions
+-- Users can only access their own chat sessions
+DROP POLICY IF EXISTS "Users can view own chat sessions" ON public.chat_sessions;
+CREATE POLICY "Users can view own chat sessions" ON public.chat_sessions
+    FOR SELECT USING (auth.uid() = user_id);
 
-DROP POLICY IF EXISTS "Allow all operations on chat_summaries" ON public.chat_summaries;
-CREATE POLICY "Allow all operations on chat_summaries" ON public.chat_summaries
-    FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Users can insert own chat sessions" ON public.chat_sessions;
+CREATE POLICY "Users can insert own chat sessions" ON public.chat_sessions
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own chat sessions" ON public.chat_sessions;
+CREATE POLICY "Users can update own chat sessions" ON public.chat_sessions
+    FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own chat sessions" ON public.chat_sessions;
+CREATE POLICY "Users can delete own chat sessions" ON public.chat_sessions
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Create RLS policies for chat_summaries
+-- Users can only access summaries for their own chat sessions
+DROP POLICY IF EXISTS "Users can view own chat summaries" ON public.chat_summaries;
+CREATE POLICY "Users can view own chat summaries" ON public.chat_summaries
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.chat_sessions 
+            WHERE chat_sessions.id = chat_summaries.session_id 
+            AND chat_sessions.user_id = auth.uid()
+        )
+    );
+
+DROP POLICY IF EXISTS "Users can insert own chat summaries" ON public.chat_summaries;
+CREATE POLICY "Users can insert own chat summaries" ON public.chat_summaries
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.chat_sessions 
+            WHERE chat_sessions.id = chat_summaries.session_id 
+            AND chat_sessions.user_id = auth.uid()
+        )
+    );
+
+DROP POLICY IF EXISTS "Users can update own chat summaries" ON public.chat_summaries;
+CREATE POLICY "Users can update own chat summaries" ON public.chat_summaries
+    FOR UPDATE USING (
+        EXISTS (
+            SELECT 1 FROM public.chat_sessions 
+            WHERE chat_sessions.id = chat_summaries.session_id 
+            AND chat_sessions.user_id = auth.uid()
+        )
+    );
+
+DROP POLICY IF EXISTS "Users can delete own chat summaries" ON public.chat_summaries;
+CREATE POLICY "Users can delete own chat summaries" ON public.chat_summaries
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM public.chat_sessions 
+            WHERE chat_sessions.id = chat_summaries.session_id 
+            AND chat_sessions.user_id = auth.uid()
+        )
+    );
 
 -- Optional: Create a function to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -58,4 +109,9 @@ $$ language 'plpgsql';
 DROP TRIGGER IF EXISTS update_chat_sessions_updated_at ON public.chat_sessions;
 CREATE TRIGGER update_chat_sessions_updated_at 
     BEFORE UPDATE ON public.chat_sessions 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Grant necessary permissions
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT ALL ON public.chat_sessions TO authenticated;
+GRANT ALL ON public.chat_summaries TO authenticated; 

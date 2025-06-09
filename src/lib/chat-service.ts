@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { DatabaseService } from './db/operations'
 import { Message } from '@/components/chat/chat-interface'
 import { nanoid } from 'nanoid'
 
@@ -21,60 +21,71 @@ export interface ChatSummary {
 }
 
 export class ChatService {
-  private inactivityTimer: NodeJS.Timeout | null = null
-  private lastActivityTime: number = Date.now()
+  private sessionId: string
+  private userId?: string
+  private inactivityTimer?: NodeJS.Timeout
 
-  constructor(
-    private sessionId: string,
-    private onInactivity: () => void
-  ) {
-    this.resetInactivityTimer()
+  constructor(sessionId?: string, userId?: string) {
+    this.sessionId = sessionId || nanoid()
+    this.userId = userId
   }
 
-  private resetInactivityTimer() {
-    if (this.inactivityTimer) {
-      clearTimeout(this.inactivityTimer)
-    }
-    this.lastActivityTime = Date.now()
+  public getSessionId(): string {
+    return this.sessionId
+  }
+
+  public setUserId(userId: string): void {
+    this.userId = userId
+  }
+
+  public setupInactivityHandler(onSummarize: () => void) {
+    this.clearInactivityTimer()
+    
     this.inactivityTimer = setTimeout(() => {
-      const timeSinceLastActivity = Date.now() - this.lastActivityTime
-      if (timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
-        this.onInactivity()
-      }
+      onSummarize()
     }, INACTIVITY_TIMEOUT)
   }
 
-  public updateActivity() {
-    this.resetInactivityTimer()
+  public clearInactivityTimer() {
+    if (this.inactivityTimer) {
+      clearTimeout(this.inactivityTimer)
+      this.inactivityTimer = undefined
+    }
   }
 
   public async saveChatSession(messages: Message[], model: string) {
     try {
       const title = this.generateTitle(messages)
       
-      const { error } = await supabase
-        .from('chat_sessions')
-        .upsert({
-          id: this.sessionId,
-          title,
-          messages,
-          model,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          is_active: true
-        })
-
-      if (error) {
-        console.error('Error saving chat session:', error)
-        throw error
-      }
+      await DatabaseService.saveChatSession(
+        this.sessionId,
+        title,
+        messages,
+        model,
+        this.userId
+      )
     } catch (error) {
-      // Handle both Supabase errors and other errors gracefully
+      // Handle errors gracefully
       console.warn('Chat session save failed (storage may be disabled):', error)
       // Don't throw error in development mode when storage is not configured
       if (process.env.NODE_ENV !== 'development') {
         throw error
       }
+    }
+  }
+
+  public async loadChatSession(): Promise<Message[]> {
+    try {
+      const session = await DatabaseService.getChatSession(this.sessionId, this.userId)
+      
+      if (session && Array.isArray(session.messages)) {
+        return session.messages as unknown as Message[]
+      }
+      
+      return []
+    } catch (error) {
+      console.warn('Failed to load chat session:', error)
+      return []
     }
   }
 
@@ -96,24 +107,14 @@ export class ChatService {
       const summary = await response.json()
 
       // Save the summary to the database
-      const { error } = await supabase
-        .from('chat_summaries')
-        .insert({
-          id: nanoid(),
-          session_id: this.sessionId,
-          summary: summary.summary,
-          key_topics: summary.keyTopics,
-          user_preferences: summary.userPreferences,
-          writing_style_analysis: summary.userPreferences?.implicit?.writingStyle || {},
-          created_at: new Date().toISOString(),
-        })
-
-      if (error) {
-        console.error('Error saving chat summary:', error)
-        if (process.env.NODE_ENV !== 'development') {
-          throw error
-        }
-      }
+      await DatabaseService.saveChatSummary(
+        nanoid(),
+        this.sessionId,
+        summary.summary,
+        summary.keyTopics,
+        summary.userPreferences,
+        summary.userPreferences?.implicit?.writingStyle || {}
+      )
 
       return summary
     } catch (error) {
@@ -138,18 +139,143 @@ export class ChatService {
     }
   }
 
-  private generateTitle(messages: Message[]): string {
-    // Use the first user message as the title, truncated to 50 characters
-    const firstUserMessage = messages.find(m => m.role === 'user')
-    if (firstUserMessage) {
-      return firstUserMessage.content.slice(0, 50) + (firstUserMessage.content.length > 50 ? '...' : '')
+  public async endChatSession(): Promise<void> {
+    try {
+      await DatabaseService.endChatSession(this.sessionId, this.userId)
+      this.clearInactivityTimer()
+    } catch (error) {
+      console.warn('Failed to end chat session:', error)
     }
-    return 'New Chat'
   }
 
-  public cleanup() {
-    if (this.inactivityTimer) {
-      clearTimeout(this.inactivityTimer)
+  public async summarizeAndEndChat(messages: Message[]): Promise<ChatSummary> {
+    try {
+      const summary = await this.summarizeChat(messages)
+      await this.endChatSession()
+      return summary
+    } catch (error) {
+      console.error('Failed to summarize and end chat:', error)
+      await this.endChatSession() // Still try to end the session
+      throw error
+    }
+  }
+
+  private generateTitle(messages: Message[]): string {
+    if (messages.length === 0) {
+      return 'New Chat'
+    }
+
+    const firstUserMessage = messages.find(msg => msg.role === 'user')
+    if (!firstUserMessage) {
+      return 'New Chat'
+    }
+
+    // Extract a meaningful title from the first user message
+    const content = firstUserMessage.content.trim()
+    if (content.length <= 50) {
+      return content
+    }
+
+    // Truncate and add ellipsis
+    return content.substring(0, 47) + '...'
+  }
+
+  public async getUserChatHistory(limit = 20): Promise<Array<{
+    id: string
+    title: string
+    createdAt: string
+    messageCount: number
+    isActive: boolean
+  }>> {
+    try {
+      if (!this.userId) {
+        return []
+      }
+
+      const sessions = await DatabaseService.getAllChatSessions(this.userId, limit)
+      
+      return sessions.map(session => ({
+        id: session.id,
+        title: session.title,
+        createdAt: session.created_at,
+        messageCount: Array.isArray(session.messages) ? session.messages.length : 0,
+        isActive: session.is_active,
+      }))
+    } catch (error) {
+      console.warn('Failed to load chat history:', error)
+      return []
+    }
+  }
+
+  public async deleteChatSession(sessionId?: string): Promise<void> {
+    try {
+      const targetSessionId = sessionId || this.sessionId
+      await DatabaseService.deleteChatSession(targetSessionId, this.userId)
+    } catch (error) {
+      console.warn('Failed to delete chat session:', error)
+      throw error
+    }
+  }
+
+  public async searchChatSessions(searchTerm: string, limit = 10): Promise<Array<{
+    id: string
+    title: string
+    createdAt: string
+    messageCount: number
+  }>> {
+    try {
+      if (!this.userId) {
+        return []
+      }
+
+      const sessions = await DatabaseService.searchChatSessions(searchTerm, this.userId, limit)
+      
+      return sessions.map(session => ({
+        id: session.id,
+        title: session.title,
+        createdAt: session.created_at,
+        messageCount: Array.isArray(session.messages) ? session.messages.length : 0,
+      }))
+    } catch (error) {
+      console.warn('Failed to search chat sessions:', error)
+      return []
+    }
+  }
+
+  public async getUserActivity(): Promise<{
+    totalChats: number
+    activeChats: number
+    totalMessages: number
+    favoriteModels: Array<{ model: string; count: number }>
+    recentActivity: Array<{
+      id: string
+      title: string
+      createdAt: string
+      messageCount: number
+    }>
+  } | null> {
+    try {
+      if (!this.userId) {
+        return null
+      }
+
+      const activity = await DatabaseService.getUserActivity(this.userId)
+      
+      return {
+        totalChats: activity.totalChats,
+        activeChats: activity.activeChats,
+        totalMessages: activity.totalMessages,
+        favoriteModels: activity.favoriteModels,
+        recentActivity: activity.recentActivity.map(session => ({
+          id: session.id,
+          title: session.title,
+          createdAt: session.created_at,
+          messageCount: Array.isArray(session.messages) ? session.messages.length : 0,
+        })),
+      }
+    } catch (error) {
+      console.warn('Failed to get user activity:', error)
+      return null
     }
   }
 } 

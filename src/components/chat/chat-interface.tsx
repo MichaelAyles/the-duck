@@ -54,7 +54,11 @@ export const ChatInterface = React.memo(() => {
       setMessages([]);
       const newSessionId = crypto.randomUUID();
       setSessionId(newSessionId);
-      chatServiceRef.current = new ChatService(newSessionId, async () => {
+      // Create new chat service
+      chatServiceRef.current = new ChatService(newSessionId);
+      
+      // Setup inactivity handler
+      chatServiceRef.current.setupInactivityHandler(async () => {
         if (messages.length > 1) {
           await handleEndChat();
         }
@@ -71,14 +75,17 @@ export const ChatInterface = React.memo(() => {
     const newSessionId = crypto.randomUUID();
     setSessionId(newSessionId);
     
-    chatServiceRef.current = new ChatService(newSessionId, async () => {
+    chatServiceRef.current = new ChatService(newSessionId);
+    
+    // Setup inactivity handler
+    chatServiceRef.current.setupInactivityHandler(async () => {
       if (messages.length > 1) { // Don't end if only welcome message
         await handleEndChat();
       }
     });
 
     return () => {
-      chatServiceRef.current?.cleanup();
+      chatServiceRef.current?.clearInactivityTimer();
     };
   }, [handleEndChat, messages.length]);
 
@@ -101,8 +108,12 @@ export const ChatInterface = React.memo(() => {
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
 
-    // Update activity timer
-    chatServiceRef.current?.updateActivity();
+    // Reset inactivity timer
+    chatServiceRef.current?.setupInactivityHandler(async () => {
+      if (messages.length > 1) {
+        await handleEndChat();
+      }
+    });
 
     const userMessage: Message = {
       id: crypto.randomUUID(),

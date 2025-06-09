@@ -9,9 +9,6 @@
     "lint": "next lint",
     "setup": "node scripts/dev-setup.js",
     "check-env": "node scripts/dev-setup.js",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
     "type-check": "tsc --noEmit",
     "analyze": "ANALYZE=true npm run build"
   },
@@ -34,13 +31,11 @@
     "@supabase/supabase-js": "^2.50.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "drizzle-orm": "^0.36.4",
     "lucide-react": "^0.468.0",
     "nanoid": "^5.1.5",
     "next": "15.3.3",
     "next-auth": "^5.0.0-beta.25",
     "next-themes": "^0.4.4",
-    "postgres": "^3.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^9.0.1",
@@ -51,16 +46,14 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@types/node": "^20.19.0",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "autoprefixer": "^10.4.20",
-    "drizzle-kit": "^0.30.0",
-    "eslint": "^9",
+    "eslint": "^9.17.0",
     "eslint-config-next": "15.3.3",
-    "tailwindcss": "^3.4.0",
-    "typescript": "^5"
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
   }
 }

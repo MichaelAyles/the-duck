@@ -6,8 +6,8 @@ import { nanoid } from 'nanoid'
 /**
  * 🔬 Database Test API Route
  * 
- * Tests the new Drizzle database operations to ensure
- * Phase 3 database consistency is working properly
+ * Tests the Supabase database operations to ensure
+ * database connectivity and operations are working properly
  */
 
 export async function GET() {
@@ -16,32 +16,34 @@ export async function GET() {
     const stats = await DatabaseService.getStats();
     
     // Test retrieving recent sessions
-    const recentSessions = await DatabaseService.getAllChatSessions(5);
+    const recentSessions = await DatabaseService.getAllChatSessions(undefined, 5);
     
     // Test getting sessions with summaries
-    const sessionsWithSummaries = await DatabaseService.getSessionsWithSummaries(3);
+    const sessionsWithSummaries = await DatabaseService.getSessionsWithSummaries(undefined, 3);
     
     return NextResponse.json({
       status: 'success',
-      message: 'Database operations test completed',
+      message: 'Supabase database operations test completed',
       data: {
         stats,
         recentSessions: recentSessions.map(session => ({
           id: session.id,
           title: session.title,
           model: session.model,
-          isActive: session.isActive,
-          createdAt: session.createdAt,
+          isActive: session.is_active,
+          createdAt: session.created_at,
+          userId: session.user_id,
           messageCount: Array.isArray(session.messages) ? session.messages.length : 0,
         })),
         sessionsWithSummaries: sessionsWithSummaries.map(({ session, summary }) => ({
           session: {
             id: session.id,
             title: session.title,
-            isActive: session.isActive,
+            isActive: session.is_active,
+            userId: session.user_id,
           },
           hasSummary: !!summary,
-          summaryTopics: summary?.keyTopics || [],
+          summaryTopics: summary?.key_topics || [],
         })),
       },
       timestamp: new Date().toISOString(),
@@ -51,7 +53,7 @@ export async function GET() {
     
     return NextResponse.json({
       status: 'error',
-      message: 'Database operations test failed',
+      message: 'Supabase database operations test failed',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString(),
     }, { status: 500 });
@@ -66,13 +68,13 @@ export async function POST() {
       {
         id: nanoid(),
         role: 'user',
-        content: 'Hello, this is a test message for Phase 3 database consistency verification.',
+        content: 'Hello, this is a test message for Supabase database verification.',
         timestamp: new Date(),
       },
       {
         id: nanoid(),
         role: 'assistant',
-        content: 'Hello! This is a test response to verify that our Drizzle database operations are working correctly in Phase 3.',
+        content: 'Hello! This is a test response to verify that our Supabase database operations are working correctly.',
         timestamp: new Date(),
       },
     ];
@@ -80,7 +82,7 @@ export async function POST() {
     // Test saving a chat session
     const savedSession = await DatabaseService.saveChatSession(
       testSessionId,
-      'Phase 3 Database Test',
+      'Supabase Database Test',
       testMessages,
       'gpt-4o-mini'
     );
@@ -90,9 +92,9 @@ export async function POST() {
     const savedSummary = await DatabaseService.saveChatSummary(
       testSummaryId,
       testSessionId,
-      'Test summary for Phase 3 database consistency verification',
-      ['testing', 'database', 'phase-3'],
-      { testMode: true, phase: 3 },
+      'Test summary for Supabase database verification',
+      ['testing', 'database', 'supabase'],
+      { testMode: true, service: 'supabase' },
       { formality: 0.7, verbosity: 0.5 }
     );
 
@@ -105,7 +107,7 @@ export async function POST() {
 
     return NextResponse.json({
       status: 'success',
-      message: 'Database CRUD operations test completed successfully',
+      message: 'Supabase database CRUD operations test completed successfully',
       data: {
         savedSession: {
           id: savedSession.id,
@@ -115,9 +117,9 @@ export async function POST() {
         },
         savedSummary: {
           id: savedSummary.id,
-          sessionId: savedSummary.sessionId,
+          sessionId: savedSummary.session_id,
           summary: savedSummary.summary,
-          keyTopics: savedSummary.keyTopics,
+          topics: savedSummary.key_topics,
         },
         retrievalTest: {
           sessionRetrieved: !!retrievedSession,
@@ -132,7 +134,7 @@ export async function POST() {
     
     return NextResponse.json({
       status: 'error',
-      message: 'Database CRUD operations test failed',
+      message: 'Supabase database CRUD operations test failed',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString(),
     }, { status: 500 });

@@ -14,7 +14,7 @@ A modern, friendly, and performant LLM chat interface with authentication, perso
 🎨 **Beautiful UI** - Modern design with duck-themed styling and dark/light modes  
 💾 **Chat Persistence** - User-specific conversation history with Supabase  
 📊 **Smart Summaries** - AI-powered conversation analysis and insights  
-🔒 **Type-Safe** - Full TypeScript coverage with Drizzle ORM  
+🔒 **Type-Safe** - Full TypeScript coverage with Supabase client  
 ⚡ **Performance** - Optimized builds with modern bundling  
 🛡️ **Secure** - Environment validation, RLS policies, and security headers  
 🌊 **Duck Mode** - Quack-tastic conversation experience!
@@ -45,20 +45,12 @@ Required environment variables:
 - `OPENROUTER_API_KEY` - Get from [OpenRouter](https://openrouter.ai/keys)
 - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key
-- `DATABASE_URL` - PostgreSQL connection string (for direct database operations)
 - `NEXT_PUBLIC_APP_URL` - Your app URL (for OAuth redirects)
 
 ### 3. Supabase Setup
 
 #### Database Setup
-```bash
-# Generate and run migrations
-npm run db:generate
-npm run db:migrate
-
-# Optional: Open database studio
-npm run db:studio
-```
+Your Supabase database should already have the required tables if you've run the migration SQL. If not, you can create them manually in your Supabase dashboard using the SQL editor with the contents of `supabase_migration.sql`.
 
 #### Authentication Setup
 1. Go to your Supabase project dashboard
@@ -104,9 +96,6 @@ Open [http://localhost:12000](http://localhost:12000) to see The Duck in action!
 | `npm run check-env` | Check environment configuration |
 | `npm run type-check` | Run TypeScript type checking |
 | `npm run lint` | Run ESLint |
-| `npm run db:generate` | Generate database migrations |
-| `npm run db:migrate` | Run database migrations |
-| `npm run db:studio` | Open Drizzle Studio |
 
 ## 🏗️ Architecture
 
@@ -114,7 +103,7 @@ Open [http://localhost:12000](http://localhost:12000) to see The Duck in action!
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Authentication**: Supabase Auth with OAuth (Google, GitHub)
 - **UI**: Tailwind CSS, shadcn/ui, Radix UI
-- **Database**: Supabase PostgreSQL, Drizzle ORM
+- **Database**: Supabase PostgreSQL with built-in client
 - **AI**: OpenRouter API with multiple model support
 - **Deployment**: Vercel with automatic deployments
 
@@ -177,7 +166,6 @@ Activate "Duck Mode" for a quack-tastic conversation experience where responses 
    OPENROUTER_API_KEY=your_openrouter_key
    NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
    NEXT_PUBLIC_APP_URL=https://your-domain.com
    ```
 4. Deploy! 🎉

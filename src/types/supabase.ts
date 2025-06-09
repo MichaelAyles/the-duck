@@ -18,6 +18,7 @@ export interface Database {
           created_at: string
           updated_at: string
           is_active: boolean
+          user_id: string | null
         }
         Insert: {
           id?: string
@@ -27,6 +28,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           is_active?: boolean
+          user_id?: string | null
         }
         Update: {
           id?: string
@@ -36,6 +38,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           is_active?: boolean
+          user_id?: string | null
         }
       }
       chat_summaries: {
