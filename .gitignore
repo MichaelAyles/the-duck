@@ -31,7 +31,13 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+# env files - allow examples, block actual credentials
+.env.local
+.env.development
+.env.production
+.env.test
+.env
+!.env.example
 
 # vercel
 .vercel

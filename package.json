@@ -7,9 +7,13 @@
     "build": "next build",
     "start": "next start --port 12000 --hostname 0.0.0.0",
     "lint": "next lint",
+    "setup": "node scripts/dev-setup.js",
+    "check-env": "node scripts/dev-setup.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "type-check": "tsc --noEmit",
+    "analyze": "ANALYZE=true npm run build"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
