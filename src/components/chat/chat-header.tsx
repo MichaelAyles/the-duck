@@ -27,6 +27,7 @@ const TONE_OPTIONS = [
   { value: "casual", label: "Casual", description: "Friendly and relaxed" },
   { value: "concise", label: "Concise", description: "Brief and to the point" },
   { value: "detailed", label: "Detailed", description: "Comprehensive explanations" },
+  { value: "duck", label: "🦆 Duck Mode", description: "Quack quack quack quack quack!" },
 ];
 
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount }: ChatHeaderProps) {
@@ -186,6 +187,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       <span>Casual</span>
                       <span>Concise</span>
                       <span>Detailed</span>
+                      <span>🦆 Duck</span>
                     </div>
                   </div>
                   

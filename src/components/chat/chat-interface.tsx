@@ -114,6 +114,7 @@ export function ChatInterface() {
           })),
           model: settings.model,
           stream: true,
+          tone: settings.tone,
         }),
       });
 

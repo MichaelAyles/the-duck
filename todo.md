@@ -1,144 +1,171 @@
-# Aura Chat - Project TODO & Status
+# The Duck - Project Cleanup & Transfer Preparation
 
-## Project Description
+## Project Status Summary
 
-Design and develop a modern, beautiful, and performant open-source LLM chat website named 'Aura Chat' with a strong emphasis on user-centric persistence and model flexibility. The application should provide a seamless chat experience, utilizing OpenRouter as its primary API and also supporting Ollama for local model integration.
+**Current Project**: Aura Chat → **Target**: The Duck (new repository)
+**Status**: Feature-complete chat application ready for cleanup and transfer
 
-## 🎉 CURRENT STATUS: MAJOR MILESTONE ACHIEVED!
-
-### ✅ COMPLETED FEATURES
-1. **Full UI Implementation**: Modern, responsive chat interface with all components working
-2. **OpenRouter Integration**: Complete API client with streaming support - READY FOR API KEY
-3. **Model Management**: Dynamic model loading and curated favorites selection
+### ✅ IMPLEMENTED FEATURES
+1. **Complete UI/UX**: Modern chat interface with Next.js 15 + React 19
+2. **OpenRouter Integration**: Full API client with streaming support
+3. **Model Management**: Curated favorites + dynamic model loading
 4. **Theme System**: Light/Dark/System themes with smooth transitions
-5. **Storage Toggle**: Visual feedback with background color changes
-6. **Settings Dialog**: Comprehensive preferences management (Models/Behavior/Appearance tabs)
-7. **Error Handling**: Graceful error states and user feedback
-8. **Real-time Streaming**: Server-Sent Events for live message updates
-9. **Chat Interface**: Message bubbles, avatars, loading states, End Chat functionality
+5. **Chat Persistence**: Supabase integration with chat sessions & summaries
+6. **Storage Toggle**: Visual feedback with background color changes
+7. **Settings Dialog**: Comprehensive preferences (Models/Behavior/Appearance)
+8. **Error Handling**: Graceful error states and user feedback
+9. **Real-time Streaming**: Server-Sent Events for live responses
+10. **Inactivity Detection**: Auto-end chat after 10 minutes
+11. **Database Schema**: Complete Drizzle ORM setup with PostgreSQL
 
-### 🔑 READY FOR API KEY CONFIGURATION
+## 🚨 CRITICAL CLEANUP REQUIRED
 
-**To add your OpenRouter API key:**
-1. Open `/workspace/aura-chat/.env.local`
-2. Replace the empty `OPENROUTER_API_KEY=""` with your actual key:
-   ```bash
-   OPENROUTER_API_KEY="sk-or-v1-your-actual-key-here"
-   ```
-3. Save the file - the chat will immediately start working with real AI responses!
+### 1. **Code Quality Issues** (ESLint Failures)
+- **16 ESLint errors** need fixing before transfer
+- Unused imports and variables across multiple files
+- TypeScript `any` types need proper typing
+- Missing React dependency warnings
 
-The application is fully functional and ready for real OpenRouter API integration.
+### 2. **Build Issues**
+- Build warnings from Supabase dependencies
+- Trace file permission errors on Windows
+- Need to resolve for production deployment
 
-## Core Functionality
+### 3. **Environment Configuration**
+- Missing `.env.local` file for development
+- Environment variables scattered across files
+- Need centralized configuration documentation
 
-### Real-time Chat Interface
-- A highly responsive chat interface that feels intuitive and modern, suitable for 2025
-- Support markdown rendering for LLM responses
+### 4. **Database Setup**
+- Drizzle schema doesn't match Supabase migration
+- Inconsistent table structure between migrations
+- Need to reconcile PostgreSQL schema
 
-### Model Selection
-- Implement a simple, user-friendly dropdown on the chat front-end displaying a curated list of 'starred' (favorite) LLM models
-- Provide a dedicated 'Preferences' tab where users can browse all available OpenRouter and Ollama models, select their favorites, and manage their general application preferences
+### 5. **Project Identity**
+- Currently branded as "Aura Chat" but transitioning to "The Duck"
+- Package.json already named "the-duck" but components still reference old branding
+- Need consistent branding throughout
 
-### Chat Persistence & Summarization
-- A chat session is deemed 'complete' either by an explicit 'End Chat' button click or after 10 minutes of user inactivity
-- Upon completion, the system must summarize the chat session and analyze the user's explicit preferences and implicit writing style
-- This summarization and analysis should be performed by a cost-effective model (e.g., Gemini Flash or similar)
+## 📋 CLEANUP CHECKLIST
 
-### User Preferences to Capture
+### **Phase 1: Code Quality & Standards**
+- [ ] Fix all 16 ESLint errors
+  - Remove unused imports (`ChatMessage`, `Sparkles`, etc.)
+  - Replace `any` types with proper TypeScript interfaces
+  - Fix React Hook dependency warnings
+  - Remove unused variables and parameters
+- [ ] Clean up build warnings
+- [ ] Add proper error boundaries
+- [ ] Standardize code formatting
 
-#### Explicit Preferences
-- User-defined settings for LLM models, selected theme, and most crucially, domain-specific preferences and dislikes (e.g., 'prefers ST parts,' 'dislikes Qualcomm,' 'dislikes React')
-- These should directly influence future LLM responses, allowing for personalized, contextual suggestions and acknowledgements (e.g., "Since you don't like React, let's try...", "You like ST, so how about an STM32F4?")
+### **Phase 2: Environment & Configuration**
+- [ ] Create comprehensive `.env.example` file
+- [ ] Document all required environment variables:
+  - `OPENROUTER_API_KEY`
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `DATABASE_URL`
+  - `NEXT_PUBLIC_APP_URL`
+- [ ] Update configuration documentation
+- [ ] Ensure graceful fallbacks when APIs are not configured
 
-#### Implicit Writing Style/Tone
-- The system should dynamically analyze the user's conversation style (e.g., short questions lead to short answers, long detailed queries receive detailed responses, formal/informal language, use of jargon, verbosity)
-- This analysis should inform the LLM's response generation for the current chat
+### **Phase 3: Database & Schema Consistency**
+- [ ] Reconcile Drizzle schema with Supabase migration
+- [ ] Update migration file to match TypeScript schema
+- [ ] Test database operations end-to-end
+- [ ] Verify chat persistence and summarization
 
-#### Tone Control
-- Implement a 'tone' slider in the UI
-- One prominent option on this slider should be 'Match User's Style', which leverages the real-time writing style analysis
+### **Phase 4: Branding & Identity**
+- [ ] Update all UI text from "Aura Chat" to "The Duck"
+- [ ] Ensure duck-themed terminology is consistent
+- [ ] Update metadata and SEO information
+- [ ] Review and clean up duck logo implementation
+- [ ] Verify favicon and assets are properly referenced
 
-### Clear Indication of Storage
-- When a chat is complete and the system is about to summarize and store history/preferences, a clear and non-intrusive visual indicator (e.g., a subtle banner or a brief animation in the footer) should inform the user that data is being processed for storage
-- This storage occurs in the background
+### **Phase 5: Documentation & Developer Experience**
+- [ ] Rewrite README.md with proper setup instructions
+- [ ] Add comprehensive API documentation
+- [ ] Create deployment guide for Vercel + Supabase
+- [ ] Document the chat persistence and summarization flow
+- [ ] Add troubleshooting section
 
-### Efficient Storage
-- Choose a sensible and practical open-source storage solution for an open-source web application (e.g., PostgreSQL or MongoDB) to store chat summaries, explicit user preferences, and captured writing style profiles
-- The solution should be scalable for an open-source project
+### **Phase 6: Security & Production Readiness**
+- [ ] Review API key handling and security
+- [ ] Ensure proper CORS configuration
+- [ ] Add rate limiting considerations
+- [ ] Review Row Level Security (RLS) policies
+- [ ] Test error handling in production scenarios
 
-## User Identity/Branding
-- The application should suggest its own name 'The Duck' as its default conversational identity
-- Allow the user to optionally provide a custom name for the LLM to address itself
+### **Phase 7: Performance & Optimization**
+- [ ] Review bundle size and optimize imports
+- [ ] Ensure proper code splitting
+- [ ] Optimize database queries
+- [ ] Test streaming performance
+- [ ] Verify memory leaks in chat service
 
-## Transparency & Control
-- Implement a clear toggle in the UI to explicitly enable/disable history and preference storage
-- This toggle should change the background color of the chat interface (e.g., a distinct darker shade when storage is active, a lighter or neutral shade when disabled) to provide a clear visual cue
-- Users should have the ability to view and manage (edit/delete) their stored preferences
+## 🎯 POST-CLEANUP FEATURES TO IMPLEMENT
 
-## Technical Stack (Chosen for 2025 Modernity, Performance, and Open-Source Friendliness)
+### **Enhanced Personalization**
+- [ ] User authentication system
+- [ ] Personal preference storage per user
+- [ ] Writing style analysis and adaptation
+- [ ] Domain-specific preference learning
 
-### Infrastructure
-- **Hosting**: Vercel
-  - Free tier includes unlimited personal projects
-  - 100GB bandwidth/month
-  - Automatic HTTPS and continuous deployment
-  - Serverless functions for API routes
+### **Advanced Chat Features**
+- [ ] Chat history browsing
+- [ ] Export/import conversations
+- [ ] Multi-model comparison mode
+- [ ] Conversation templates
 
-- **Database & Storage**: Supabase
-  - Free tier includes:
-    - 500MB PostgreSQL database
-    - 1GB file storage
-    - 2GB bandwidth
-    - Built-in authentication
-  - All-in-one solution for data persistence
-  - Integrated storage buckets for file management
+### **Collaboration Features**
+- [ ] Share chat sessions
+- [ ] Collaborative editing
+- [ ] Public chat gallery
 
-### Frontend
-- Next.js (React) for a fast, modern, and SEO-friendly single-page application experience with server-side rendering capabilities
-- Utilize shadcn/ui and Tailwind CSS for a beautiful, highly customizable, and performant UI, focusing on subtle animations and transitions for a fluid user experience
+## 🏗️ ARCHITECTURE OVERVIEW
 
-### Backend
-- Next.js API Routes (Node.js/TypeScript) for seamless integration with the frontend
-- Supabase client for database and storage operations
-- OpenRouter API integration for LLM interactions
-- Server-Sent Events (SSE) for real-time message streaming
+### **Current Stack**
+- **Frontend**: Next.js 15, React 19, TypeScript
+- **UI**: Tailwind CSS, shadcn/ui components, Radix UI primitives
+- **Backend**: Next.js API Routes, Server-Sent Events
+- **Database**: Supabase PostgreSQL, Drizzle ORM
+- **AI**: OpenRouter API with curated model selection
+- **Storage**: Supabase (chat sessions, summaries, preferences)
+- **Deployment**: Configured for Vercel
 
-### Database & Storage
-- Supabase PostgreSQL for:
-  - User preferences
-  - Chat summaries
-  - Writing style profiles
-  - Authentication data
-- Supabase Storage for:
-  - Any file attachments
-  - User avatars
-  - Chat media content
+### **Key Components**
+- `ChatInterface`: Main chat component with message handling
+- `ChatService`: Handles persistence, inactivity, and summarization
+- `OpenRouterClient`: API client for LLM interactions
+- `StorageIndicator`: Visual feedback for data processing
+- Database schema with proper relationships and indexing
 
-### Authentication
-- Supabase Auth (replacing NextAuth.js)
-  - Built-in authentication system
-  - Social login providers
-  - Email/password authentication
-  - Row Level Security (RLS) for data protection
+## 🚀 TRANSFER READINESS CRITERIA
 
-## Non-Functional Requirements
+### **Must Have Before Transfer**
+1. ✅ All ESLint errors resolved
+2. ✅ Clean build with no warnings
+3. ✅ Complete environment documentation
+4. ✅ Database schema consistency
+5. ✅ Updated branding throughout
+6. ✅ Comprehensive README
 
-### Beautiful & Modern Design
-- A clean, minimalist aesthetic with thoughtful use of typography, whitespace, and a cohesive color palette
-- Aim for a polished, professional, and visually appealing user interface with smooth transitions and responsive design for all screen sizes
-- Consider a dark mode option
+### **Nice to Have**
+1. Enhanced error handling
+2. Performance optimizations
+3. Additional tests
+4. Deployment automation
 
-### Performant
-- Optimized for speed and responsiveness
-- Fast initial load times, near-instantaneous message delivery, and efficient resource utilization
+## 🎉 SUCCESS METRICS
 
-### Open Source
-- Structure the codebase for easy contribution and understanding
-- Provide clear documentation for setup, development, and usage
+The project will be considered ready for transfer when:
+- All code quality issues are resolved
+- Documentation is complete and accurate
+- The application builds and runs without errors
+- All core features work as expected
+- Branding is consistently updated to "The Duck"
+- Environment setup is straightforward for new developers
 
-### Security
-- Implement best practices for API key management, user authentication, and data privacy
+---
 
-## Deliverables
-
-Provide a high-level architectural overview, a breakdown of key components (frontend pages, backend services, database schema outline), a suggested technology stack justification, and a description of the user flow for chat, preference management, and persistence indications. Highlight how the personalized LLM responses based on stored preferences will be achieved.
+**Next Steps**: Begin Phase 1 cleanup focusing on code quality and ESLint issues, then proceed systematically through each phase to ensure a clean, professional codebase ready for the new repository.

@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient } from '@/lib/openrouter'
 import { ChatMessage } from '@/types/chat'
 
+// Helper function to convert text to duck speak
+function convertToDuckSpeak(text: string): string {
+  // Replace each word with "quack" while preserving punctuation and spacing
+  return text.replace(/\b\w+\b/g, 'quack');
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { messages, model, stream = true, options = {} } = await request.json()
+    const { messages, model, stream = true, options = {}, tone = "match-user" } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -38,7 +44,8 @@ export async function POST(request: NextRequest) {
         async start(controller) {
           try {
             for await (const chunk of client.streamChat(messages, model, options)) {
-              const data = `data: ${JSON.stringify({ content: chunk })}\n\n`
+              const processedChunk = tone === "duck" ? convertToDuckSpeak(chunk) : chunk;
+              const data = `data: ${JSON.stringify({ content: processedChunk })}\n\n`
               controller.enqueue(encoder.encode(data))
             }
             
@@ -66,7 +73,8 @@ export async function POST(request: NextRequest) {
     } else {
       // Return non-streaming response
       const response = await client.chat(messages, model, options)
-      return NextResponse.json({ content: response })
+      const processedResponse = tone === "duck" ? convertToDuckSpeak(response) : response;
+      return NextResponse.json({ content: processedResponse })
     }
   } catch (error) {
     console.error('Chat API error:', error)
