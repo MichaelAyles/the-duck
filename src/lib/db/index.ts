@@ -3,7 +3,7 @@ import postgres from 'postgres';
 import * as schema from './schema';
 
 // 🗄️ Database connection
-const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/aura_chat';
+const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/the_duck_chat';
 
 const client = postgres(connectionString, { 
   prepare: false,

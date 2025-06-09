@@ -30,7 +30,7 @@ if (!fs.existsSync(envLocalPath)) {
   } else {
     console.log('💡 Create a .env.local file with the following variables:');
     console.log('   OPENROUTER_API_KEY="your-openrouter-key"');
-    console.log('   DATABASE_URL="postgresql://localhost:5432/aura_chat"');
+    console.log('   DATABASE_URL="postgresql://localhost:5432/the_duck_chat"');
     console.log('   NEXT_PUBLIC_SUPABASE_URL="your-supabase-url"');
     console.log('   NEXT_PUBLIC_SUPABASE_ANON_KEY="your-supabase-key"\n');
   }

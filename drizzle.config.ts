@@ -10,7 +10,7 @@ export default {
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://localhost:5432/aura_chat',
+    url: process.env.DATABASE_URL || 'postgresql://localhost:5432/the_duck_chat',
   },
   verbose: process.env.DB_LOGGING === 'true',
   strict: true,
