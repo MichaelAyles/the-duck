@@ -1,0 +1,19 @@
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Duck body -->
+  <ellipse cx="18" cy="22" rx="8" ry="6" fill="#FCD34D"/>
+  
+  <!-- Duck head -->
+  <circle cx="12" cy="14" r="6" fill="#FCD34D"/>
+  
+  <!-- Duck bill -->
+  <ellipse cx="6.5" cy="15" rx="2.5" ry="1.5" fill="#F97316"/>
+  
+  <!-- Duck eye -->
+  <circle cx="10" cy="12" r="1" fill="#000"/>
+  
+  <!-- Wing detail -->
+  <ellipse cx="20" cy="20" rx="4" ry="2.5" fill="#F97316" opacity="0.7"/>
+  
+  <!-- Water ripple -->
+  <ellipse cx="18" cy="28" rx="10" ry="1" fill="#3B82F6" opacity="0.3"/>
+</svg> 

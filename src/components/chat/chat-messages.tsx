@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Sparkles, User, Loader2 } from "lucide-react";
 import { Message } from "./chat-interface";
 import { MessageContent } from "./message-content";
+import { DuckLogo } from "@/components/duck-logo";
 import { cn } from "@/lib/utils";
 
 interface ChatMessagesProps {
@@ -36,19 +37,19 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
             )}
           >
             {message.role === "assistant" && (
-              <Avatar className="h-8 w-8 mt-1">
-                <AvatarFallback className="bg-primary text-primary-foreground">
-                  <Sparkles className="h-4 w-4" />
+              <Avatar className="h-9 w-9 mt-1 duck-shadow hover:duck-glow transition-all duration-300">
+                <AvatarFallback className="duck-gradient border-2 border-background">
+                  <DuckLogo size="sm" />
                 </AvatarFallback>
               </Avatar>
             )}
             
             <Card
               className={cn(
-                "max-w-[80%] p-4 transition-all duration-200",
+                "max-w-[80%] p-4 transition-all duration-300 duck-shadow",
                 message.role === "user"
-                  ? "bg-primary text-primary-foreground ml-12"
-                  : "bg-muted/50"
+                  ? "duck-gradient text-primary-foreground ml-12 hover:duck-glow"
+                  : "bg-card hover:bg-card/80"
               )}
             >
               <MessageContent content={message.content} />
@@ -71,8 +72,8 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
             </Card>
             
             {message.role === "user" && (
-              <Avatar className="h-8 w-8 mt-1">
-                <AvatarFallback className="bg-secondary">
+              <Avatar className="h-9 w-9 mt-1 duck-shadow hover:duck-glow transition-all duration-300">
+                <AvatarFallback className="bg-secondary border-2 border-background">
                   <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
@@ -82,16 +83,16 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
         
         {isLoading && (
           <div className="flex gap-3 justify-start">
-            <Avatar className="h-8 w-8 mt-1">
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                <Sparkles className="h-4 w-4" />
+            <Avatar className="h-9 w-9 mt-1 duck-shadow animate-pulse">
+              <AvatarFallback className="duck-gradient border-2 border-background">
+                <DuckLogo size="sm" />
               </AvatarFallback>
             </Avatar>
             
-            <Card className="max-w-[80%] p-4 bg-muted/50">
+            <Card className="max-w-[80%] p-4 bg-card duck-shadow animate-pulse">
               <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm text-muted-foreground">Thinking...</span>
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">🦆 Thinking quack-tastically...</span>
               </div>
             </Card>
           </div>

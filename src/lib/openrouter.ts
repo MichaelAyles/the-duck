@@ -1,14 +1,52 @@
 import { OpenRouterModel, ChatMessage } from '@/types/chat'
 
 export class OpenRouterClient {
-  private apiKey: string
+  private apiKey: string | null
   private baseUrl = 'https://openrouter.ai/api/v1'
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey || null
   }
 
   async getModels(): Promise<OpenRouterModel[]> {
+    if (!this.apiKey) {
+      // Return default models when no API key is available
+      return [
+        {
+          id: 'openai/gpt-4o-mini',
+          name: 'GPT-4o Mini',
+          description: 'A smaller version of GPT-4o',
+          pricing: { prompt: 0.0001, completion: 0.0002, currency: 'USD' },
+          context_length: 8192,
+          architecture: {
+            modality: 'text',
+            tokenizer: 'cl100k_base',
+            instruct_type: 'chat'
+          },
+          top_provider: {
+            max_completion_tokens: 4096,
+            is_moderated: true
+          }
+        },
+        {
+          id: 'anthropic/claude-3.5-sonnet',
+          name: 'Claude 3.5 Sonnet',
+          description: 'Anthropic\'s Claude 3.5 Sonnet model',
+          pricing: { prompt: 0.00015, completion: 0.00025, currency: 'USD' },
+          context_length: 16384,
+          architecture: {
+            modality: 'text',
+            tokenizer: 'claude',
+            instruct_type: 'chat'
+          },
+          top_provider: {
+            max_completion_tokens: 8192,
+            is_moderated: true
+          }
+        }
+      ]
+    }
+
     try {
       const response = await fetch(`${this.baseUrl}/models`, {
         headers: {
@@ -48,6 +86,10 @@ export class OpenRouterClient {
       presence_penalty?: number
     } = {}
   ): AsyncGenerator<string, void, unknown> {
+    if (!this.apiKey) {
+      throw new Error('OpenRouter API key is required for chat functionality')
+    }
+
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -55,7 +97,7 @@ export class OpenRouterClient {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-          'X-Title': 'Aura Chat',
+          'X-Title': 'The Duck',
         },
         body: JSON.stringify({
           model,
@@ -84,40 +126,30 @@ export class OpenRouterClient {
       const decoder = new TextDecoder()
       let buffer = ''
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
 
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6).trim()
-              if (data === '[DONE]') {
-                return
-              }
-
-              try {
-                const parsed = JSON.parse(data)
-                const content = parsed.choices?.[0]?.delta?.content
-                if (content) {
-                  yield content
-                }
-              } catch (e) {
-                // Skip invalid JSON lines
-                continue
-              }
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') return
+            try {
+              const parsed = JSON.parse(data)
+              const content = parsed.choices[0]?.delta?.content
+              if (content) yield content
+            } catch (e) {
+              console.error('Error parsing streaming response:', e)
             }
           }
         }
-      } finally {
-        reader.releaseLock()
       }
     } catch (error) {
-      console.error('Error in OpenRouter stream:', error)
+      console.error('Error in OpenRouter stream chat:', error)
       throw error
     }
   }
@@ -133,6 +165,10 @@ export class OpenRouterClient {
       presence_penalty?: number
     } = {}
   ): Promise<string> {
+    if (!this.apiKey) {
+      throw new Error('OpenRouter API key is required for chat functionality')
+    }
+
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -140,7 +176,7 @@ export class OpenRouterClient {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-          'X-Title': 'Aura Chat',
+          'X-Title': 'The Duck',
         },
         body: JSON.stringify({
           model,

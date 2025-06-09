@@ -7,10 +7,10 @@ import { cn } from "@/lib/utils";
 
 interface StorageIndicatorProps {
   isVisible: boolean;
-  message: string;
+  message?: string;
 }
 
-export function StorageIndicator({ isVisible, message }: StorageIndicatorProps) {
+export function StorageIndicator({ isVisible, message = "Processing..." }: StorageIndicatorProps) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -32,30 +32,11 @@ export function StorageIndicator({ isVisible, message }: StorageIndicatorProps) 
   if (!isAnimating) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-      <Card
-        className={cn(
-          "px-4 py-3 shadow-lg border-2 transition-all duration-300",
-          showSuccess
-            ? "border-green-500 bg-green-50 dark:bg-green-950"
-            : "border-blue-500 bg-blue-50 dark:bg-blue-950"
-        )}
-      >
-        <div className="flex items-center gap-3">
-          {showSuccess ? (
-            <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
-          ) : (
-            <>
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
-              <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </>
-          )}
-          
-          <span className="text-sm font-medium">
-            {showSuccess ? "Chat processed and stored successfully!" : message}
-          </span>
-        </div>
-      </Card>
+    <div className="fixed bottom-4 right-4 z-50">
+      <div className="flex items-center gap-2 rounded-lg bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        <span className="text-sm text-muted-foreground">{message}</span>
+      </div>
     </div>
   );
 }

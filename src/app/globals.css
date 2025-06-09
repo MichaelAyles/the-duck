@@ -4,58 +4,64 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    /* Duck-themed light colors */
+    --background: 45 50% 98%;
+    --foreground: 25 15% 15%;
+    --card: 50 60% 96%;
+    --card-foreground: 25 15% 15%;
+    --popover: 50 60% 96%;
+    --popover-foreground: 25 15% 15%;
+    --primary: 45 95% 65%;
+    --primary-foreground: 25 15% 15%;
+    --secondary: 40 30% 88%;
+    --secondary-foreground: 25 15% 15%;
+    --muted: 40 20% 92%;
+    --muted-foreground: 25 15% 45%;
+    --accent: 35 75% 75%;
+    --accent-foreground: 25 15% 15%;
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 50 60% 96%;
+    --border: 40 25% 85%;
+    --input: 40 25% 90%;
+    --ring: 45 95% 65%;
+    --radius: 0.75rem;
+    
+    /* Duck-themed chart colors */
+    --chart-1: 45 95% 65%;
+    --chart-2: 35 75% 75%;
+    --chart-3: 200 80% 70%;
+    --chart-4: 25 65% 70%;
+    --chart-5: 60 70% 75%;
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    /* Duck-themed dark colors */
+    --background: 25 20% 8%;
+    --foreground: 45 50% 95%;
+    --card: 25 25% 10%;
+    --card-foreground: 45 50% 95%;
+    --popover: 25 25% 10%;
+    --popover-foreground: 45 50% 95%;
+    --primary: 45 85% 60%;
+    --primary-foreground: 25 20% 8%;
+    --secondary: 25 20% 15%;
+    --secondary-foreground: 45 50% 95%;
+    --muted: 25 15% 18%;
+    --muted-foreground: 45 30% 70%;
+    --accent: 35 65% 65%;
+    --accent-foreground: 25 20% 8%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 45 50% 95%;
+    --border: 25 20% 20%;
+    --input: 25 20% 18%;
+    --ring: 45 85% 60%;
+    
+    /* Duck-themed dark chart colors */
+    --chart-1: 45 85% 60%;
+    --chart-2: 35 65% 65%;
+    --chart-3: 200 70% 60%;
+    --chart-4: 25 55% 60%;
+    --chart-5: 60 60% 65%;
   }
 }
 
@@ -65,5 +71,20 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Custom duck-themed styles */
+@layer components {
+  .duck-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+  }
+  
+  .duck-shadow {
+    box-shadow: 0 4px 20px -2px hsl(var(--primary) / 0.15);
+  }
+  
+  .duck-glow {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
   }
 }

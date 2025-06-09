@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
 import { StorageIndicator } from "./storage-indicator";
 import { cn } from "@/lib/utils";
+import { ChatService } from '@/lib/chat-service'
 
 export interface Message {
   id: string;
@@ -35,11 +36,22 @@ export function ChatInterface() {
   });
   const [isProcessingStorage, setIsProcessingStorage] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const chatServiceRef = useRef<ChatService | null>(null);
 
-  // Initialize session
+  // Initialize session and chat service
   useEffect(() => {
     const newSessionId = crypto.randomUUID();
     setSessionId(newSessionId);
+    
+    chatServiceRef.current = new ChatService(newSessionId, async () => {
+      if (messages.length > 1) { // Don't end if only welcome message
+        await handleEndChat();
+      }
+    });
+
+    return () => {
+      chatServiceRef.current?.cleanup();
+    };
   }, []);
 
   // Add welcome message
@@ -48,7 +60,7 @@ export function ChatInterface() {
       const welcomeMessage: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "Hello! I'm Aura, your AI assistant. I'm here to help you with any questions or tasks you might have. How can I assist you today?",
+        content: "🦆 Hello! I'm The Duck, your friendly AI assistant. Ready to dive into some quack-tastic conversations? Whether you need help with questions, creative projects, or just want to chat, I'm here to make waves! What can I help you with today?",
         timestamp: new Date(),
         metadata: {
           model: "system",
@@ -60,6 +72,9 @@ export function ChatInterface() {
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
+
+    // Update activity timer
+    chatServiceRef.current?.updateActivity();
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -82,6 +97,11 @@ export function ChatInterface() {
     setIsLoading(true);
 
     try {
+      // Save chat session if storage is enabled
+      if (settings.storageEnabled) {
+        await chatServiceRef.current?.saveChatSession([...messages, userMessage], settings.model);
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -157,7 +177,6 @@ export function ChatInterface() {
       setIsLoading(false);
       console.error("Error sending message:", error);
       
-      // Remove the empty assistant message and show error
       setMessages(prev => {
         const updated = prev.slice(0, -1);
         return [
@@ -182,12 +201,20 @@ export function ChatInterface() {
     setIsProcessingStorage(true);
     
     try {
-      // TODO: Implement chat summarization and storage
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      if (settings.storageEnabled) {
+        // Summarize chat and store preferences
+        await chatServiceRef.current?.summarizeChat(messages);
+      }
       
       // Reset chat
       setMessages([]);
-      setSessionId(crypto.randomUUID());
+      const newSessionId = crypto.randomUUID();
+      setSessionId(newSessionId);
+      chatServiceRef.current = new ChatService(newSessionId, async () => {
+        if (messages.length > 1) {
+          await handleEndChat();
+        }
+      });
     } catch (error) {
       console.error("Error ending chat:", error);
     } finally {
@@ -200,7 +227,7 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <ChatHeader
         settings={settings}
         onSettingsChange={handleSettingsChange}
@@ -210,12 +237,19 @@ export function ChatInterface() {
       
       <div
         className={cn(
-          "flex-1 transition-colors duration-300",
+          "flex-1 transition-all duration-300 relative",
           settings.storageEnabled
-            ? "bg-background"
-            : "bg-muted/30"
+            ? "bg-transparent"
+            : "bg-muted/20"
         )}
       >
+        {/* Decorative duck waves pattern */}
+        <div className="absolute inset-0 opacity-5 pointer-events-none">
+          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary/20 to-transparent"></div>
+          <div className="absolute bottom-8 left-0 right-0 h-2 bg-primary/10 rounded-full"></div>
+          <div className="absolute bottom-16 left-8 right-8 h-1 bg-primary/15 rounded-full"></div>
+        </div>
+        
         <ChatMessages
           messages={messages}
           isLoading={isLoading}
@@ -230,7 +264,7 @@ export function ChatInterface() {
       
       <StorageIndicator
         isVisible={isProcessingStorage}
-        message="Processing chat summary and storing preferences..."
+        message="🦆 Processing chat summary and storing preferences..."
       />
     </div>
   );

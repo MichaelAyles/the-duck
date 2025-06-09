@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter, Nunito } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,12 +9,26 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+const nunito = Nunito({
+  subsets: ["latin"],
+  variable: "--font-nunito",
+});
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "Aura Chat - Intelligent AI Conversations",
-  description: "A modern, beautiful, and performant LLM chat interface with personalized experiences and model flexibility.",
-  keywords: ["AI", "chat", "LLM", "OpenRouter", "Ollama", "conversation"],
-  authors: [{ name: "Aura Chat Team" }],
-  viewport: "width=device-width, initial-scale=1",
+  title: "The Duck - Quack-tastic AI Conversations",
+  description: "A modern, friendly, and performant LLM chat interface with personalized experiences and model flexibility.",
+  keywords: ["AI", "chat", "LLM", "OpenRouter", "Ollama", "conversation", "duck"],
+  authors: [{ name: "The Duck Team" }],
+  icons: {
+    icon: "/duck-favicon.svg",
+    shortcut: "/duck-favicon.svg",
+    apple: "/duck-favicon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -24,7 +38,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${nunito.variable} ${inter.variable} font-nunito antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

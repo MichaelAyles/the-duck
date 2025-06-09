@@ -12,6 +12,7 @@ import { Settings, MessageSquare, Sparkles, Moon, Sun, Monitor, Loader2 } from "
 import { useTheme } from "next-themes";
 import { ChatSettings } from "./chat-interface";
 import { useModels } from "@/hooks/use-models";
+import { DuckLogo } from "@/components/duck-logo";
 
 interface ChatHeaderProps {
   settings: ChatSettings;
@@ -33,8 +34,8 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
   const { theme, setTheme } = useTheme();
   const { curatedModels, allModels, isLoading, fetchAllModels } = useModels();
 
-  const handleToneChange = (value: string[]) => {
-    const toneValue = TONE_OPTIONS.find((_, index) => index === value[0])?.value || "match-user";
+  const handleToneChange = (value: number[]) => {
+    const toneValue = TONE_OPTIONS[value[0]]?.value || "match-user";
     onSettingsChange({ tone: toneValue });
   };
 
@@ -47,32 +48,39 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
   };
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 duck-shadow">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-semibold">Aura Chat</h1>
+          <div className="flex items-center gap-3">
+            <DuckLogo size="lg" className="transition-all duration-300 hover:scale-110" />
+            <div className="flex flex-col">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                The Duck
+              </h1>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Quack-tastic AI conversations
+              </p>
+            </div>
           </div>
           
           <div className="hidden md:flex items-center gap-2">
             <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48 duck-shadow hover:duck-glow transition-all duration-300">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {isLoading ? (
                   <SelectItem value="loading" disabled>
                     <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading models...
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span>Loading models...</span>
                     </div>
                   </SelectItem>
                 ) : (
                   curatedModels.map((model) => (
                     <SelectItem key={model.id} value={model.id}>
                       <div className="flex flex-col">
-                        <span>{model.name}</span>
+                        <span className="font-medium">{model.name}</span>
                         <span className="text-xs text-muted-foreground">{model.provider}</span>
                       </div>
                     </SelectItem>
@@ -83,9 +91,9 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-2">
-            <Label htmlFor="storage-toggle" className="text-sm">
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3 bg-secondary/50 rounded-lg px-3 py-1.5">
+            <Label htmlFor="storage-toggle" className="text-sm font-medium">
               Storage
             </Label>
             <Switch
@@ -100,7 +108,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
               variant="outline"
               size="sm"
               onClick={onEndChat}
-              className="hidden sm:flex"
+              className="hidden sm:flex duck-shadow hover:duck-glow transition-all duration-300"
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               End Chat
@@ -109,7 +117,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
 
           <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="duck-shadow hover:duck-glow transition-all duration-300">
                 <Settings className="h-4 w-4" />
               </Button>
             </DialogTrigger>

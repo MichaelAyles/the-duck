@@ -43,9 +43,9 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled }: C
   }, [message]);
 
   return (
-    <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 duck-shadow">
       <div className="max-w-4xl mx-auto p-4">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex gap-3">
           <div className="flex-1 relative">
             <Textarea
               ref={textareaRef}
@@ -54,12 +54,12 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled }: C
               onKeyDown={handleKeyDown}
               placeholder={
                 storageEnabled
-                  ? "Type your message... (Storage enabled - your preferences will be learned)"
-                  : "Type your message... (Storage disabled - no data will be saved)"
+                  ? "🦆 Quack away! Tell me what's on your mind... (Learning from our chat)"
+                  : "🦆 What's on your mind? (Private mode - no data saved)"
               }
               disabled={disabled}
               className={cn(
-                "min-h-[60px] max-h-[200px] resize-none pr-12 transition-colors",
+                "min-h-[60px] max-h-[200px] resize-none pr-12 transition-all duration-300 duck-shadow focus:duck-glow",
                 !storageEnabled && "bg-muted/50 border-muted"
               )}
               rows={1}
@@ -69,7 +69,7 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled }: C
               type="button"
               variant="ghost"
               size="sm"
-              className="absolute bottom-2 right-2 h-8 w-8 p-0"
+              className="absolute bottom-2 right-2 h-8 w-8 p-0 hover:duck-glow transition-all duration-300"
               disabled={disabled}
             >
               <Paperclip className="h-4 w-4" />
@@ -79,20 +79,20 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled }: C
           <Button
             type="submit"
             disabled={disabled || !message.trim()}
-            className="self-end h-[60px] px-6"
+            className="self-end h-[60px] px-6 duck-gradient hover:duck-glow transition-all duration-300 font-semibold"
           >
             <Send className="h-4 w-4" />
           </Button>
         </form>
         
-        <div className="mt-2 text-xs text-muted-foreground text-center">
+        <div className="mt-3 text-xs text-center">
           {storageEnabled ? (
-            <span className="text-green-600 dark:text-green-400">
-              ● Storage enabled - Learning from your conversations
+            <span className="text-primary font-medium flex items-center justify-center gap-1">
+              🧠 Learning from our conversations to better assist you
             </span>
           ) : (
-            <span className="text-orange-600 dark:text-orange-400">
-              ● Storage disabled - No data will be saved
+            <span className="text-accent font-medium flex items-center justify-center gap-1">
+              🔒 Private mode - Conversation not stored
             </span>
           )}
         </div>

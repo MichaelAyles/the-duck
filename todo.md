@@ -67,7 +67,7 @@ The application is fully functional and ready for real OpenRouter API integratio
 - The solution should be scalable for an open-source project
 
 ## User Identity/Branding
-- The application should suggest its own name 'Aura' as its default conversational identity
+- The application should suggest its own name 'The Duck' as its default conversational identity
 - Allow the user to optionally provide a custom name for the LLM to address itself
 
 ## Transparency & Control
@@ -77,23 +77,49 @@ The application is fully functional and ready for real OpenRouter API integratio
 
 ## Technical Stack (Chosen for 2025 Modernity, Performance, and Open-Source Friendliness)
 
+### Infrastructure
+- **Hosting**: Vercel
+  - Free tier includes unlimited personal projects
+  - 100GB bandwidth/month
+  - Automatic HTTPS and continuous deployment
+  - Serverless functions for API routes
+
+- **Database & Storage**: Supabase
+  - Free tier includes:
+    - 500MB PostgreSQL database
+    - 1GB file storage
+    - 2GB bandwidth
+    - Built-in authentication
+  - All-in-one solution for data persistence
+  - Integrated storage buckets for file management
+
 ### Frontend
 - Next.js (React) for a fast, modern, and SEO-friendly single-page application experience with server-side rendering capabilities
 - Utilize shadcn/ui and Tailwind CSS for a beautiful, highly customizable, and performant UI, focusing on subtle animations and transitions for a fluid user experience
 
 ### Backend
-- Next.js API Routes (Node.js/TypeScript) for seamless integration with the frontend, handling OpenRouter/Ollama API calls, summarization logic, and database interactions
-- Consider tRPC for type-safe end-to-end communication where applicable
+- Next.js API Routes (Node.js/TypeScript) for seamless integration with the frontend
+- Supabase client for database and storage operations
+- OpenRouter API integration for LLM interactions
+- Server-Sent Events (SSE) for real-time message streaming
 
-### Database
-- PostgreSQL for robust, reliable, and flexible data storage, ideal for structured user preferences, chat summaries, and user authentication details
-- Drizzle ORM or Prisma for database interactions
+### Database & Storage
+- Supabase PostgreSQL for:
+  - User preferences
+  - Chat summaries
+  - Writing style profiles
+  - Authentication data
+- Supabase Storage for:
+  - Any file attachments
+  - User avatars
+  - Chat media content
 
 ### Authentication
-- NextAuth.js (Auth.js) for secure, flexible, and open-source authentication, supporting various providers (e.g., email/password, Google, GitHub)
-
-### Real-time Communication (Optional but Recommended for Performance)
-- Server-Sent Events (SSE) or WebSockets (e.g., Socket.IO or Pusher if self-hosting a simpler alternative) for real-time message streaming from LLMs and immediate UI updates, ensuring a highly performant chat experience
+- Supabase Auth (replacing NextAuth.js)
+  - Built-in authentication system
+  - Social login providers
+  - Email/password authentication
+  - Row Level Security (RLS) for data protection
 
 ## Non-Functional Requirements
 
