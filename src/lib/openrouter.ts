@@ -1,5 +1,25 @@
 import { OpenRouterModel, ChatMessage } from '@/types/chat'
 
+interface OpenRouterModelResponse {
+  id: string;
+  name?: string;
+  description?: string;
+  pricing?: {
+    prompt?: number;
+    completion?: number;
+  };
+  context_length?: number;
+  architecture?: {
+    modality?: string;
+    tokenizer?: string;
+    instruct_type?: string;
+  };
+  top_provider?: {
+    max_completion_tokens?: number;
+    is_moderated?: boolean;
+  };
+}
+
 export class OpenRouterClient {
   private apiKey: string | null
   private baseUrl = 'https://openrouter.ai/api/v1'
@@ -60,7 +80,7 @@ export class OpenRouterClient {
       }
 
       const data = await response.json()
-      return data.data.map((model: any) => ({
+      return data.data.map((model: OpenRouterModelResponse) => ({
         id: model.id,
         name: model.name || model.id,
         description: model.description || '',

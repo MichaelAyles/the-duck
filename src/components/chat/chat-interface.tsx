@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
@@ -35,8 +35,36 @@ export function ChatInterface() {
     storageEnabled: true,
   });
   const [isProcessingStorage, setIsProcessingStorage] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [, setSessionId] = useState<string | null>(null);
   const chatServiceRef = useRef<ChatService | null>(null);
+
+  // Define handleEndChat first so it can be used in useEffect
+  const handleEndChat = useCallback(async () => {
+    if (messages.length <= 1) return; // Don't end if only welcome message
+
+    setIsProcessingStorage(true);
+    
+    try {
+      if (settings.storageEnabled) {
+        // Summarize chat and store preferences
+        await chatServiceRef.current?.summarizeChat(messages);
+      }
+      
+      // Reset chat
+      setMessages([]);
+      const newSessionId = crypto.randomUUID();
+      setSessionId(newSessionId);
+      chatServiceRef.current = new ChatService(newSessionId, async () => {
+        if (messages.length > 1) {
+          await handleEndChat();
+        }
+      });
+    } catch (error) {
+      console.error("Error ending chat:", error);
+    } finally {
+      setIsProcessingStorage(false);
+    }
+  }, [messages, settings.storageEnabled]);
 
   // Initialize session and chat service
   useEffect(() => {
@@ -52,7 +80,7 @@ export function ChatInterface() {
     return () => {
       chatServiceRef.current?.cleanup();
     };
-  }, []);
+  }, [handleEndChat, messages.length]);
 
   // Add welcome message
   useEffect(() => {
@@ -164,7 +192,7 @@ export function ChatInterface() {
                     return updated;
                   });
                 }
-              } catch (e) {
+              } catch {
                 // Skip invalid JSON lines
                 continue;
               }
@@ -193,33 +221,6 @@ export function ChatInterface() {
           },
         ];
       });
-    }
-  };
-
-  const handleEndChat = async () => {
-    if (messages.length <= 1) return; // Don't end if only welcome message
-
-    setIsProcessingStorage(true);
-    
-    try {
-      if (settings.storageEnabled) {
-        // Summarize chat and store preferences
-        await chatServiceRef.current?.summarizeChat(messages);
-      }
-      
-      // Reset chat
-      setMessages([]);
-      const newSessionId = crypto.randomUUID();
-      setSessionId(newSessionId);
-      chatServiceRef.current = new ChatService(newSessionId, async () => {
-        if (messages.length > 1) {
-          await handleEndChat();
-        }
-      });
-    } catch (error) {
-      console.error("Error ending chat:", error);
-    } finally {
-      setIsProcessingStorage(false);
     }
   };
 

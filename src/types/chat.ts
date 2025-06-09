@@ -41,7 +41,7 @@ export interface UserPreferences {
   theme: 'light' | 'dark' | 'system'
   responseTone: 'match' | 'professional' | 'casual' | 'concise' | 'detailed'
   storageEnabled: boolean
-  explicitPreferences: Record<string, any>
+  explicitPreferences: Record<string, unknown>
   writingStyle?: {
     verbosity: 'short' | 'medium' | 'long'
     formality: 'casual' | 'neutral' | 'formal'
@@ -56,7 +56,7 @@ export interface ChatSummary {
   sessionId: string
   summary: string
   keyTopics: string[]
-  userPreferences: Record<string, any>
+  userPreferences: Record<string, unknown>
   writingStyleAnalysis: UserPreferences['writingStyle']
   createdAt: Date
 }

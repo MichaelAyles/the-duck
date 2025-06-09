@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Loader2, Database, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 
 interface StorageIndicatorProps {
   isVisible: boolean;
@@ -12,18 +10,14 @@ interface StorageIndicatorProps {
 
 export function StorageIndicator({ isVisible, message = "Processing..." }: StorageIndicatorProps) {
   const [isAnimating, setIsAnimating] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (isVisible) {
       setIsAnimating(true);
-      setShowSuccess(false);
     } else if (isAnimating) {
-      // Show success state briefly before hiding
-      setShowSuccess(true);
+      // Hide after a brief delay
       const timer = setTimeout(() => {
         setIsAnimating(false);
-        setShowSuccess(false);
       }, 1500);
       return () => clearTimeout(timer);
     }

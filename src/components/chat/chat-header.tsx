@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Settings, MessageSquare, Sparkles, Moon, Sun, Monitor, Loader2 } from "lucide-react";
+import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ChatSettings } from "./chat-interface";
 import { useModels } from "@/hooks/use-models";
@@ -33,7 +33,7 @@ const TONE_OPTIONS = [
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { curatedModels, allModels, isLoading, fetchAllModels } = useModels();
+  const { curatedModels, isLoading } = useModels();
 
   const handleToneChange = (value: number[]) => {
     const toneValue = TONE_OPTIONS[value[0]]?.value || "match-user";

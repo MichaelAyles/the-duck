@@ -118,7 +118,7 @@ export function useChat({ model, onError, onFinish }: UseChatOptions) {
                     return updated
                   })
                 }
-              } catch (e) {
+              } catch {
                 // Skip invalid JSON lines
                 continue
               }

@@ -8,7 +8,7 @@ export interface ChatSummary {
   summary: string
   keyTopics: string[]
   userPreferences: {
-    explicit: Record<string, any>
+    explicit: Record<string, unknown>
     implicit: {
       writingStyle: {
         formality: number

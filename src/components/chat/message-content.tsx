@@ -32,11 +32,13 @@ export function MessageContent({ content }: MessageContentProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          code({ node, inline, className, children, ...props }) {
+          code(props) {
+            const { className, children } = props;
             const match = /language-(\w+)/.exec(className || "");
             const codeString = String(children).replace(/\n$/, "");
+            const isInline = !match;
             
-            if (!inline && match) {
+            if (!isInline && match) {
               return (
                 <div className="relative group">
                   <Button
@@ -55,7 +57,6 @@ export function MessageContent({ content }: MessageContentProps) {
                     style={theme === "dark" ? oneDark : oneLight}
                     language={match[1]}
                     PreTag="div"
-                    {...props}
                   >
                     {codeString}
                   </SyntaxHighlighter>
@@ -64,7 +65,7 @@ export function MessageContent({ content }: MessageContentProps) {
             }
             
             return (
-              <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
+              <code className="bg-muted px-1 py-0.5 rounded text-sm">
                 {children}
               </code>
             );

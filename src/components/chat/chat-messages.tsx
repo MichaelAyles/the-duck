@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { Sparkles, User, Loader2 } from "lucide-react";
+import { User, Loader2 } from "lucide-react";
 import { Message } from "./chat-interface";
 import { MessageContent } from "./message-content";
 import { DuckLogo } from "@/components/duck-logo";

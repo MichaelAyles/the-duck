@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient } from '@/lib/openrouter'
-import { ChatMessage } from '@/types/chat'
 
 // Helper function to convert text to duck speak
 function convertToDuckSpeak(text: string): string {
