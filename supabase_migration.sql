@@ -1,11 +1,15 @@
+-- 🦆 The Duck - Supabase Migration (Legacy)
+-- This is the original Supabase migration for reference
+-- For new deployments, use the Drizzle migrations instead
+
 -- Create chat_sessions table
 CREATE TABLE IF NOT EXISTS public.chat_sessions (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     messages JSONB NOT NULL,
     model TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     is_active BOOLEAN DEFAULT true
 );
 
@@ -17,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.chat_summaries (
     key_topics TEXT[] NOT NULL DEFAULT '{}',
     user_preferences JSONB NOT NULL DEFAULT '{}',
     writing_style_analysis JSONB NOT NULL DEFAULT '{}',
-    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
 );
 
