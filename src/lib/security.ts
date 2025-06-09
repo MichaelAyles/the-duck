@@ -1,7 +1,7 @@
 /**
  * 🔒 Security Utilities for The Duck
  * 
- * Comprehensive security measures for production deployment
+ * Essential security measures for production deployment
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -19,24 +19,6 @@ export const SECURITY_CONFIG = {
     }
   },
   
-  // CORS configuration
-  CORS: {
-    ALLOWED_ORIGINS: [
-      'http://localhost:12000',
-      'http://localhost:3000',
-      'https://the-duck.vercel.app',
-      // Add production domains here
-    ],
-    ALLOWED_METHODS: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    ALLOWED_HEADERS: [
-      'Content-Type',
-      'Authorization',
-      'X-Requested-With',
-      'Accept',
-      'Origin',
-    ],
-  },
-  
   // Input validation limits
   INPUT_LIMITS: {
     MESSAGE_LENGTH: 10000,   // Max message length
@@ -52,7 +34,6 @@ export const SECURITY_CONFIG = {
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-    'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://openrouter.ai https://*.supabase.co;",
   }
 };
 
@@ -198,85 +179,54 @@ export const InputValidation = {
       presence_penalty: z.number().min(-2).max(2).optional(),
     }).optional().default({}),
     
-    tone: z.enum(['match-user', 'duck']).optional().default('match-user'),
+    tone: z.string().optional().default('match-user'),
   }),
-  
+
   /**
-   * Sanitize user input to prevent XSS
+   * Sanitize user input to prevent XSS and injection attacks
    */
   sanitizeInput(input: string): string {
     return input
-      .replace(/[<>]/g, '') // Remove potential HTML tags
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
       .replace(/javascript:/gi, '') // Remove javascript: protocols
-      .replace(/on\w+=/gi, '') // Remove event handlers
+      .replace(/on\w+="[^"]*"/gi, '') // Remove event handlers
+      .replace(/on\w+='[^']*'/gi, '') // Remove event handlers (single quotes)
       .trim();
   },
-  
+
   /**
-   * Validate and sanitize session ID
+   * Validate session ID format
    */
   validateSessionId(sessionId: string): string | null {
     if (!sessionId) return null;
     
-    // Only allow alphanumeric, hyphens, and underscores
-    const sanitized = sessionId.replace(/[^a-zA-Z0-9\-_]/g, '');
-    
-    if (sanitized.length === 0 || sanitized.length > SECURITY_CONFIG.INPUT_LIMITS.SESSION_ID_LENGTH) {
+    // Basic format validation
+    if (!/^[a-zA-Z0-9\-_]{8,50}$/.test(sessionId)) {
       return null;
     }
     
-    return sanitized;
-  },
+    return sessionId;
+  }
 };
 
-// 🌐 CORS Security
-export function createCORSHeaders(origin?: string): Record<string, string> {
-  const headers: Record<string, string> = {};
-  
-  // Check if origin is allowed
-  if (origin && (
-    SECURITY_CONFIG.CORS.ALLOWED_ORIGINS.includes(origin) ||
-    process.env.NODE_ENV === 'development'
-  )) {
-    headers['Access-Control-Allow-Origin'] = origin;
-  }
-  
-  headers['Access-Control-Allow-Methods'] = SECURITY_CONFIG.CORS.ALLOWED_METHODS.join(', ');
-  headers['Access-Control-Allow-Headers'] = SECURITY_CONFIG.CORS.ALLOWED_HEADERS.join(', ');
-  headers['Access-Control-Max-Age'] = '86400'; // 24 hours
-  
-  return headers;
-}
-
-// 🛡️ Security Middleware
+// 🔧 Security Middleware
 export function withSecurity(handler: (req: NextRequest) => Promise<NextResponse>) {
   return async (req: NextRequest): Promise<NextResponse> => {
     try {
-      // 1. Add security headers
+      // Add security headers to response
       const response = await handler(req);
       
-      // Apply security headers
+      // Add security headers
       Object.entries(SECURITY_CONFIG.SECURITY_HEADERS).forEach(([key, value]) => {
         response.headers.set(key, value);
       });
       
-      // Apply CORS headers
-      const corsHeaders = createCORSHeaders(req.headers.get('origin') || undefined);
-      Object.entries(corsHeaders).forEach(([key, value]) => {
-        response.headers.set(key, value);
-      });
-      
       return response;
-      
     } catch (error) {
       console.error('Security middleware error:', error);
-      
       return NextResponse.json(
         { error: 'Internal server error' },
-        { 
-          status: 500,
-          headers: SECURITY_CONFIG.SECURITY_HEADERS
-        }
+        { status: 500 }
       );
     }
   };
@@ -290,9 +240,9 @@ export function withRateLimit(
   return (handler: (req: NextRequest) => Promise<NextResponse>) => {
     return async (req: NextRequest): Promise<NextResponse> => {
       // Get client identifier (IP address)
-      const clientId = req.ip || 
-        req.headers.get('x-forwarded-for')?.split(',')[0] || 
+      const clientId = req.headers.get('x-forwarded-for')?.split(',')[0] || 
         req.headers.get('x-real-ip') || 
+        req.headers.get('cf-connecting-ip') ||
         'unknown';
       
       // Check rate limit
@@ -392,31 +342,8 @@ export function withInputValidation<T>(schema: z.ZodSchema<T>) {
   };
 }
 
-// 🔍 Security Audit Logger
+// 🔍 Basic Security Audit Logger
 export const SecurityAudit = {
-  logSuspiciousActivity(
-    type: 'RATE_LIMIT_EXCEEDED' | 'INVALID_INPUT' | 'API_KEY_INVALID' | 'CORS_VIOLATION',
-    details: Record<string, unknown>,
-    req: NextRequest
-  ) {
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      type,
-      ip: req.ip || req.headers.get('x-forwarded-for') || 'unknown',
-      userAgent: req.headers.get('user-agent') || 'unknown',
-      url: req.url,
-      details,
-    };
-    
-    // In production, send to monitoring service
-    if (process.env.NODE_ENV === 'production') {
-      console.warn('🚨 Security Event:', JSON.stringify(logEntry));
-      // TODO: Send to external monitoring service (Sentry, LogRocket, etc.)
-    } else {
-      console.warn('🚨 Security Event:', logEntry);
-    }
-  },
-  
   logApiUsage(
     endpoint: string,
     model: string,
@@ -428,55 +355,11 @@ export const SecurityAudit = {
       endpoint,
       model,
       tokenCount,
-      ip: req.ip || req.headers.get('x-forwarded-for') || 'unknown',
+      ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
     };
     
     // Log for analytics and cost tracking
     console.log('📊 API Usage:', JSON.stringify(logEntry));
-  }
-};
-
-// 🧪 Security Testing Utilities
-export const SecurityTesting = {
-  /**
-   * Test rate limiting functionality
-   */
-  async testRateLimit(identifier: string, maxRequests: number): Promise<boolean> {
-    // Simulate rapid requests
-    for (let i = 0; i < maxRequests + 1; i++) {
-      if (i === maxRequests) {
-        // This should be rate limited
-        return rateLimiter.isRateLimited(identifier, maxRequests);
-      }
-      rateLimiter.isRateLimited(identifier, maxRequests);
-    }
-    return false;
-  },
-  
-  /**
-   * Test input validation
-   */
-  testInputValidation(): boolean {
-    try {
-      // Test malicious inputs
-      const maliciousInputs = [
-        '<script>alert("xss")</script>',
-        'javascript:alert("xss")',
-        'onclick="alert(\'xss\')"',
-        '"><script>alert("xss")</script>',
-      ];
-      
-      maliciousInputs.forEach(input => {
-        const sanitized = InputValidation.sanitizeInput(input);
-        if (sanitized.includes('<script>') || sanitized.includes('javascript:')) {
-          throw new Error('Input sanitization failed');
-        }
-      });
-      
-      return true;
-    } catch {
-      return false;
-    }
   }
 };
 

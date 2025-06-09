@@ -83,12 +83,12 @@ async function handleChatRequest(request: NextRequest, validatedData: any): Prom
   } catch (error) {
     console.error('Chat API error:', error)
     
-    // Log security event
-    SecurityAudit.logSuspiciousActivity(
-      'API_KEY_INVALID',
-      { endpoint: '/api/chat', error: error instanceof Error ? error.message : 'Unknown error' },
-      request
-    );
+    // Log error for monitoring
+    console.error('Chat API error details:', {
+      endpoint: '/api/chat',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
+    });
     
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },

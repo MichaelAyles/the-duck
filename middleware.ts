@@ -7,6 +7,23 @@ import { SECURITY_CONFIG } from '@/lib/security';
  * This middleware runs on every request to enforce security policies
  */
 
+// Simple CORS configuration
+const CORS_CONFIG = {
+  ALLOWED_ORIGINS: [
+    'http://localhost:12000',
+    'http://localhost:3000',
+    'https://the-duck.vercel.app',
+  ],
+  ALLOWED_METHODS: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  ALLOWED_HEADERS: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+  ],
+};
+
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
   
@@ -21,7 +38,7 @@ export function middleware(request: NextRequest) {
     
     // Check if origin is allowed
     if (origin && (
-      SECURITY_CONFIG.CORS.ALLOWED_ORIGINS.includes(origin) ||
+      CORS_CONFIG.ALLOWED_ORIGINS.includes(origin) ||
       process.env.NODE_ENV === 'development'
     )) {
       response.headers.set('Access-Control-Allow-Origin', origin);
@@ -29,11 +46,11 @@ export function middleware(request: NextRequest) {
     
     response.headers.set(
       'Access-Control-Allow-Methods', 
-      SECURITY_CONFIG.CORS.ALLOWED_METHODS.join(', ')
+      CORS_CONFIG.ALLOWED_METHODS.join(', ')
     );
     response.headers.set(
       'Access-Control-Allow-Headers', 
-      SECURITY_CONFIG.CORS.ALLOWED_HEADERS.join(', ')
+      CORS_CONFIG.ALLOWED_HEADERS.join(', ')
     );
     response.headers.set('Access-Control-Max-Age', '86400');
     

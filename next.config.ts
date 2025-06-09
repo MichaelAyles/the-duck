@@ -8,20 +8,26 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // 🚀 Performance optimizations
   experimental: {
-    // Enable modern bundling optimizations
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    // Enable modern bundling optimizations for key libraries
+    optimizePackageImports: [
+      'lucide-react', 
+      '@radix-ui/react-icons',
+      'react-markdown',
+      'remark-gfm'
+    ],
+    // Enable webpack build worker for faster builds
+    webpackBuildWorker: true,
   },
 
-  // 🔧 Development configuration
-  ...(process.env.NODE_ENV === 'development' && {
-    // Enhanced logging for development
-    logging: {
-      fetches: {
-        fullUrl: true,
-      },
-    },
-  }),
+  // 📦 Build optimizations
+  compiler: {
+    // Remove console logs in production
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
 
+  // 🗜️ Basic compression
+  compress: true,
+  
   // 🛡️ Security headers
   async headers() {
     const securityHeaders = [
@@ -40,10 +46,6 @@ const nextConfig: NextConfig = {
       {
         key: 'Referrer-Policy',
         value: 'strict-origin-when-cross-origin',
-      },
-      {
-        key: 'Permissions-Policy',
-        value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
       },
     ];
 
@@ -65,18 +67,18 @@ const nextConfig: NextConfig = {
         headers: [
           ...securityHeaders,
           {
-            key: 'Access-Control-Allow-Origin',
-            value: process.env.NODE_ENV === 'development' 
-              ? 'http://localhost:12000' 
-              : 'https://the-duck.vercel.app',
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate',
           },
+        ],
+      },
+      {
+        // Cache static assets
+        source: '/(_next/static|favicon.ico|icon.svg)',
+        headers: [
           {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization, X-Requested-With, Accept, Origin',
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },
@@ -90,21 +92,11 @@ const nextConfig: NextConfig = {
       'avatars.githubusercontent.com',
     ],
     formats: ['image/webp', 'image/avif'],
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
 
-  // 📦 Bundle analyzer (enable with ANALYZE=true)
-  ...(process.env.ANALYZE === 'true' && {
-    webpack: (config: any) => {
-      config.plugins.push(
-        new (require('@next/bundle-analyzer')({
-          enabled: true,
-        }))()
-      );
-      return config;
-    },
-  }),
-
-  // 🔄 Redirects for better UX
+  // 🔄 Simple redirect
   async redirects() {
     return [
       {
@@ -114,6 +106,23 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // 🔒 Type checking and linting
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+
+  // SWC minification is enabled by default in Next.js 13+
+  
+  // Production optimizations
+  ...(process.env.NODE_ENV === 'production' && {
+    productionBrowserSourceMaps: false,
+    optimizeFonts: true,
+  }),
 };
 
 export default nextConfig;

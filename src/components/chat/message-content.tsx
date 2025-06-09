@@ -2,16 +2,98 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useTheme } from "next-themes";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import React, { useState, Suspense, lazy } from "react";
+import dynamic from "next/dynamic";
 
 interface MessageContentProps {
   content: string;
 }
+
+// Lazy load syntax highlighter to reduce initial bundle size
+const SyntaxHighlighter = dynamic(
+  () => import("react-syntax-highlighter").then((mod) => mod.Prism),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="ml-2 text-sm text-muted-foreground">Loading syntax highlighter...</span>
+      </div>
+    ),
+    ssr: false, // Disable SSR for this component to reduce server bundle
+  }
+);
+
+// Lazy load syntax highlighting styles
+const loadSyntaxStyles = async (theme: string) => {
+  if (theme === "dark") {
+    const { oneDark } = await import("react-syntax-highlighter/dist/esm/styles/prism");
+    return oneDark;
+  } else {
+    const { oneLight } = await import("react-syntax-highlighter/dist/esm/styles/prism");
+    return oneLight;
+  }
+};
+
+interface CodeBlockProps {
+  language: string;
+  code: string;
+  theme: string;
+  onCopy: (text: string) => void;
+  isCopied: boolean;
+}
+
+// Memoized code block component to prevent unnecessary re-renders
+const CodeBlock = React.memo(({ language, code, theme, onCopy, isCopied }: CodeBlockProps) => {
+  const [syntaxStyle, setSyntaxStyle] = useState<any>(null);
+
+  React.useEffect(() => {
+    loadSyntaxStyles(theme).then(setSyntaxStyle);
+  }, [theme]);
+
+  if (!syntaxStyle) {
+    return (
+      <div className="bg-muted rounded-md p-4">
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="ml-2 text-sm">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative group">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        onClick={() => onCopy(code)}
+      >
+        {isCopied ? (
+          <Check className="h-4 w-4" />
+        ) : (
+          <Copy className="h-4 w-4" />
+        )}
+      </Button>
+      <SyntaxHighlighter
+        style={syntaxStyle}
+        language={language}
+        PreTag="div"
+        customStyle={{
+          margin: 0,
+          borderRadius: '0.375rem',
+        }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+});
+
+CodeBlock.displayName = 'CodeBlock';
 
 export function MessageContent({ content }: MessageContentProps) {
   const { theme } = useTheme();
@@ -40,32 +122,27 @@ export function MessageContent({ content }: MessageContentProps) {
             
             if (!isInline && match) {
               return (
-                <div className="relative group">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => copyToClipboard(codeString)}
-                  >
-                    {copiedCode === codeString ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <SyntaxHighlighter
-                    style={theme === "dark" ? oneDark : oneLight}
+                <Suspense fallback={
+                  <div className="bg-muted rounded-md p-4">
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="ml-2 text-sm">Loading code block...</span>
+                    </div>
+                  </div>
+                }>
+                  <CodeBlock
                     language={match[1]}
-                    PreTag="div"
-                  >
-                    {codeString}
-                  </SyntaxHighlighter>
-                </div>
+                    code={codeString}
+                    theme={theme || 'light'}
+                    onCopy={copyToClipboard}
+                    isCopied={copiedCode === codeString}
+                  />
+                </Suspense>
               );
             }
             
             return (
-              <code className="bg-muted px-1 py-0.5 rounded text-sm">
+              <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">
                 {children}
               </code>
             );
@@ -75,15 +152,15 @@ export function MessageContent({ content }: MessageContentProps) {
           },
           blockquote({ children }) {
             return (
-              <blockquote className="border-l-4 border-primary pl-4 italic">
+              <blockquote className="border-l-4 border-primary pl-4 italic my-4">
                 {children}
               </blockquote>
             );
           },
           table({ children }) {
             return (
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse border border-border">
+              <div className="overflow-x-auto my-4">
+                <table className="min-w-full border-collapse border border-border rounded-md">
                   {children}
                 </table>
               </div>
@@ -102,6 +179,30 @@ export function MessageContent({ content }: MessageContentProps) {
                 {children}
               </td>
             );
+          },
+          // Optimize list rendering
+          ul({ children }) {
+            return <ul className="my-2 ml-6 list-disc">{children}</ul>;
+          },
+          ol({ children }) {
+            return <ol className="my-2 ml-6 list-decimal">{children}</ol>;
+          },
+          li({ children }) {
+            return <li className="py-1">{children}</li>;
+          },
+          // Optimize heading rendering
+          h1({ children }) {
+            return <h1 className="text-2xl font-bold my-4">{children}</h1>;
+          },
+          h2({ children }) {
+            return <h2 className="text-xl font-semibold my-3">{children}</h2>;
+          },
+          h3({ children }) {
+            return <h3 className="text-lg font-medium my-2">{children}</h3>;
+          },
+          // Optimize paragraph rendering
+          p({ children }) {
+            return <p className="my-2 leading-relaxed">{children}</p>;
           },
         }}
       >

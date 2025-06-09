@@ -48,13 +48,9 @@ export const supabase = hasSupabaseConfig
     )
   : createMockClient()
 
-// 🔍 Development logging
-if (process.env.NODE_ENV === 'development') {
-  console.log('☁️ Supabase Configuration:', {
-    hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    isConfigured: hasSupabaseConfig,
-  })
+// 🔍 Development logging (only if config is missing)
+if (process.env.NODE_ENV === 'development' && !hasSupabaseConfig) {
+  console.log('☁️ Supabase not configured - using mock client')
 }
 
 // Re-export the Database type for convenience

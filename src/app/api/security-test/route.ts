@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  SecurityTesting, 
   ApiKeySecurity, 
   SecurityAudit,
-  SecurityConfig 
+  SecurityConfig,
+  rateLimiter,
+  InputValidation
 } from '@/lib/security';
 import { getEnv } from '@/lib/env';
 
@@ -13,6 +14,44 @@ import { getEnv } from '@/lib/env';
  * This endpoint allows testing security features in development
  * It should be disabled in production
  */
+
+// Simple inline security tests
+const SecurityTests = {
+  async testRateLimit(identifier: string, maxRequests: number): Promise<boolean> {
+    // Simulate rapid requests
+    for (let i = 0; i < maxRequests + 1; i++) {
+      if (i === maxRequests) {
+        // This should be rate limited
+        return rateLimiter.isRateLimited(identifier, maxRequests);
+      }
+      rateLimiter.isRateLimited(identifier, maxRequests);
+    }
+    return false;
+  },
+  
+  testInputValidation(): boolean {
+    try {
+      // Test malicious inputs
+      const maliciousInputs = [
+        '<script>alert("xss")</script>',
+        'javascript:alert("xss")',
+        'onclick="alert(\'xss\')"',
+        '"><script>alert("xss")</script>',
+      ];
+      
+      maliciousInputs.forEach(input => {
+        const sanitized = InputValidation.sanitizeInput(input);
+        if (sanitized.includes('<script>') || sanitized.includes('javascript:')) {
+          throw new Error('Input sanitization failed');
+        }
+      });
+      
+      return true;
+    } catch {
+      return false;
+    }
+  }
+};
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   // Only allow in development
@@ -35,14 +74,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     switch (testType) {
       case 'rate-limit':
-        results.rateLimitTest = await SecurityTesting.testRateLimit(
+        results.rateLimitTest = await SecurityTests.testRateLimit(
           'test-client',
           5 // Test with 5 requests
         );
         break;
 
       case 'input-validation':
-        results.inputValidationTest = SecurityTesting.testInputValidation();
+        results.inputValidationTest = SecurityTests.testInputValidation();
         break;
 
       case 'api-keys':
@@ -63,14 +102,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       case 'security-headers':
         results.securityHeaders = SecurityConfig.SECURITY_HEADERS;
-        results.corsConfig = SecurityConfig.CORS;
         break;
 
       case 'all':
         // Run all tests
         results.tests = {
-          rateLimitTest: await SecurityTesting.testRateLimit('test-client-all', 3),
-          inputValidationTest: SecurityTesting.testInputValidation(),
+          rateLimitTest: await SecurityTests.testRateLimit('test-client-all', 3),
+          inputValidationTest: SecurityTests.testInputValidation(),
           apiKeyValidation: {
             openRouter: {
               hasKey: !!process.env.OPENROUTER_API_KEY,
@@ -83,7 +121,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           },
           securityConfig: {
             hasSecurityHeaders: Object.keys(SecurityConfig.SECURITY_HEADERS).length > 0,
-            hasCorsConfig: SecurityConfig.CORS.ALLOWED_ORIGINS.length > 0,
             rateLimits: SecurityConfig.RATE_LIMIT,
             inputLimits: SecurityConfig.INPUT_LIMITS,
           },
@@ -106,13 +143,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           { status: 400 }
         );
     }
-
-    // Log the security test
-    SecurityAudit.logSuspiciousActivity(
-      'API_KEY_INVALID', // Using available type for logging
-      { testType, results: 'security-test-passed' },
-      request
-    );
 
     return NextResponse.json({
       success: true,
@@ -161,7 +191,7 @@ function getSecurityRecommendations(results: any): string[] {
 }
 
 /**
- * Handle POST requests for more complex security tests
+ * Handle POST requests for simple security tests
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   if (process.env.NODE_ENV === 'production') {
@@ -185,27 +215,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         if (payload?.inputs && Array.isArray(payload.inputs)) {
           results.sanitizationResults = payload.inputs.map((input: string) => ({
             original: input,
-            sanitized: SecurityTesting.testInputValidation(),
+            sanitized: InputValidation.sanitizeInput(input),
           }));
         }
         break;
 
-      case 'simulate-attack':
-        // Simulate various attack patterns (safely in dev)
-        results.attackSimulation = {
-          xssAttempts: [
-            '<script>alert("xss")</script>',
-            'javascript:alert("xss")',
-          ].map(attack => ({
-            attack,
-            blocked: SecurityTesting.testInputValidation(),
-          })),
-        };
+      case 'test-rate-limit':
+        const identifier = payload?.identifier || 'test-client-post';
+        const maxRequests = payload?.maxRequests || 5;
+        results.rateLimitResult = await SecurityTests.testRateLimit(identifier, maxRequests);
         break;
 
       default:
         return NextResponse.json(
-          { error: 'Invalid action', availableActions: ['test-input-sanitization', 'simulate-attack'] },
+          {
+            error: 'Invalid action',
+            availableActions: ['test-input-sanitization', 'test-rate-limit'],
+          },
           { status: 400 }
         );
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
@@ -26,7 +26,7 @@ export interface ChatSettings {
   storageEnabled: boolean;
 }
 
-export function ChatInterface() {
+export const ChatInterface = React.memo(() => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState<ChatSettings>({
@@ -270,4 +270,6 @@ export function ChatInterface() {
       />
     </div>
   );
-}
+});
+
+ChatInterface.displayName = 'ChatInterface';

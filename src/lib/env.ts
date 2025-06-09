@@ -84,17 +84,9 @@ export function validateEnv(): EnvConfig {
   try {
     const env = envSchema.parse(process.env);
     
-    // 🎉 Success message in development
+    // 🎉 Success message in development (only if DEBUG is enabled)
     if (env.NODE_ENV === 'development' && env.DEBUG) {
       console.log('✅ Environment validation successful!');
-      console.log('🔧 Configuration loaded:', {
-        nodeEnv: env.NODE_ENV,
-        hasOpenRouter: !!env.OPENROUTER_API_KEY,
-        hasDatabase: !!env.DATABASE_URL,
-        hasSupabase: !!env.NEXT_PUBLIC_SUPABASE_URL,
-        appUrl: env.NEXT_PUBLIC_APP_URL,
-        port: env.PORT,
-      });
     }
     
     return env;
