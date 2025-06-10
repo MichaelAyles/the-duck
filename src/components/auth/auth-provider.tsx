@@ -24,10 +24,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isConfigured) {
-      // If using mock client, set loading to false
+      // If using mock client, set loading to false immediately
       setLoading(false);
       return;
     }
+
+    // Timeout fallback to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.warn('Auth loading timeout - proceeding without authentication');
+      setLoading(false);
+    }, 5000); // 5 second timeout
 
     // Get initial session - only if we have a real Supabase client
     const getInitialSession = async () => {
@@ -41,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Error getting session:', error);
       } finally {
+        clearTimeout(timeout);
         setLoading(false);
       }
     };
@@ -55,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (_event: AuthChangeEvent, session: Session | null) => {
           setSession(session);
           setUser(session?.user ?? null);
+          clearTimeout(timeout);
           setLoading(false);
         }
       );
@@ -62,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return () => {
+      clearTimeout(timeout);
       if (unsubscribe) {
         unsubscribe();
       }

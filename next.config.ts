@@ -87,9 +87,15 @@ const nextConfig: NextConfig = {
 
   // 🌐 Image optimization
   images: {
-    domains: [
-      'images.unsplash.com',
-      'avatars.githubusercontent.com',
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+      },
     ],
     formats: ['image/webp', 'image/avif'],
     dangerouslyAllowSVG: true,
@@ -120,16 +126,11 @@ const nextConfig: NextConfig = {
   
   // 🔧 Webpack configuration
   webpack: (config, { dev, isServer }) => {
-    // Suppress the Supabase realtime warnings
-    if (dev && !isServer) {
-      config.ignoreWarnings = [
-        ...(config.ignoreWarnings || []),
-        {
-          module: /@supabase\/realtime-js/,
-          message: /Critical dependency: the request of a dependency is an expression/,
-        },
-      ];
-    }
+    // Suppress the annoying Supabase realtime warnings
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      /Critical dependency: the request of a dependency is an expression/,
+    ];
     return config;
   },
 

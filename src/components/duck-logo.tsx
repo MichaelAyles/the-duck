@@ -7,31 +7,28 @@ interface DuckLogoProps {
   variant?: "duck" | "full";
 }
 
-const sizeClasses = {
-  sm: "h-6 w-6",
-  md: "h-8 w-8", 
-  lg: "h-12 w-12",
-  xl: "h-16 w-16"
-};
-
-const fullLogoSizeClasses = {
-  sm: "h-6 w-auto",
-  md: "h-8 w-auto", 
-  lg: "h-12 w-auto",
-  xl: "h-16 w-auto"
+const sizeMap = {
+  sm: { duck: 24, full: { width: 80, height: 24 } },
+  md: { duck: 32, full: { width: 100, height: 32 } },
+  lg: { duck: 48, full: { width: 150, height: 48 } },
+  xl: { duck: 64, full: { width: 200, height: 64 } }
 };
 
 export function DuckLogo({ className, size = "md", variant = "duck" }: DuckLogoProps) {
   const isFullLogo = variant === "full";
   const logoSrc = isFullLogo ? "/images/logos/theduckchatfull.png" : "/images/logos/theduckchatduck.png";
-  const logoClasses = isFullLogo ? fullLogoSizeClasses[size] : sizeClasses[size];
+  
+  const dimensions = isFullLogo 
+    ? sizeMap[size].full 
+    : { width: sizeMap[size].duck, height: sizeMap[size].duck };
 
   return (
-    <div className={cn("relative", logoClasses, className)}>
+    <div className={cn("relative", className)}>
       <Image
         src={logoSrc}
         alt={isFullLogo ? "The Duck Chat Logo" : "Duck Logo"}
-        fill
+        width={dimensions.width}
+        height={dimensions.height}
         className="object-contain"
         priority
       />
