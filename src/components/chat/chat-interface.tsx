@@ -8,6 +8,7 @@ import { StorageIndicator } from "./storage-indicator";
 import { cn } from "@/lib/utils";
 import { ChatService } from '@/lib/chat-service'
 import { useAuth } from "@/components/auth/auth-provider"
+import { useModels } from "@/hooks/use-models"
 
 export interface Message {
   id: string;
@@ -36,7 +37,7 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState<ChatSettings>({
-    model: "openai/gpt-4o-mini",
+    model: "google/gemini-2.5-flash-preview-05-20", // Start with Flash, will be updated with user's primary model
     tone: "match-user",
     storageEnabled: true,
   });
@@ -44,6 +45,15 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const chatServiceRef = useRef<ChatService | null>(null);
   const { user } = useAuth();
+  const { primaryModel, setPrimary, isStarred } = useModels();
+
+  // Update model setting when primary model is loaded
+  useEffect(() => {
+    if (primaryModel && primaryModel !== settings.model) {
+      console.log('Updating model setting to primary model:', primaryModel);
+      setSettings(prev => ({ ...prev, model: primaryModel }));
+    }
+  }, [primaryModel, settings.model]);
 
   // Load messages for an existing session
   const loadSessionMessages = useCallback(async (sessionId: string) => {
@@ -359,8 +369,21 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
     }
   };
 
-  const handleSettingsChange = (newSettings: Partial<ChatSettings>) => {
+  const handleSettingsChange = async (newSettings: Partial<ChatSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
+    
+    // If model is being changed, update the primary model if it's a starred model
+    if (newSettings.model && newSettings.model !== settings.model) {
+      try {
+        // Check if the new model is starred, and if so, set it as primary
+        if (isStarred?.(newSettings.model)) {
+          console.log('Setting new primary model:', newSettings.model);
+          await setPrimary?.(newSettings.model);
+        }
+      } catch (error) {
+        console.error('Error setting primary model:', error);
+      }
+    }
   };
 
   return (
