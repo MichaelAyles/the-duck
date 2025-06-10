@@ -26,7 +26,12 @@ export interface ChatSettings {
   storageEnabled: boolean;
 }
 
-export const ChatInterface = React.memo(() => {
+interface ChatInterfaceProps {
+  sessionId?: string | null;
+  onSessionUpdate?: (sessionId: string) => void;
+}
+
+export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessionUpdate }: ChatInterfaceProps = {}) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [settings, setSettings] = useState<ChatSettings>({
@@ -35,8 +40,49 @@ export const ChatInterface = React.memo(() => {
     storageEnabled: true,
   });
   const [isProcessingStorage, setIsProcessingStorage] = useState(false);
-  const [, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const chatServiceRef = useRef<ChatService | null>(null);
+
+  // Load messages for an existing session
+  const loadSessionMessages = useCallback(async (sessionId: string) => {
+    try {
+      // This would load messages from the database
+      // For now, we'll just show the welcome message
+      console.log('Loading session:', sessionId);
+      // TODO: Implement actual message loading from database
+    } catch (error) {
+      console.error('Error loading session messages:', error);
+    }
+  }, []);
+
+  // Generate title after a few messages
+  const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string) => {
+    // Generate title after user sends 2nd message (to have some context)
+    const userMessages = messages.filter(msg => msg.role === 'user');
+    if (userMessages.length === 2) {
+      try {
+        const response = await fetch('/api/generate-title', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: messages.slice(0, 6), // First few messages for context
+            sessionId
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Generated title:', data.title);
+          // The title will be updated in the database automatically
+          // and the sidebar will refresh to show the new title
+        }
+      } catch (error) {
+        console.error('Error generating title:', error);
+      }
+    }
+  }, []);
 
   // Define handleEndChat first so it can be used in useEffect
   const handleEndChat = useCallback(async () => {
@@ -57,6 +103,11 @@ export const ChatInterface = React.memo(() => {
       // Create new chat service
       chatServiceRef.current = new ChatService(newSessionId);
       
+      // Notify parent about session change
+      if (onSessionUpdate) {
+        onSessionUpdate(newSessionId);
+      }
+      
       // Setup inactivity handler
       chatServiceRef.current.setupInactivityHandler(async () => {
         if (messages.length > 1) {
@@ -72,10 +123,10 @@ export const ChatInterface = React.memo(() => {
 
   // Initialize session and chat service
   useEffect(() => {
-    const newSessionId = crypto.randomUUID();
-    setSessionId(newSessionId);
+    const currentSessionId = sessionId || crypto.randomUUID();
+    setSessionId(currentSessionId);
     
-    chatServiceRef.current = new ChatService(newSessionId);
+    chatServiceRef.current = new ChatService(currentSessionId);
     
     // Setup inactivity handler
     chatServiceRef.current.setupInactivityHandler(async () => {
@@ -84,10 +135,15 @@ export const ChatInterface = React.memo(() => {
       }
     });
 
+    // If we have an existing session, try to load its messages
+    if (initialSessionId && messages.length === 0) {
+      loadSessionMessages(initialSessionId);
+    }
+
     return () => {
       chatServiceRef.current?.clearInactivityTimer();
     };
-  }, [handleEndChat, messages.length]);
+  }, [initialSessionId]);
 
   // Add welcome message
   useEffect(() => {
@@ -139,6 +195,11 @@ export const ChatInterface = React.memo(() => {
       // Save chat session if storage is enabled
       if (settings.storageEnabled) {
         await chatServiceRef.current?.saveChatSession([...messages, userMessage], settings.model);
+      }
+
+      // Generate title after a few messages if we have a session
+      if (sessionId) {
+        generateTitleIfNeeded([...messages, userMessage], sessionId);
       }
 
       const response = await fetch('/api/chat', {

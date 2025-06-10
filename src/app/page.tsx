@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { ChatInterface } from "@/components/chat/chat-interface";
+import { ChatLayout } from "@/components/chat/chat-layout";
 import { LoginForm } from "@/components/auth/login-form";
 import { useAuth } from "@/components/auth/auth-provider";
 import { DuckLogo } from "@/components/duck-logo";
@@ -30,7 +30,7 @@ export default function Home() {
 
   // If Supabase isn't configured, show the app without auth
   if (!isConfigured) {
-    return <ChatInterface />;
+    return <ChatLayout />;
   }
 
   // If configured but user not logged in, show login
@@ -43,5 +43,5 @@ export default function Home() {
   }
 
   // User is authenticated, show the chat interface
-  return <ChatInterface />;
+  return <ChatLayout />;
 }
