@@ -7,6 +7,7 @@ import { ChatInput } from "./chat-input";
 import { StorageIndicator } from "./storage-indicator";
 import { cn } from "@/lib/utils";
 import { ChatService } from '@/lib/chat-service'
+import { useAuth } from "@/components/auth/auth-provider"
 
 export interface Message {
   id: string;
@@ -42,6 +43,7 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
   const [isProcessingStorage, setIsProcessingStorage] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const chatServiceRef = useRef<ChatService | null>(null);
+  const { user } = useAuth();
 
   // Load messages for an existing session
   const loadSessionMessages = useCallback(async (sessionId: string) => {
@@ -91,7 +93,7 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
     setIsProcessingStorage(true);
     
     try {
-      if (settings.storageEnabled) {
+      if (settings.storageEnabled && user) {
         // Summarize chat and store preferences
         await chatServiceRef.current?.summarizeChat(messages);
       }
@@ -101,7 +103,7 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
       const newSessionId = crypto.randomUUID();
       setSessionId(newSessionId);
       // Create new chat service
-      chatServiceRef.current = new ChatService(newSessionId);
+      chatServiceRef.current = new ChatService(newSessionId, user?.id);
       
       // Notify parent about session change
       if (onSessionUpdate) {
@@ -119,14 +121,14 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
     } finally {
       setIsProcessingStorage(false);
     }
-  }, [messages, settings.storageEnabled]);
+  }, [messages, settings.storageEnabled, onSessionUpdate, user?.id]);
 
   // Initialize session and chat service
   useEffect(() => {
     const currentSessionId = sessionId || crypto.randomUUID();
     setSessionId(currentSessionId);
     
-    chatServiceRef.current = new ChatService(currentSessionId);
+    chatServiceRef.current = new ChatService(currentSessionId, user?.id);
     
     // Setup inactivity handler
     chatServiceRef.current.setupInactivityHandler(async () => {
@@ -143,7 +145,7 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
     return () => {
       chatServiceRef.current?.clearInactivityTimer();
     };
-  }, [initialSessionId]);
+  }, [initialSessionId, user?.id]);
 
   // Add welcome message
   useEffect(() => {
@@ -192,13 +194,13 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
     setIsLoading(true);
 
     try {
-      // Save chat session if storage is enabled
-      if (settings.storageEnabled) {
+      // Save chat session if storage is enabled and user is authenticated
+      if (settings.storageEnabled && user) {
         await chatServiceRef.current?.saveChatSession([...messages, userMessage], settings.model);
       }
 
-      // Generate title after a few messages if we have a session
-      if (sessionId) {
+      // Generate title after a few messages if we have a session and user
+      if (sessionId && user) {
         generateTitleIfNeeded([...messages, userMessage], sessionId);
       }
 

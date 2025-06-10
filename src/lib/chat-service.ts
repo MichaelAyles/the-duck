@@ -55,6 +55,12 @@ export class ChatService {
 
   public async saveChatSession(messages: Message[], model: string) {
     try {
+      // Don't save if no user is authenticated
+      if (!this.userId) {
+        console.log('Skipping chat session save - no user authenticated')
+        return
+      }
+
       const title = this.generateTitle(messages)
       
       await DatabaseService.saveChatSession(
