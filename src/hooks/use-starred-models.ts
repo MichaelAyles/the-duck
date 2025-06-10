@@ -30,7 +30,15 @@ export function useStarredModels(): UseStarredModelsReturn {
       }
       
       const data = await response.json()
-      setStarredModels(data.starredModels || DEFAULT_STARRED_MODELS)
+      const loadedStarredModels = data.starredModels || DEFAULT_STARRED_MODELS
+      
+      // If the loaded starred models is empty or default, it means this is a new user
+      // The backend will automatically determine the top 5 models from OpenRouter
+      setStarredModels(loadedStarredModels)
+      
+      if (data.message) {
+        console.log('Starred models loaded:', data.message)
+      }
     } catch (err) {
       console.error('Error loading starred models:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')

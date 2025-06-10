@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient, CURATED_MODELS } from '@/lib/openrouter'
 import { 
   getUserPreferences,
-  DEFAULT_USER_PREFERENCES 
+  DEFAULT_USER_PREFERENCES,
+  getTop5Models 
 } from '@/lib/db/supabase-operations'
 import { 
   withSecurity, 
@@ -30,41 +31,58 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
       }
     }
 
+    // Fetch all available models from OpenRouter
+    const apiKey = process.env.OPENROUTER_API_KEY
+    if (!apiKey) {
+      // Development fallback - use curated models
+      if (type === 'curated') {
+        const modelsWithStarred = CURATED_MODELS.map(model => ({
+          ...model,
+          starred: includeStarred ? starredModels.includes(model.id) : model.starred
+        }))
+        
+        return NextResponse.json({ 
+          models: modelsWithStarred,
+          starredModels: includeStarred ? starredModels : undefined,
+          fallback: true
+        })
+      }
+      
+      return NextResponse.json(
+        { error: 'OpenRouter API key not configured' },
+        { status: 500 }
+      )
+    }
+
+    const client = new OpenRouterClient(apiKey)
+    const allModels = await client.getModels()
+    
+    // Add starred status and provider info to all models
+    const modelsWithMeta = allModels.map(model => ({
+      ...model,
+      provider: model.id.split('/')[0], // Extract provider from model ID
+      starred: includeStarred ? starredModels.includes(model.id) : false
+    }))
+
     if (type === 'curated') {
-      // Return curated models for the dropdown with starred status
-      const modelsWithStarred = CURATED_MODELS.map(model => ({
-        ...model,
-        starred: includeStarred ? starredModels.includes(model.id) : model.starred
-      }))
+      // For curated, show only starred models (or top 5 if user has no starred models)
+      const userStarredModels = starredModels.length > 0 ? starredModels : getTop5Models(allModels)
+      const curatedModels = modelsWithMeta.filter(model => userStarredModels.includes(model.id))
       
       return NextResponse.json({ 
-        models: modelsWithStarred,
-        starredModels: includeStarred ? starredModels : undefined
+        models: curatedModels,
+        starredModels: includeStarred ? starredModels : undefined,
+        totalAvailable: allModels.length
       })
     }
 
     if (type === 'all') {
-      // Fetch all available models from OpenRouter
-      const apiKey = process.env.OPENROUTER_API_KEY
-      if (!apiKey) {
-        return NextResponse.json(
-          { error: 'OpenRouter API key not configured' },
-          { status: 500 }
-        )
-      }
-
-      const client = new OpenRouterClient(apiKey)
-      const models = await client.getModels()
-      
-      // Add starred status to all models
-      const modelsWithStarred = models.map(model => ({
-        ...model,
-        starred: includeStarred ? starredModels.includes(model.id) : false
-      }))
-      
+      // Return all models with starred status
       return NextResponse.json({ 
-        models: modelsWithStarred,
-        starredModels: includeStarred ? starredModels : undefined
+        models: modelsWithMeta,
+        starredModels: includeStarred ? starredModels : undefined,
+        totalAvailable: allModels.length,
+        top5: getTop5Models(allModels)
       })
     }
 

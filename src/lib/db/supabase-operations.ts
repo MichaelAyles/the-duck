@@ -418,6 +418,80 @@ export interface UserPreferencesData {
   }
 }
 
+/**
+ * 🌟 Top Models Selection Logic
+ * Determines top 5 models based on OpenRouter criteria
+ */
+export function getTop5Models(allModels: any[]): string[] {
+  if (!allModels || allModels.length === 0) {
+    // Fallback to hardcoded list if no models available
+    return [
+      'anthropic/claude-3.5-sonnet',
+      'openai/gpt-4o',
+      'openai/gpt-4o-mini',
+      'google/gemini-flash-1.5',
+      'meta-llama/llama-3.1-8b-instruct:free'
+    ]
+  }
+
+  // Define popular/high-quality models based on OpenRouter ecosystem
+  const popularModels = [
+    'anthropic/claude-3.5-sonnet',
+    'openai/gpt-4o',
+    'openai/gpt-4o-mini',
+    'google/gemini-flash-1.5',
+    'google/gemini-pro-1.5',
+    'meta-llama/llama-3.1-405b-instruct',
+    'meta-llama/llama-3.1-70b-instruct',
+    'meta-llama/llama-3.1-8b-instruct:free',
+    'anthropic/claude-3-haiku',
+    'openai/gpt-3.5-turbo',
+    'mistralai/mistral-7b-instruct:free',
+    'google/gemini-2.0-flash-lite-001'
+  ]
+
+  // Filter available models to only include ones that exist in OpenRouter
+  const availableModelIds = allModels.map(model => model.id)
+  const availablePopularModels = popularModels.filter(modelId => 
+    availableModelIds.includes(modelId)
+  )
+
+  // If we have at least 5 popular models available, return top 5
+  if (availablePopularModels.length >= 5) {
+    return availablePopularModels.slice(0, 5)
+  }
+
+  // Otherwise, supplement with other available models
+  // Prioritize by factors: non-free models first, then by context length, then alphabetically
+  const remainingModels = allModels
+    .filter(model => !availablePopularModels.includes(model.id))
+    .sort((a, b) => {
+      // Prioritize non-free models
+      const aIsFree = a.id.includes(':free') || (a.pricing?.prompt === 0 && a.pricing?.completion === 0)
+      const bIsFree = b.id.includes(':free') || (b.pricing?.prompt === 0 && b.pricing?.completion === 0)
+      
+      if (aIsFree !== bIsFree) {
+        return aIsFree ? 1 : -1
+      }
+      
+      // Then by context length (higher is better)
+      const contextDiff = (b.context_length || 0) - (a.context_length || 0)
+      if (contextDiff !== 0) {
+        return contextDiff
+      }
+      
+      // Finally alphabetically
+      return a.name.localeCompare(b.name)
+    })
+    .map(model => model.id)
+
+  // Combine and take top 5
+  const top5 = [...availablePopularModels, ...remainingModels].slice(0, 5)
+  
+  console.log('Selected top 5 models:', top5)
+  return top5
+}
+
 export const DEFAULT_STARRED_MODELS = [
   'anthropic/claude-3.5-sonnet',
   'openai/gpt-4o',
@@ -451,9 +525,9 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // No preferences found, create default preferences
+        // No preferences found, create default preferences with dynamic top 5
         console.log('No user preferences found, creating defaults for user:', userId)
-        return await createUserPreferences(userId, DEFAULT_USER_PREFERENCES)
+        return await createUserPreferencesWithDynamicDefaults(userId)
       }
       throw new Error(`Failed to get user preferences: ${error.message}`)
     }
@@ -463,6 +537,42 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     console.error('Error getting user preferences:', error)
     // Return default preferences on error
     return DEFAULT_USER_PREFERENCES
+  }
+}
+
+export async function createUserPreferencesWithDynamicDefaults(userId: string): Promise<UserPreferencesData> {
+  try {
+    // Try to fetch all models to determine top 5
+    let starredModels = DEFAULT_STARRED_MODELS
+    
+    try {
+      if (process.env.OPENROUTER_API_KEY) {
+        const response = await fetch('https://openrouter.ai/api/v1/models', {
+          headers: {
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          starredModels = getTop5Models(data.data || [])
+          console.log('Using dynamic top 5 models:', starredModels)
+        }
+      }
+    } catch (apiError) {
+      console.warn('Could not fetch models for dynamic defaults, using hardcoded list:', apiError)
+    }
+
+    const defaultPrefs: UserPreferencesData = {
+      ...DEFAULT_USER_PREFERENCES,
+      starredModels
+    }
+
+    return await createUserPreferences(userId, defaultPrefs)
+  } catch (error) {
+    console.error('Error creating user preferences with dynamic defaults:', error)
+    throw error
   }
 }
 

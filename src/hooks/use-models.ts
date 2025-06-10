@@ -71,6 +71,11 @@ export function useModels() {
       }))
       
       setAllModels(modelsWithStarred)
+      
+      // Log the top 5 models for debugging
+      if (data.top5) {
+        console.log('OpenRouter top 5 models:', data.top5)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {

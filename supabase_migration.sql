@@ -26,16 +26,12 @@ CREATE TABLE IF NOT EXISTS public.chat_summaries (
 );
 
 -- Create user_preferences table
+-- Note: Default preferences will be set by the application logic
+-- to dynamically determine top 5 models from OpenRouter
 CREATE TABLE IF NOT EXISTS public.user_preferences (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     preferences JSONB NOT NULL DEFAULT '{
-        "starredModels": [
-            "anthropic/claude-3.5-sonnet",
-            "openai/gpt-4o",
-            "openai/gpt-4o-mini",
-            "google/gemini-flash-1.5",
-            "meta-llama/llama-3.1-8b-instruct:free"
-        ],
+        "starredModels": [],
         "theme": "system",
         "responseTone": "match",
         "storageEnabled": true,

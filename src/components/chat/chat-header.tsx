@@ -34,7 +34,7 @@ const TONE_OPTIONS = [
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { curatedModels, isLoading, starredModels, toggleStar } = useModels();
+  const { curatedModels, allModels, isLoading, starredModels, toggleStar, fetchAllModels } = useModels();
 
   const handleToneChange = (value: number[]) => {
     const toneValue = TONE_OPTIONS[value[0]]?.value || "match-user";
@@ -162,17 +162,27 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                   </div>
                   
                   <div className="space-y-3">
-                    <Label>Favorite Models</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Favorite Models</Label>
+                      <button
+                        type="button"
+                        onClick={() => !isLoading && fetchAllModels?.()}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        disabled={isLoading}
+                      >
+                        {allModels.length > 0 ? `${allModels.length} models` : 'Load all models'}
+                      </button>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Click the stars to manage your favorite models for quick access.
+                      Click the stars to manage your favorite models. The top 5 models are starred by default.
                     </p>
                     
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {curatedModels.map((model) => (
+                      {(allModels.length > 0 ? allModels : curatedModels).map((model) => (
                         <div key={model.id} className="flex items-center justify-between p-2 rounded-lg border bg-background">
                           <div className="flex flex-col">
                             <span className="font-medium text-sm">{model.name}</span>
-                            <span className="text-xs text-muted-foreground">{model.provider}</span>
+                            <span className="text-xs text-muted-foreground">{model.provider || model.id.split('/')[0]}</span>
                           </div>
                           <button
                             type="button"
@@ -189,7 +199,8 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                     {starredModels?.length > 0 && (
                       <div className="pt-2 border-t">
                         <p className="text-xs text-muted-foreground">
-                          {starredModels.length} starred model{starredModels.length !== 1 ? 's' : ''}
+                          {starredModels.length} starred model{starredModels.length !== 1 ? 's' : ''} 
+                          {allModels.length > 0 && ` out of ${allModels.length} total`}
                         </p>
                       </div>
                     )}
