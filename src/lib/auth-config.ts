@@ -39,5 +39,11 @@ export function isDevelopment(): boolean {
  */
 export function getOAuthRedirectUrl(): string {
   const config = getAuthConfig();
+  
+  // Force localhost redirect in development
+  if (isDevelopment()) {
+    return 'http://localhost:12000/auth/callback';
+  }
+  
   return config.redirectUrl;
 } 

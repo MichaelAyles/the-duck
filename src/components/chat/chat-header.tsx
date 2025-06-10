@@ -13,6 +13,7 @@ import { useTheme } from "next-themes";
 import { ChatSettings } from "./chat-interface";
 import { useModels } from "@/hooks/use-models";
 import { DuckLogo } from "@/components/duck-logo";
+import { UserMenu } from "@/components/auth/user-menu";
 
 interface ChatHeaderProps {
   settings: ChatSettings;
@@ -239,6 +240,8 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
               </Tabs>
             </DialogContent>
           </Dialog>
+
+          <UserMenu />
         </div>
       </div>
     </header>

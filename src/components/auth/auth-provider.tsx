@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signOut: () => Promise<void>;
+  logout: () => Promise<void>;
   isConfigured: boolean;
 }
 
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isConfigured]);
 
-  const signOut = async () => {
+  const logout = async () => {
     if (isConfigured && 'signOut' in supabase.auth) {
       await supabase.auth.signOut();
     }
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     session,
     loading,
-    signOut,
+    logout,
     isConfigured,
   };
 
