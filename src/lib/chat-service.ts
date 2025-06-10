@@ -82,12 +82,20 @@ export class ChatService {
 
   public async loadChatSession(): Promise<Message[]> {
     try {
+      if (!this.userId) {
+        console.log('No user ID available for loading session')
+        return []
+      }
+
+      console.log(`Loading session ${this.sessionId} for user ${this.userId}`)
       const session = await DatabaseService.getChatSession(this.sessionId, this.userId)
       
       if (session && Array.isArray(session.messages)) {
+        console.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
         return session.messages as unknown as Message[]
       }
       
+      console.log(`No messages found for session ${this.sessionId}`)
       return []
     } catch (error) {
       console.warn('Failed to load chat session:', error)

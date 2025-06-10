@@ -48,14 +48,66 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
   // Load messages for an existing session
   const loadSessionMessages = useCallback(async (sessionId: string) => {
     try {
-      // This would load messages from the database
-      // For now, we'll just show the welcome message
-      console.log('Loading session:', sessionId);
-      // TODO: Implement actual message loading from database
+      if (!user || !chatServiceRef.current) return;
+      
+      console.log('Loading session messages for:', sessionId);
+      
+      // Load messages using ChatService
+      const loadedMessages = await chatServiceRef.current.loadChatSession();
+      
+      if (loadedMessages && loadedMessages.length > 0) {
+        // Convert loaded messages to proper format with dates
+        const formattedMessages = loadedMessages.map(msg => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+        
+        setMessages(formattedMessages);
+        console.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
+      } else {
+        // If no messages found, show welcome message
+        const welcomeMessage: Message = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "🦆 Hello! I'm The Duck, your friendly AI assistant. Ready to dive into some quack-tastic conversations? Whether you need help with questions, creative projects, or just want to chat, I'm here to make waves! What can I help you with today?",
+          timestamp: new Date(),
+          metadata: {
+            model: "system",
+          },
+        };
+        setMessages([welcomeMessage]);
+        console.log('No messages found, showing welcome message');
+      }
     } catch (error) {
       console.error('Error loading session messages:', error);
+      // On error, show welcome message
+      const welcomeMessage: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "🦆 Hello! I'm The Duck, your friendly AI assistant. Ready to dive into some quack-tastic conversations? Whether you need help with questions, creative projects, or just want to chat, I'm here to make waves! What can I help you with today?",
+        timestamp: new Date(),
+        metadata: {
+          model: "system",
+        },
+      };
+      setMessages([welcomeMessage]);
     }
-  }, []);
+  }, [user]);
+
+  // Handle session changes - this effect runs when the sessionId prop changes
+  useEffect(() => {
+    console.log('SessionId changed to:', initialSessionId);
+    if (initialSessionId && initialSessionId !== sessionId) {
+      // Session changed, update our state and load new messages
+      setSessionId(initialSessionId);
+      
+      // Create new ChatService for the new session
+      if (user) {
+        chatServiceRef.current = new ChatService(initialSessionId, user.id);
+        loadSessionMessages(initialSessionId);
+      }
+    }
+  }, [initialSessionId, sessionId, user, loadSessionMessages]);
 
   // Generate title after a few messages
   const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string) => {
@@ -125,7 +177,7 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
 
   // Initialize session and chat service
   useEffect(() => {
-    const currentSessionId = sessionId || crypto.randomUUID();
+    const currentSessionId = initialSessionId || crypto.randomUUID();
     setSessionId(currentSessionId);
     
     chatServiceRef.current = new ChatService(currentSessionId, user?.id);
@@ -137,15 +189,24 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
       }
     });
 
-    // If we have an existing session, try to load its messages
-    if (initialSessionId && messages.length === 0) {
-      loadSessionMessages(initialSessionId);
+    // Load messages for the session
+    if (user) {
+      if (initialSessionId) {
+        // Load existing session messages
+        loadSessionMessages(initialSessionId);
+      } else {
+        // New session - clear messages to trigger welcome message
+        setMessages([]);
+      }
+    } else {
+      // No user - show welcome message
+      setMessages([]);
     }
 
     return () => {
       chatServiceRef.current?.clearInactivityTimer();
     };
-  }, [initialSessionId, user?.id]);
+  }, [initialSessionId, user?.id, loadSessionMessages]);
 
   // Add welcome message
   useEffect(() => {

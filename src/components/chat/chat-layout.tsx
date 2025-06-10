@@ -8,10 +8,13 @@ import { useAuth } from "@/components/auth/auth-provider";
 export function ChatLayout() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user } = useAuth();
 
   const handleSessionSelect = useCallback((sessionId: string) => {
     setCurrentSessionId(sessionId);
+    // Trigger a refresh of the chat history to ensure it's up to date
+    setRefreshTrigger(prev => prev + 1);
   }, []);
 
   const handleNewChat = useCallback(() => {
@@ -36,6 +39,7 @@ export function ChatLayout() {
         onNewChat={handleNewChat}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebar}
+        refreshTrigger={refreshTrigger}
       />
       
       {/* Main Chat Area */}

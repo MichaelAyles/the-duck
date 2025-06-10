@@ -47,6 +47,7 @@ interface ChatHistorySidebarProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   className?: string;
+  refreshTrigger?: number; // Added to trigger refresh when sessions change
 }
 
 export function ChatHistorySidebar({
@@ -55,7 +56,8 @@ export function ChatHistorySidebar({
   onNewChat,
   isCollapsed = false,
   onToggleCollapse,
-  className
+  className,
+  refreshTrigger
 }: ChatHistorySidebarProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,10 +98,10 @@ export function ChatHistorySidebar({
     }
   }, [user, toast]);
 
-  // Initial load
+  // Initial load and refresh trigger
   useEffect(() => {
     fetchChatHistory();
-  }, [fetchChatHistory]);
+  }, [fetchChatHistory, refreshTrigger]);
 
   // Search with debounce
   useEffect(() => {
