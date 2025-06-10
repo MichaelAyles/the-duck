@@ -4,19 +4,16 @@ import {
   updateUserPreferences, 
   UserPreferencesData,
   DEFAULT_USER_PREFERENCES 
-} from '@/lib/db/supabase-operations'
+} from '@/lib/db/server-operations'
 import { 
   withSecurity, 
   withRateLimit, 
   SECURITY_CONFIG 
 } from '@/lib/security'
+import { getUserId, requireAuth } from '@/lib/auth'
 
 async function handleUserPreferencesGet(request: NextRequest): Promise<NextResponse> {
   try {
-    // For development, we'll use a mock user ID
-    // In production, this would be extracted from the authenticated session
-    const mockUserId = 'mock-user-id'
-    
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
       return NextResponse.json(
         { 
@@ -27,8 +24,17 @@ async function handleUserPreferencesGet(request: NextRequest): Promise<NextRespo
       )
     }
 
+    // Get user ID - if not authenticated, return defaults
+    const userId = await getUserId(request)
+    if (!userId) {
+      return NextResponse.json({ 
+        preferences: DEFAULT_USER_PREFERENCES,
+        message: 'Using default preferences (not authenticated)'
+      })
+    }
+
     // Get user preferences
-    const preferences = await getUserPreferences(mockUserId)
+    const preferences = await getUserPreferences(userId)
     
     return NextResponse.json({ preferences })
   } catch (error) {
@@ -45,8 +51,8 @@ async function handleUserPreferencesGet(request: NextRequest): Promise<NextRespo
 
 async function handleUserPreferencesPost(request: NextRequest): Promise<NextResponse> {
   try {
-    // For development, we'll use a mock user ID
-    const mockUserId = 'mock-user-id'
+    // Require authentication for updating preferences
+    const user = await requireAuth(request)
     
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
       return NextResponse.json(
@@ -70,7 +76,7 @@ async function handleUserPreferencesPost(request: NextRequest): Promise<NextResp
     }
 
     // Update user preferences
-    const updatedPreferences = await updateUserPreferences(mockUserId, preferences)
+    const updatedPreferences = await updateUserPreferences(user.id, preferences)
     
     return NextResponse.json({ 
       preferences: updatedPreferences,
@@ -78,6 +84,17 @@ async function handleUserPreferencesPost(request: NextRequest): Promise<NextResp
     })
   } catch (error) {
     console.error('User preferences POST error:', error)
+    
+    if (error instanceof Error && error.message === 'Authentication required') {
+      return NextResponse.json(
+        { 
+          error: 'Authentication required',
+          details: 'You must be logged in to update preferences'
+        },
+        { status: 401 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Internal server error',

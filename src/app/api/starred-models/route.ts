@@ -4,18 +4,16 @@ import {
   setPrimaryModel,
   getUserPreferences,
   DEFAULT_USER_PREFERENCES 
-} from '@/lib/db/supabase-operations'
+} from '@/lib/db/server-operations'
 import { 
   withSecurity, 
   withRateLimit, 
   SECURITY_CONFIG 
 } from '@/lib/security'
+import { getUserId, requireAuth } from '@/lib/auth'
 
 async function handleStarredModelsGet(request: NextRequest): Promise<NextResponse> {
   try {
-    // For development, we'll use a mock user ID
-    const mockUserId = 'mock-user-id'
-    
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
       return NextResponse.json(
         { 
@@ -26,13 +24,36 @@ async function handleStarredModelsGet(request: NextRequest): Promise<NextRespons
       )
     }
 
-    // Get user preferences to extract starred models
-    const preferences = await getUserPreferences(mockUserId)
-    
-    return NextResponse.json({ 
-      starredModels: preferences.starredModels,
-      primaryModel: preferences.primaryModel
-    })
+    // Get user ID - if not authenticated, return defaults
+    const userId = await getUserId(request)
+    if (!userId) {
+      return NextResponse.json({ 
+        starredModels: DEFAULT_USER_PREFERENCES.starredModels,
+        primaryModel: DEFAULT_USER_PREFERENCES.primaryModel,
+        message: 'Using default preferences (not authenticated)'
+      })
+    }
+
+    // User is authenticated - try to get or create preferences
+    try {
+      const preferences = await getUserPreferences(userId)
+      
+      return NextResponse.json({ 
+        starredModels: preferences.starredModels,
+        primaryModel: preferences.primaryModel,
+        message: 'User preferences loaded successfully'
+      })
+    } catch (error) {
+      console.error('Error getting user preferences for user', userId, ':', error)
+      
+      // If we can't get/create preferences, return defaults but log the error
+      return NextResponse.json({ 
+        starredModels: DEFAULT_USER_PREFERENCES.starredModels,
+        primaryModel: DEFAULT_USER_PREFERENCES.primaryModel,
+        message: 'Using default preferences (error loading user preferences)',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+    }
   } catch (error) {
     console.error('Starred models GET error:', error)
     return NextResponse.json(
@@ -47,8 +68,8 @@ async function handleStarredModelsGet(request: NextRequest): Promise<NextRespons
 
 async function handleStarredModelsPost(request: NextRequest): Promise<NextResponse> {
   try {
-    // For development, we'll use a mock user ID
-    const mockUserId = 'mock-user-id'
+    // Require authentication for modifying starred models
+    const user = await requireAuth(request)
     
     // Parse request body
     const body = await request.json()
@@ -79,10 +100,10 @@ async function handleStarredModelsPost(request: NextRequest): Promise<NextRespon
     let message = ''
     
     if (action === 'set_primary') {
-      updatedPreferences = await setPrimaryModel(mockUserId, modelId)
+      updatedPreferences = await setPrimaryModel(user.id, modelId)
       message = `Primary model set to ${modelId}`
     } else {
-      updatedPreferences = await toggleStarredModel(mockUserId, modelId)
+      updatedPreferences = await toggleStarredModel(user.id, modelId)
       const isStarred = updatedPreferences.starredModels.includes(modelId)
       message = `Model ${isStarred ? 'starred' : 'unstarred'} successfully`
     }
@@ -98,6 +119,17 @@ async function handleStarredModelsPost(request: NextRequest): Promise<NextRespon
     })
   } catch (error) {
     console.error('Starred models POST error:', error)
+    
+    if (error instanceof Error && error.message === 'Authentication required') {
+      return NextResponse.json(
+        { 
+          error: 'Authentication required',
+          details: 'You must be logged in to modify starred models'
+        },
+        { status: 401 }
+      )
+    }
+    
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Internal server error',

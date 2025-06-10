@@ -2,14 +2,39 @@ import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient, CURATED_MODELS } from '@/lib/openrouter'
 import { 
   getUserPreferences,
-  DEFAULT_USER_PREFERENCES,
-  getTop5Models 
-} from '@/lib/db/supabase-operations'
+  DEFAULT_USER_PREFERENCES
+} from '@/lib/db/server-operations'
 import { 
   withSecurity, 
   withRateLimit, 
   SECURITY_CONFIG 
 } from '@/lib/security'
+import { getUserId } from '@/lib/auth'
+
+// Move getTop5Models function here since it's just a utility function
+function getTop5Models(allModels: any[]): string[] {
+  if (!Array.isArray(allModels) || allModels.length === 0) {
+    return []
+  }
+  
+  return allModels
+    .sort((a, b) => {
+      // Sort by total_rank (lower is better), then by last_week_rank
+      const aRank = a.total_rank || 999999
+      const bRank = b.total_rank || 999999
+      
+      if (aRank !== bRank) {
+        return aRank - bRank
+      }
+      
+      // If total_rank is the same, sort by last_week_rank
+      const aWeekRank = a.last_week_rank || 999999
+      const bWeekRank = b.last_week_rank || 999999
+      return aWeekRank - bWeekRank
+    })
+    .slice(0, 5)
+    .map(model => model.id)
+}
 
 async function handleModelsRequest(request: NextRequest): Promise<NextResponse> {
   try {
@@ -21,9 +46,9 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
     let starredModels: string[] = DEFAULT_USER_PREFERENCES.starredModels
     if (includeStarred) {
       try {
-        const mockUserId = 'mock-user-id' // In production, get from auth
-        if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-          const preferences = await getUserPreferences(mockUserId)
+        const userId = await getUserId(request)
+        if (userId && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+          const preferences = await getUserPreferences(userId)
           starredModels = preferences.starredModels
         }
       } catch (error) {
@@ -50,9 +75,9 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
     let primaryModel = starredModels[0] || DEFAULT_USER_PREFERENCES.primaryModel
     if (includeStarred) {
       try {
-        const mockUserId = 'mock-user-id'
-        if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-          const preferences = await getUserPreferences(mockUserId)
+        const userId = await getUserId(request)
+        if (userId && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+          const preferences = await getUserPreferences(userId)
           primaryModel = preferences.primaryModel
         }
       } catch (error) {
@@ -99,7 +124,10 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
   } catch (error) {
     console.error('Models API error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { 
+        error: error instanceof Error ? error.message : 'Internal server error',
+        details: 'Failed to fetch models from OpenRouter'
+      },
       { status: 500 }
     )
   }
