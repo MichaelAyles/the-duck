@@ -8,6 +8,7 @@ import { useAuth } from './auth-provider';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Github } from 'lucide-react';
+import { getOAuthRedirectUrl } from '@/lib/auth-config';
 
 export function LoginForm() {
   const { isConfigured } = useAuth();
@@ -37,7 +38,7 @@ export function LoginForm() {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: `${window.location.origin}/auth/callback`
+            redirectTo: getOAuthRedirectUrl()
           }
         });
         if (error) {
@@ -58,7 +59,7 @@ export function LoginForm() {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'github',
           options: {
-            redirectTo: `${window.location.origin}/auth/callback`
+            redirectTo: getOAuthRedirectUrl()
           }
         });
         if (error) {
@@ -149,7 +150,7 @@ export function LoginForm() {
               providers={[]}
               view="sign_in"
               showLinks={true}
-              redirectTo={`${window.location.origin}/auth/callback`}
+              redirectTo={getOAuthRedirectUrl()}
             />
           )}
         </div>

@@ -239,8 +239,26 @@ async function checkDependencies() {
 async function checkSupabaseSetup() {
   logHeader('Supabase Setup Check');
   
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Load environment variables from .env.local
+  const envPath = path.join(process.cwd(), '.env.local');
+  let supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  let supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  // If not in process.env, try to read from .env.local
+  if ((!supabaseUrl || !supabaseKey) && fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    const envLines = envContent.split('\n');
+    
+    envLines.forEach(line => {
+      const match = line.match(/^([^#=]+)=(.*)$/);
+      if (match) {
+        const key = match[1].trim();
+        const value = match[2].trim().replace(/['"]/g, ''); // Remove quotes
+        if (key === 'NEXT_PUBLIC_SUPABASE_URL') supabaseUrl = value;
+        if (key === 'NEXT_PUBLIC_SUPABASE_ANON_KEY') supabaseKey = value;
+      }
+    });
+  }
   
   if (!supabaseUrl || !supabaseKey) {
     logWarning('Supabase environment variables not configured');

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -7,14 +7,18 @@ export async function GET(request: NextRequest) {
   
   if (code) {
     try {
-      // Use the current Supabase auth method
-      if ('exchangeCodeForSession' in supabase.auth) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        
-        if (error) {
-          console.error('Auth callback error:', error);
-          return NextResponse.redirect(`${origin}?error=auth_failed`);
-        }
+      // Create a new Supabase client for the callback
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      // Exchange the code for a session
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      
+      if (error) {
+        console.error('Auth callback error:', error);
+        return NextResponse.redirect(`${origin}?error=auth_failed`);
       }
     } catch (error) {
       console.error('Auth exchange error:', error);
