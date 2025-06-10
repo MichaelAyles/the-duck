@@ -71,10 +71,14 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
           
           <div className="hidden md:flex items-center gap-2">
             <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })}>
-              <SelectTrigger className="w-48 duck-shadow hover:duck-glow transition-all duration-300">
-                <SelectValue />
+              <SelectTrigger className="w-64 duck-shadow hover:duck-glow transition-all duration-300">
+                <SelectValue className="truncate">
+                  {curatedModels.find(m => m.id === settings.model)?.name || 
+                   allModels.find(m => m.id === settings.model)?.name || 
+                   settings.model}
+                </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="w-80">
                 {isLoading ? (
                   <SelectItem value="loading" disabled>
                     <div className="flex items-center gap-2">
@@ -83,14 +87,72 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                     </div>
                   </SelectItem>
                 ) : (
-                  curatedModels.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{model.name}</span>
-                        <span className="text-xs text-muted-foreground">{model.provider}</span>
-                      </div>
-                    </SelectItem>
-                  ))
+                  <>
+                    {/* Show curated models first */}
+                    {curatedModels.length > 0 && (
+                      <>
+                        {curatedModels.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="font-medium truncate">{model.name}</span>
+                              <span className="text-xs text-muted-foreground truncate">{model.provider}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {allModels.length > curatedModels.length && (
+                          <>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t">
+                              All Models
+                            </div>
+                            {allModels
+                              .filter(model => !curatedModels.some(curated => curated.id === model.id))
+                              .slice(0, 20) // Limit to first 20 additional models for performance
+                              .map((model) => (
+                                <SelectItem key={model.id} value={model.id}>
+                                  <div className="flex flex-col min-w-0 flex-1">
+                                    <span className="font-medium truncate">{model.name}</span>
+                                    <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            {allModels.length > curatedModels.length + 20 && (
+                              <div className="px-2 py-1 text-xs text-muted-foreground">
+                                +{allModels.length - curatedModels.length - 20} more in settings...
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* If no curated models, show all models */}
+                    {curatedModels.length === 0 && allModels.length > 0 && (
+                      allModels.slice(0, 25).map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="font-medium truncate">{model.name}</span>
+                            <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                    
+                    {/* Load all models button if not loaded yet */}
+                    {allModels.length === 0 && !isLoading && (
+                      <SelectItem value="load-more" disabled>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            fetchAllModels?.()
+                          }}
+                          className="w-full text-left text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Load all models...
+                        </button>
+                      </SelectItem>
+                    )}
+                  </>
                 )}
               </SelectContent>
             </Select>
@@ -144,9 +206,13 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                     <Label>Selected Model</Label>
                     <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue className="truncate">
+                          {curatedModels.find(m => m.id === settings.model)?.name || 
+                           allModels.find(m => m.id === settings.model)?.name || 
+                           settings.model}
+                        </SelectValue>
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="w-96">
                         {isLoading ? (
                           <SelectItem value="loading" disabled>
                             <div className="flex items-center gap-2">
@@ -155,19 +221,65 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                             </div>
                           </SelectItem>
                         ) : (
-                          curatedModels.map((model) => (
-                            <SelectItem key={model.id} value={model.id}>
-                              <div className="flex items-center justify-between w-full">
-                                <div className="flex flex-col">
-                                  <span>{model.name}</span>
-                                  <span className="text-xs text-muted-foreground">{model.provider}</span>
-                                </div>
-                                {model.starred && (
-                                  <span className="text-yellow-500 ml-2">⭐</span>
+                          <>
+                            {/* Show curated models first */}
+                            {curatedModels.length > 0 && (
+                              <>
+                                {curatedModels.map((model) => (
+                                  <SelectItem key={model.id} value={model.id}>
+                                    <div className="flex items-center justify-between w-full min-w-0">
+                                      <div className="flex flex-col min-w-0 flex-1">
+                                        <span className="truncate">{model.name}</span>
+                                        <span className="text-xs text-muted-foreground truncate">{model.provider}</span>
+                                      </div>
+                                      {model.starred && (
+                                        <span className="text-yellow-500 ml-2 flex-shrink-0">⭐</span>
+                                      )}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                                {allModels.length > curatedModels.length && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t">
+                                      All Models (Select to add to favorites)
+                                    </div>
+                                    {allModels
+                                      .filter(model => !curatedModels.some(curated => curated.id === model.id))
+                                      .map((model) => (
+                                        <SelectItem key={model.id} value={model.id}>
+                                          <div className="flex items-center justify-between w-full min-w-0">
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                              <span className="truncate">{model.name}</span>
+                                              <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
+                                            </div>
+                                            {model.starred && (
+                                              <span className="text-yellow-500 ml-2 flex-shrink-0">⭐</span>
+                                            )}
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                  </>
                                 )}
-                              </div>
-                            </SelectItem>
-                          ))
+                              </>
+                            )}
+                            
+                            {/* If no curated models, show all models */}
+                            {curatedModels.length === 0 && allModels.length > 0 && (
+                              allModels.map((model) => (
+                                <SelectItem key={model.id} value={model.id}>
+                                  <div className="flex items-center justify-between w-full min-w-0">
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                      <span className="truncate">{model.name}</span>
+                                      <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
+                                    </div>
+                                    {model.starred && (
+                                      <span className="text-yellow-500 ml-2 flex-shrink-0">⭐</span>
+                                    )}
+                                  </div>
+                                </SelectItem>
+                              ))
+                            )}
+                          </>
                         )}
                       </SelectContent>
                     </Select>
@@ -206,23 +318,23 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       ) : (allModels.length > 0 ? allModels : curatedModels).length > 0 ? (
                         (allModels.length > 0 ? allModels : curatedModels).map((model) => (
                           <div key={model.id} className="flex items-center justify-between p-2 rounded-lg border bg-background">
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-sm">{model.name}</span>
+                            <div className="flex flex-col min-w-0 flex-1 mr-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-medium text-sm truncate">{model.name}</span>
                                 {isPrimary?.(model.id) && (
-                                  <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
+                                  <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded flex-shrink-0">
                                     Primary
                                   </span>
                                 )}
                               </div>
-                              <span className="text-xs text-muted-foreground">{model.provider || model.id.split('/')[0]}</span>
+                              <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-shrink-0">
                               {isStarred?.(model.id) && !isPrimary?.(model.id) && (
                                 <button
                                   type="button"
                                   onClick={() => setPrimary?.(model.id)}
-                                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                  className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
                                   title="Set as primary model"
                                 >
                                   Set Primary
