@@ -34,7 +34,7 @@ const TONE_OPTIONS = [
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { curatedModels, allModels, isLoading, starredModels, toggleStar, fetchAllModels } = useModels();
+  const { curatedModels, allModels, isLoading, error, starredModels, toggleStar, fetchAllModels } = useModels();
 
   const handleToneChange = (value: number[]) => {
     const toneValue = TONE_OPTIONS[value[0]]?.value || "match-user";
@@ -178,22 +178,44 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                     </p>
                     
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {(allModels.length > 0 ? allModels : curatedModels).map((model) => (
-                        <div key={model.id} className="flex items-center justify-between p-2 rounded-lg border bg-background">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-sm">{model.name}</span>
-                            <span className="text-xs text-muted-foreground">{model.provider || model.id.split('/')[0]}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => toggleStar?.(model.id)}
-                            className="text-lg hover:scale-110 transition-transform"
-                            title={model.starred ? 'Remove from favorites' : 'Add to favorites'}
-                          >
-                            {model.starred ? '⭐' : '☆'}
-                          </button>
+                      {error ? (
+                        <div className="p-3 rounded-lg border border-destructive bg-destructive/10">
+                          <p className="text-sm font-medium text-destructive">Configuration Error</p>
+                          <p className="text-xs text-muted-foreground mt-1">{error}</p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Please check your environment variables:
+                          </p>
+                          <ul className="text-xs text-muted-foreground mt-1 list-disc list-inside">
+                            <li>OPENROUTER_API_KEY</li>
+                            <li>NEXT_PUBLIC_SUPABASE_URL</li>
+                            <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
+                          </ul>
                         </div>
-                      ))}
+                      ) : (allModels.length > 0 ? allModels : curatedModels).length > 0 ? (
+                        (allModels.length > 0 ? allModels : curatedModels).map((model) => (
+                          <div key={model.id} className="flex items-center justify-between p-2 rounded-lg border bg-background">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm">{model.name}</span>
+                              <span className="text-xs text-muted-foreground">{model.provider || model.id.split('/')[0]}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggleStar?.(model.id)}
+                              className="text-lg hover:scale-110 transition-transform"
+                              title={model.starred ? 'Remove from favorites' : 'Add to favorites'}
+                            >
+                              {model.starred ? '⭐' : '☆'}
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-3 rounded-lg border bg-muted/50">
+                          <p className="text-sm text-muted-foreground">No models available</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Check your API configuration or try loading all models.
+                          </p>
+                        </div>
+                      )}
                     </div>
                     
                     {starredModels?.length > 0 && (

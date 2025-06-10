@@ -535,34 +535,31 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     return data.preferences as UserPreferencesData
   } catch (error) {
     console.error('Error getting user preferences:', error)
-    // Return default preferences on error
-    return DEFAULT_USER_PREFERENCES
+    throw error // Don't fallback, let the caller handle the error
   }
 }
 
 export async function createUserPreferencesWithDynamicDefaults(userId: string): Promise<UserPreferencesData> {
   try {
-    // Try to fetch all models to determine top 5
-    let starredModels = DEFAULT_STARRED_MODELS
-    
-    try {
-      if (process.env.OPENROUTER_API_KEY) {
-        const response = await fetch('https://openrouter.ai/api/v1/models', {
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          starredModels = getTop5Models(data.data || [])
-          console.log('Using dynamic top 5 models:', starredModels)
-        }
-      }
-    } catch (apiError) {
-      console.warn('Could not fetch models for dynamic defaults, using hardcoded list:', apiError)
+    // Fetch all models to determine top 5 - no fallback
+    if (!process.env.OPENROUTER_API_KEY) {
+      throw new Error('OpenRouter API key not configured - cannot determine top models')
     }
+
+    const response = await fetch('https://openrouter.ai/api/v1/models', {
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch models from OpenRouter: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const starredModels = getTop5Models(data.data || [])
+    console.log('Using dynamic top 5 models:', starredModels)
 
     const defaultPrefs: UserPreferencesData = {
       ...DEFAULT_USER_PREFERENCES,

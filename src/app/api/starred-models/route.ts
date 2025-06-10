@@ -16,25 +16,27 @@ async function handleStarredModelsGet(request: NextRequest): Promise<NextRespons
     const mockUserId = 'mock-user-id'
     
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      // Development mode - return default starred models
-      return NextResponse.json({ 
-        starredModels: DEFAULT_USER_PREFERENCES.starredModels,
-        message: 'Development mode - using default starred models'
-      })
+      return NextResponse.json(
+        { 
+          error: 'Supabase not configured',
+          details: 'NEXT_PUBLIC_SUPABASE_URL environment variable is required'
+        },
+        { status: 500 }
+      )
     }
 
     // Get user preferences to extract starred models
     const preferences = await getUserPreferences(mockUserId)
     
     return NextResponse.json({ 
-      starredModels: preferences.starredModels || DEFAULT_USER_PREFERENCES.starredModels
+      starredModels: preferences.starredModels
     })
   } catch (error) {
     console.error('Starred models GET error:', error)
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Internal server error',
-        starredModels: DEFAULT_USER_PREFERENCES.starredModels // Fallback
+        details: 'Failed to fetch starred models'
       },
       { status: 500 }
     )
@@ -58,23 +60,13 @@ async function handleStarredModelsPost(request: NextRequest): Promise<NextRespon
     }
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      // Development mode - simulate toggle
-      const currentStarred = DEFAULT_USER_PREFERENCES.starredModels
-      const isStarred = currentStarred.includes(modelId)
-      
-      let newStarredModels: string[]
-      if (action === 'star' || (action === 'toggle' && !isStarred)) {
-        newStarredModels = isStarred ? currentStarred : [...currentStarred, modelId]
-      } else {
-        newStarredModels = currentStarred.filter(id => id !== modelId)
-      }
-      
-      return NextResponse.json({ 
-        starredModels: newStarredModels,
-        modelId,
-        isStarred: newStarredModels.includes(modelId),
-        message: 'Development mode - starred models not persisted'
-      })
+      return NextResponse.json(
+        { 
+          error: 'Supabase not configured',
+          details: 'NEXT_PUBLIC_SUPABASE_URL environment variable is required'
+        },
+        { status: 500 }
+      )
     }
 
     // Toggle starred model in database
@@ -90,7 +82,10 @@ async function handleStarredModelsPost(request: NextRequest): Promise<NextRespon
   } catch (error) {
     console.error('Starred models POST error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { 
+        error: error instanceof Error ? error.message : 'Internal server error',
+        details: 'Failed to toggle starred model'
+      },
       { status: 500 }
     )
   }

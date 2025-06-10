@@ -34,22 +34,11 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
     // Fetch all available models from OpenRouter
     const apiKey = process.env.OPENROUTER_API_KEY
     if (!apiKey) {
-      // Development fallback - use curated models
-      if (type === 'curated') {
-        const modelsWithStarred = CURATED_MODELS.map(model => ({
-          ...model,
-          starred: includeStarred ? starredModels.includes(model.id) : model.starred
-        }))
-        
-        return NextResponse.json({ 
-          models: modelsWithStarred,
-          starredModels: includeStarred ? starredModels : undefined,
-          fallback: true
-        })
-      }
-      
       return NextResponse.json(
-        { error: 'OpenRouter API key not configured' },
+        { 
+          error: 'OpenRouter API key not configured',
+          details: 'OPENROUTER_API_KEY environment variable is required to fetch models'
+        },
         { status: 500 }
       )
     }

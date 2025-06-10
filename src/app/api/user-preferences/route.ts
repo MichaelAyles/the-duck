@@ -18,11 +18,13 @@ async function handleUserPreferencesGet(request: NextRequest): Promise<NextRespo
     const mockUserId = 'mock-user-id'
     
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      // Development mode - return default preferences
-      return NextResponse.json({ 
-        preferences: DEFAULT_USER_PREFERENCES,
-        message: 'Development mode - using default preferences'
-      })
+      return NextResponse.json(
+        { 
+          error: 'Supabase not configured',
+          details: 'NEXT_PUBLIC_SUPABASE_URL environment variable is required'
+        },
+        { status: 500 }
+      )
     }
 
     // Get user preferences
@@ -34,7 +36,7 @@ async function handleUserPreferencesGet(request: NextRequest): Promise<NextRespo
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Internal server error',
-        preferences: DEFAULT_USER_PREFERENCES // Fallback
+        details: 'Failed to fetch or create user preferences'
       },
       { status: 500 }
     )
@@ -47,14 +49,13 @@ async function handleUserPreferencesPost(request: NextRequest): Promise<NextResp
     const mockUserId = 'mock-user-id'
     
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      // Development mode - just return the sent preferences
-      const body = await request.json()
-      const { preferences }: { preferences: Partial<UserPreferencesData> } = body
-      
-      return NextResponse.json({ 
-        preferences: { ...DEFAULT_USER_PREFERENCES, ...preferences },
-        message: 'Development mode - preferences not persisted'
-      })
+      return NextResponse.json(
+        { 
+          error: 'Supabase not configured',
+          details: 'NEXT_PUBLIC_SUPABASE_URL environment variable is required'
+        },
+        { status: 500 }
+      )
     }
 
     // Parse request body
@@ -78,7 +79,10 @@ async function handleUserPreferencesPost(request: NextRequest): Promise<NextResp
   } catch (error) {
     console.error('User preferences POST error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { 
+        error: error instanceof Error ? error.message : 'Internal server error',
+        details: 'Failed to update user preferences'
+      },
       { status: 500 }
     )
   }

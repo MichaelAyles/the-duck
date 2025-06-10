@@ -23,9 +23,15 @@ export function useModels() {
         setIsLoading(true)
         const response = await fetch('/api/models?type=curated&include_starred=true')
         if (!response.ok) {
-          throw new Error('Failed to fetch curated models')
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.details || errorData.error || 'Failed to fetch curated models')
         }
         const data = await response.json()
+        
+        // Check if the response contains an error (even with 200 status)
+        if (data.error) {
+          throw new Error(data.details || data.error)
+        }
         
         // Update starred status from our hook
         const modelsWithStarred = (data.models || []).map((model: Model) => ({
@@ -36,14 +42,8 @@ export function useModels() {
         setCuratedModels(modelsWithStarred)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
-        // Fallback to default models if API fails
-        setCuratedModels([
-          { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', starred: isStarred('openai/gpt-4o-mini') },
-          { id: 'openai/gpt-4o', name: 'GPT-4o', provider: 'OpenAI', starred: isStarred('openai/gpt-4o') },
-          { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic', starred: isStarred('anthropic/claude-3.5-sonnet') },
-          { id: 'google/gemini-flash-1.5', name: 'Gemini Flash 1.5', provider: 'Google', starred: isStarred('google/gemini-flash-1.5') },
-          { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', provider: 'Meta', starred: isStarred('meta-llama/llama-3.1-8b-instruct:free') },
-        ])
+        // Don't set fallback models - let the UI show the error state
+        setCuratedModels([])
       } finally {
         setIsLoading(false)
       }
@@ -60,9 +60,15 @@ export function useModels() {
       setError(null)
       const response = await fetch('/api/models?type=all&include_starred=true')
       if (!response.ok) {
-        throw new Error('Failed to fetch all models')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.details || errorData.error || 'Failed to fetch all models')
       }
       const data = await response.json()
+      
+      // Check if the response contains an error (even with 200 status)
+      if (data.error) {
+        throw new Error(data.details || data.error)
+      }
       
       // Update starred status from our hook
       const modelsWithStarred = (data.models || []).map((model: Model) => ({

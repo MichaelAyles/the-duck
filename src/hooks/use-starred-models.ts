@@ -26,15 +26,18 @@ export function useStarredModels(): UseStarredModelsReturn {
       
       const response = await fetch('/api/starred-models')
       if (!response.ok) {
-        throw new Error('Failed to load starred models')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.details || errorData.error || 'Failed to load starred models')
       }
       
       const data = await response.json()
-      const loadedStarredModels = data.starredModels || DEFAULT_STARRED_MODELS
       
-      // If the loaded starred models is empty or default, it means this is a new user
-      // The backend will automatically determine the top 5 models from OpenRouter
-      setStarredModels(loadedStarredModels)
+      // Check if the response contains an error (even with 200 status)
+      if (data.error) {
+        throw new Error(data.details || data.error)
+      }
+      
+      setStarredModels(data.starredModels || [])
       
       if (data.message) {
         console.log('Starred models loaded:', data.message)
@@ -42,8 +45,8 @@ export function useStarredModels(): UseStarredModelsReturn {
     } catch (err) {
       console.error('Error loading starred models:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
-      // Keep default starred models on error
-      setStarredModels(DEFAULT_STARRED_MODELS)
+      // Don't set any default models on error - let the UI handle the empty state
+      setStarredModels([])
     } finally {
       setLoading(false)
     }
@@ -77,10 +80,16 @@ export function useStarredModels(): UseStarredModelsReturn {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update starred models')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.details || errorData.error || 'Failed to update starred models')
       }
 
       const data = await response.json()
+      
+      // Check if the response contains an error (even with 200 status)
+      if (data.error) {
+        throw new Error(data.details || data.error)
+      }
       
       // Update with actual response from server
       setStarredModels(data.starredModels || newStarredModels)
