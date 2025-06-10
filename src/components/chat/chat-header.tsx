@@ -34,7 +34,7 @@ const TONE_OPTIONS = [
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { curatedModels, isLoading } = useModels();
+  const { curatedModels, isLoading, starredModels, toggleStar } = useModels();
 
   const handleToneChange = (value: number[]) => {
     const toneValue = TONE_OPTIONS[value[0]]?.value || "match-user";
@@ -145,9 +145,14 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                         ) : (
                           curatedModels.map((model) => (
                             <SelectItem key={model.id} value={model.id}>
-                              <div className="flex flex-col">
-                                <span>{model.name}</span>
-                                <span className="text-xs text-muted-foreground">{model.provider}</span>
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex flex-col">
+                                  <span>{model.name}</span>
+                                  <span className="text-xs text-muted-foreground">{model.provider}</span>
+                                </div>
+                                {model.starred && (
+                                  <span className="text-yellow-500 ml-2">⭐</span>
+                                )}
                               </div>
                             </SelectItem>
                           ))
@@ -156,11 +161,38 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                     </Select>
                   </div>
                   
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>Favorite Models</Label>
                     <p className="text-sm text-muted-foreground">
-                      Manage your starred models for quick access. (Feature coming soon)
+                      Click the stars to manage your favorite models for quick access.
                     </p>
+                    
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {curatedModels.map((model) => (
+                        <div key={model.id} className="flex items-center justify-between p-2 rounded-lg border bg-background">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-sm">{model.name}</span>
+                            <span className="text-xs text-muted-foreground">{model.provider}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleStar?.(model.id)}
+                            className="text-lg hover:scale-110 transition-transform"
+                            title={model.starred ? 'Remove from favorites' : 'Add to favorites'}
+                          >
+                            {model.starred ? '⭐' : '☆'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {starredModels?.length > 0 && (
+                      <div className="pt-2 border-t">
+                        <p className="text-xs text-muted-foreground">
+                          {starredModels.length} starred model{starredModels.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
                 

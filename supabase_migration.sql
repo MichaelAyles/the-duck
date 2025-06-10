@@ -25,16 +25,44 @@ CREATE TABLE IF NOT EXISTS public.chat_summaries (
     FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
 );
 
+-- Create user_preferences table
+CREATE TABLE IF NOT EXISTS public.user_preferences (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    preferences JSONB NOT NULL DEFAULT '{
+        "starredModels": [
+            "anthropic/claude-3.5-sonnet",
+            "openai/gpt-4o",
+            "openai/gpt-4o-mini",
+            "google/gemini-flash-1.5",
+            "meta-llama/llama-3.1-8b-instruct:free"
+        ],
+        "theme": "system",
+        "responseTone": "match",
+        "storageEnabled": true,
+        "explicitPreferences": {},
+        "writingStyle": {
+            "verbosity": "medium",
+            "formality": "neutral",
+            "technicalLevel": "intermediate",
+            "preferredTopics": [],
+            "dislikedTopics": []
+        }
+    }',
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_created_at ON public.chat_sessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_is_active ON public.chat_sessions(is_active);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_user_id ON public.chat_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_chat_summaries_session_id ON public.chat_summaries(session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_summaries_created_at ON public.chat_summaries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON public.user_preferences(user_id);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.chat_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chat_summaries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies for chat_sessions
 -- Users can only access their own chat sessions
@@ -96,6 +124,20 @@ CREATE POLICY "Users can delete own chat summaries" ON public.chat_summaries
         )
     );
 
+-- Create RLS policies for user_preferences
+-- Users can only access their own preferences
+DROP POLICY IF EXISTS "Users can view own preferences" ON public.user_preferences;
+CREATE POLICY "Users can view own preferences" ON public.user_preferences
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own preferences" ON public.user_preferences;
+CREATE POLICY "Users can insert own preferences" ON public.user_preferences
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own preferences" ON public.user_preferences;
+CREATE POLICY "Users can update own preferences" ON public.user_preferences
+    FOR UPDATE USING (auth.uid() = user_id);
+
 -- Optional: Create a function to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -111,7 +153,13 @@ CREATE TRIGGER update_chat_sessions_updated_at
     BEFORE UPDATE ON public.chat_sessions 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON public.user_preferences;
+CREATE TRIGGER update_user_preferences_updated_at 
+    BEFORE UPDATE ON public.user_preferences 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT ALL ON public.chat_sessions TO authenticated;
-GRANT ALL ON public.chat_summaries TO authenticated; 
+GRANT ALL ON public.chat_summaries TO authenticated;
+GRANT ALL ON public.user_preferences TO authenticated; 

@@ -70,6 +70,23 @@ export interface Database {
           created_at?: string
         }
       }
+      user_preferences: {
+        Row: {
+          user_id: string
+          preferences: Json
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          preferences: Json
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          preferences?: Json
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

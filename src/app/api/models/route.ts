@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient, CURATED_MODELS } from '@/lib/openrouter'
 import { 
+  getUserPreferences,
+  DEFAULT_USER_PREFERENCES 
+} from '@/lib/db/supabase-operations'
+import { 
   withSecurity, 
   withRateLimit, 
   SECURITY_CONFIG 
@@ -10,10 +14,33 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
   try {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') || 'curated'
+    const includeStarred = searchParams.get('include_starred') === 'true'
+
+    // Get user's starred models if requested
+    let starredModels: string[] = DEFAULT_USER_PREFERENCES.starredModels
+    if (includeStarred) {
+      try {
+        const mockUserId = 'mock-user-id' // In production, get from auth
+        if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+          const preferences = await getUserPreferences(mockUserId)
+          starredModels = preferences.starredModels
+        }
+      } catch (error) {
+        console.warn('Could not fetch starred models, using defaults:', error)
+      }
+    }
 
     if (type === 'curated') {
-      // Return curated models for the dropdown
-      return NextResponse.json({ models: CURATED_MODELS })
+      // Return curated models for the dropdown with starred status
+      const modelsWithStarred = CURATED_MODELS.map(model => ({
+        ...model,
+        starred: includeStarred ? starredModels.includes(model.id) : model.starred
+      }))
+      
+      return NextResponse.json({ 
+        models: modelsWithStarred,
+        starredModels: includeStarred ? starredModels : undefined
+      })
     }
 
     if (type === 'all') {
@@ -29,7 +56,16 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
       const client = new OpenRouterClient(apiKey)
       const models = await client.getModels()
       
-      return NextResponse.json({ models })
+      // Add starred status to all models
+      const modelsWithStarred = models.map(model => ({
+        ...model,
+        starred: includeStarred ? starredModels.includes(model.id) : false
+      }))
+      
+      return NextResponse.json({ 
+        models: modelsWithStarred,
+        starredModels: includeStarred ? starredModels : undefined
+      })
     }
 
     return NextResponse.json(

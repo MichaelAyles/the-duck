@@ -398,4 +398,156 @@ export class SupabaseDatabaseService {
       recentActivity: recentSessions,
     };
   }
+}
+
+/**
+ * 👤 User Preferences Operations
+ */
+export interface UserPreferencesData {
+  starredModels: string[]
+  theme: 'light' | 'dark' | 'system'
+  responseTone: 'match' | 'professional' | 'casual' | 'concise' | 'detailed'
+  storageEnabled: boolean
+  explicitPreferences: Record<string, unknown>
+  writingStyle?: {
+    verbosity: 'short' | 'medium' | 'long'
+    formality: 'casual' | 'neutral' | 'formal'
+    technicalLevel: 'basic' | 'intermediate' | 'advanced'
+    preferredTopics: string[]
+    dislikedTopics: string[]
+  }
+}
+
+export const DEFAULT_STARRED_MODELS = [
+  'anthropic/claude-3.5-sonnet',
+  'openai/gpt-4o',
+  'openai/gpt-4o-mini',
+  'google/gemini-flash-1.5',
+  'meta-llama/llama-3.1-8b-instruct:free'
+]
+
+export const DEFAULT_USER_PREFERENCES: UserPreferencesData = {
+  starredModels: DEFAULT_STARRED_MODELS,
+  theme: 'system',
+  responseTone: 'match',
+  storageEnabled: true,
+  explicitPreferences: {},
+  writingStyle: {
+    verbosity: 'medium',
+    formality: 'neutral',
+    technicalLevel: 'intermediate',
+    preferredTopics: [],
+    dislikedTopics: []
+  }
+}
+
+export async function getUserPreferences(userId: string): Promise<UserPreferencesData> {
+  try {
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', userId)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No preferences found, create default preferences
+        console.log('No user preferences found, creating defaults for user:', userId)
+        return await createUserPreferences(userId, DEFAULT_USER_PREFERENCES)
+      }
+      throw new Error(`Failed to get user preferences: ${error.message}`)
+    }
+
+    return data.preferences as UserPreferencesData
+  } catch (error) {
+    console.error('Error getting user preferences:', error)
+    // Return default preferences on error
+    return DEFAULT_USER_PREFERENCES
+  }
+}
+
+export async function createUserPreferences(
+  userId: string, 
+  preferences: UserPreferencesData
+): Promise<UserPreferencesData> {
+  try {
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .insert([{
+        user_id: userId,
+        preferences: preferences
+      }])
+      .select('preferences')
+      .single()
+
+    if (error) {
+      throw new Error(`Failed to create user preferences: ${error.message}`)
+    }
+
+    console.log('Created user preferences for user:', userId)
+    return data.preferences as UserPreferencesData
+  } catch (error) {
+    console.error('Error creating user preferences:', error)
+    throw error
+  }
+}
+
+export async function updateUserPreferences(
+  userId: string, 
+  preferences: Partial<UserPreferencesData>
+): Promise<UserPreferencesData> {
+  try {
+    // First get current preferences
+    const currentPrefs = await getUserPreferences(userId)
+    
+    // Merge with new preferences
+    const updatedPrefs = {
+      ...currentPrefs,
+      ...preferences,
+      writingStyle: {
+        ...currentPrefs.writingStyle,
+        ...preferences.writingStyle
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .update({
+        preferences: updatedPrefs
+      })
+      .eq('user_id', userId)
+      .select('preferences')
+      .single()
+
+    if (error) {
+      throw new Error(`Failed to update user preferences: ${error.message}`)
+    }
+
+    console.log('Updated user preferences for user:', userId)
+    return data.preferences as UserPreferencesData
+  } catch (error) {
+    console.error('Error updating user preferences:', error)
+    throw error
+  }
+}
+
+export async function toggleStarredModel(userId: string, modelId: string): Promise<UserPreferencesData> {
+  try {
+    const currentPrefs = await getUserPreferences(userId)
+    const starredModels = [...currentPrefs.starredModels]
+    
+    if (starredModels.includes(modelId)) {
+      // Remove from starred models
+      const index = starredModels.indexOf(modelId)
+      starredModels.splice(index, 1)
+    } else {
+      // Add to starred models
+      starredModels.push(modelId)
+    }
+
+    return await updateUserPreferences(userId, { starredModels })
+  } catch (error) {
+    console.error('Error toggling starred model:', error)
+    throw error
+  }
 } 
