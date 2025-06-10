@@ -6,6 +6,7 @@ interface Model {
   name: string
   provider?: string
   starred?: boolean
+  isPrimary?: boolean
 }
 
 export function useModels() {
@@ -14,7 +15,15 @@ export function useModels() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  const { starredModels, isStarred, toggleStar, loading: starredLoading } = useStarredModels()
+  const { 
+    starredModels, 
+    primaryModel, 
+    isStarred, 
+    isPrimary, 
+    toggleStar, 
+    setPrimary, 
+    loading: starredLoading 
+  } = useStarredModels()
 
   // Fetch curated models on mount
   useEffect(() => {
@@ -33,10 +42,11 @@ export function useModels() {
           throw new Error(data.details || data.error)
         }
         
-        // Update starred status from our hook
+        // Update starred status and primary status from our hook
         const modelsWithStarred = (data.models || []).map((model: Model) => ({
           ...model,
-          starred: isStarred(model.id)
+          starred: isStarred(model.id),
+          isPrimary: isPrimary(model.id)
         }))
         
         setCuratedModels(modelsWithStarred)
@@ -70,10 +80,11 @@ export function useModels() {
         throw new Error(data.details || data.error)
       }
       
-      // Update starred status from our hook
+      // Update starred status and primary status from our hook
       const modelsWithStarred = (data.models || []).map((model: Model) => ({
         ...model,
-        starred: isStarred(model.id)
+        starred: isStarred(model.id),
+        isPrimary: isPrimary(model.id)
       }))
       
       setAllModels(modelsWithStarred)
@@ -97,7 +108,10 @@ export function useModels() {
     fetchAllModels,
     // Starred model functionality
     starredModels,
+    primaryModel,
     isStarred,
+    isPrimary,
     toggleStar,
+    setPrimary,
   }
 }

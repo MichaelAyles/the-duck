@@ -405,6 +405,7 @@ export class SupabaseDatabaseService {
  */
 export interface UserPreferencesData {
   starredModels: string[]
+  primaryModel: string
   theme: 'light' | 'dark' | 'system'
   responseTone: 'match' | 'professional' | 'casual' | 'concise' | 'detailed'
   storageEnabled: boolean
@@ -424,49 +425,45 @@ export interface UserPreferencesData {
  */
 export function getTop5Models(allModels: any[]): string[] {
   if (!allModels || allModels.length === 0) {
-    // Fallback to hardcoded list if no models available
-    return [
-      'anthropic/claude-3.5-sonnet',
-      'openai/gpt-4o',
-      'openai/gpt-4o-mini',
-      'google/gemini-flash-1.5',
-      'meta-llama/llama-3.1-8b-instruct:free'
-    ]
+    // Fallback to our curated default list if no models available
+    return DEFAULT_STARRED_MODELS
   }
 
-  // Define popular/high-quality models based on OpenRouter ecosystem
-  const popularModels = [
+  // Define our curated top models based on performance and capabilities
+  const curatedTopModels = [
+    'google/gemini-2.5-flash-preview-05-20',
+    'google/gemini-2.5-pro-preview-05-06', 
+    'deepseek/deepseek-chat-v3-0324',
+    'anthropic/claude-sonnet-4',
+    'openai/gpt-4o-mini',
+    // Additional high-quality models for fallback
     'anthropic/claude-3.5-sonnet',
     'openai/gpt-4o',
-    'openai/gpt-4o-mini',
     'google/gemini-flash-1.5',
     'google/gemini-pro-1.5',
     'meta-llama/llama-3.1-405b-instruct',
     'meta-llama/llama-3.1-70b-instruct',
-    'meta-llama/llama-3.1-8b-instruct:free',
     'anthropic/claude-3-haiku',
-    'openai/gpt-3.5-turbo',
-    'mistralai/mistral-7b-instruct:free',
-    'google/gemini-2.0-flash-lite-001'
+    'openai/gpt-3.5-turbo'
   ]
 
   // Filter available models to only include ones that exist in OpenRouter
-  const availableModelIds = allModels.map(model => model.id)
-  const availablePopularModels = popularModels.filter(modelId => 
+  const availableModelIds = allModels.map((model: any) => model.id)
+  const availableTopModels = curatedTopModels.filter((modelId: string) => 
     availableModelIds.includes(modelId)
   )
 
-  // If we have at least 5 popular models available, return top 5
-  if (availablePopularModels.length >= 5) {
-    return availablePopularModels.slice(0, 5)
+  // If we have at least 5 top models available, return top 5
+  if (availableTopModels.length >= 5) {
+    return availableTopModels.slice(0, 5)
   }
 
-  // Otherwise, supplement with other available models
-  // Prioritize by factors: non-free models first, then by context length, then alphabetically
+  // Otherwise, supplement with other available models using parametric search
+  // Prioritize by factors: performance, capabilities, cost-effectiveness
   const remainingModels = allModels
-    .filter(model => !availablePopularModels.includes(model.id))
-    .sort((a, b) => {
-      // Prioritize non-free models
+    .filter((model: any) => !availableTopModels.includes(model.id))
+    .sort((a: any, b: any) => {
+      // Prioritize non-free models for better performance
       const aIsFree = a.id.includes(':free') || (a.pricing?.prompt === 0 && a.pricing?.completion === 0)
       const bIsFree = b.id.includes(':free') || (b.pricing?.prompt === 0 && b.pricing?.completion === 0)
       
@@ -474,34 +471,54 @@ export function getTop5Models(allModels: any[]): string[] {
         return aIsFree ? 1 : -1
       }
       
-      // Then by context length (higher is better)
+      // Prioritize by context length (higher is better for versatility)
       const contextDiff = (b.context_length || 0) - (a.context_length || 0)
       if (contextDiff !== 0) {
         return contextDiff
       }
       
+      // Prioritize known high-performance providers
+      const providerScore = (model: any) => {
+        const provider = model.id.split('/')[0]
+        const providerRanks: { [key: string]: number } = {
+          'anthropic': 9,
+          'openai': 8,
+          'google': 7,
+          'deepseek': 6,
+          'meta-llama': 5,
+          'mistralai': 4
+        }
+        return providerRanks[provider] || 0
+      }
+      
+      const providerDiff = providerScore(b) - providerScore(a)
+      if (providerDiff !== 0) {
+        return providerDiff
+      }
+      
       // Finally alphabetically
       return a.name.localeCompare(b.name)
     })
-    .map(model => model.id)
+    .map((model: any) => model.id)
 
   // Combine and take top 5
-  const top5 = [...availablePopularModels, ...remainingModels].slice(0, 5)
+  const top5 = [...availableTopModels, ...remainingModels].slice(0, 5)
   
   console.log('Selected top 5 models:', top5)
   return top5
 }
 
 export const DEFAULT_STARRED_MODELS = [
-  'anthropic/claude-3.5-sonnet',
-  'openai/gpt-4o',
-  'openai/gpt-4o-mini',
-  'google/gemini-flash-1.5',
-  'meta-llama/llama-3.1-8b-instruct:free'
+  'google/gemini-2.5-flash-preview-05-20',
+  'google/gemini-2.5-pro-preview-05-06',
+  'deepseek/deepseek-chat-v3-0324',
+  'anthropic/claude-sonnet-4',
+  'openai/gpt-4o-mini'
 ]
 
 export const DEFAULT_USER_PREFERENCES: UserPreferencesData = {
   starredModels: DEFAULT_STARRED_MODELS,
+  primaryModel: DEFAULT_STARRED_MODELS[0], // First model in starred list as default primary
   theme: 'system',
   responseTone: 'match',
   storageEnabled: true,
@@ -563,7 +580,8 @@ export async function createUserPreferencesWithDynamicDefaults(userId: string): 
 
     const defaultPrefs: UserPreferencesData = {
       ...DEFAULT_USER_PREFERENCES,
-      starredModels
+      starredModels,
+      primaryModel: starredModels[0] || DEFAULT_STARRED_MODELS[0]
     }
 
     return await createUserPreferences(userId, defaultPrefs)
@@ -656,5 +674,196 @@ export async function toggleStarredModel(userId: string, modelId: string): Promi
   } catch (error) {
     console.error('Error toggling starred model:', error)
     throw error
+  }
+}
+
+/**
+ * Set the user's primary model (their default selection)
+ */
+export async function setPrimaryModel(userId: string, modelId: string): Promise<UserPreferencesData> {
+  try {
+    // Ensure the model is in starred models when set as primary
+    const currentPrefs = await getUserPreferences(userId)
+    const starredModels = [...currentPrefs.starredModels]
+    
+    if (!starredModels.includes(modelId)) {
+      starredModels.push(modelId)
+    }
+
+    return await updateUserPreferences(userId, { 
+      primaryModel: modelId,
+      starredModels 
+    })
+  } catch (error) {
+    console.error('Error setting primary model:', error)
+    throw error
+  }
+}
+
+/**
+ * Enhanced model search with parametric filtering
+ */
+export function searchModels(
+  allModels: any[], 
+  searchQuery: string, 
+  filters: {
+    provider?: string
+    minContextLength?: number
+    maxCostPerToken?: number
+    includeFreeTier?: boolean
+    capabilities?: string[]
+  } = {}
+): any[] {
+  if (!allModels || allModels.length === 0) {
+    return []
+  }
+
+  let filteredModels = allModels
+
+  // Text search
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase()
+    filteredModels = filteredModels.filter((model: any) => 
+      model.name.toLowerCase().includes(query) ||
+      model.id.toLowerCase().includes(query) ||
+      (model.description && model.description.toLowerCase().includes(query))
+    )
+  }
+
+  // Provider filter
+  if (filters.provider) {
+    filteredModels = filteredModels.filter((model: any) => 
+      model.id.startsWith(filters.provider + '/')
+    )
+  }
+
+  // Context length filter
+  if (filters.minContextLength !== undefined) {
+    filteredModels = filteredModels.filter((model: any) => 
+      (model.context_length || 0) >= filters.minContextLength!
+    )
+  }
+
+  // Cost filter (approximate based on pricing structure)
+  if (filters.maxCostPerToken !== undefined) {
+    filteredModels = filteredModels.filter((model: any) => {
+      if (!model.pricing) return true // Include models without pricing info
+      const promptCost = model.pricing.prompt || 0
+      const completionCost = model.pricing.completion || 0
+      const avgCost = (promptCost + completionCost) / 2
+      return avgCost <= filters.maxCostPerToken!
+    })
+  }
+
+  // Free tier filter
+  if (filters.includeFreeTier === false) {
+    filteredModels = filteredModels.filter((model: any) => 
+      !model.id.includes(':free') && 
+      !(model.pricing?.prompt === 0 && model.pricing?.completion === 0)
+    )
+  } else if (filters.includeFreeTier === true) {
+    // Only show free models
+    filteredModels = filteredModels.filter((model: any) => 
+      model.id.includes(':free') || 
+      (model.pricing?.prompt === 0 && model.pricing?.completion === 0)
+    )
+  }
+
+  // Sort by relevance and quality
+  return filteredModels.sort((a: any, b: any) => {
+    // Prioritize our curated top models
+    const isACurated = DEFAULT_STARRED_MODELS.includes(a.id)
+    const isBCurated = DEFAULT_STARRED_MODELS.includes(b.id)
+    
+    if (isACurated !== isBCurated) {
+      return isACurated ? -1 : 1
+    }
+
+    // Then by context length (higher is better)
+    const contextDiff = (b.context_length || 0) - (a.context_length || 0)
+    if (contextDiff !== 0) {
+      return contextDiff
+    }
+
+    // Then by provider ranking
+    const providerScore = (model: any) => {
+      const provider = model.id.split('/')[0]
+      const providerRanks: { [key: string]: number } = {
+        'google': 10,
+        'deepseek': 9,
+        'anthropic': 8,
+        'openai': 7,
+        'meta-llama': 6,
+        'mistralai': 5
+      }
+      return providerRanks[provider] || 0
+    }
+    
+    const providerDiff = providerScore(b) - providerScore(a)
+    if (providerDiff !== 0) {
+      return providerDiff
+    }
+
+    // Finally alphabetically
+    return a.name.localeCompare(b.name)
+  })
+}
+
+/**
+ * Get recommended models based on user activity and preferences
+ */
+export async function getRecommendedModels(
+  userId: string, 
+  allModels: any[], 
+  limit: number = 10
+): Promise<any[]> {
+  try {
+    const preferences = await getUserPreferences(userId)
+    const userActivity = await SupabaseDatabaseService.getUserActivity(userId)
+    
+    // Get user's favorite models from their chat history
+    const usedModels = userActivity.favoriteModels.map(fav => fav.model)
+    
+    // Combine starred models and frequently used models
+    const preferredModels = [...new Set([...preferences.starredModels, ...usedModels])]
+    
+    // Filter available models
+    const availablePreferred = allModels.filter((model: any) => 
+      preferredModels.includes(model.id)
+    )
+    
+    // Add similar models based on provider and capabilities
+    const similarModels = allModels.filter((model: any) => {
+      if (preferredModels.includes(model.id)) return false
+      
+      // Find models from same providers as preferred models
+      const providers = preferredModels.map(id => id.split('/')[0])
+      return providers.includes(model.id.split('/')[0])
+    })
+    
+    // Combine and limit results
+    const recommended = [...availablePreferred, ...similarModels].slice(0, limit)
+    
+    return recommended.sort((a: any, b: any) => {
+      // Prioritize starred models
+      const aStarred = preferences.starredModels.includes(a.id)
+      const bStarred = preferences.starredModels.includes(b.id)
+      
+      if (aStarred !== bStarred) {
+        return aStarred ? -1 : 1
+      }
+      
+      // Then by usage frequency
+      const aUsage = userActivity.favoriteModels.find(fav => fav.model === a.id)?.count || 0
+      const bUsage = userActivity.favoriteModels.find(fav => fav.model === b.id)?.count || 0
+      
+      return bUsage - aUsage
+    })
+  } catch (error) {
+    console.error('Error getting recommended models:', error)
+    // Fallback to default starred models
+    return allModels.filter((model: any) => 
+      DEFAULT_STARRED_MODELS.includes(model.id)
+    ).slice(0, limit)
   }
 } 

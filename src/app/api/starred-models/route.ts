@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { 
   toggleStarredModel,
+  setPrimaryModel,
   getUserPreferences,
   DEFAULT_USER_PREFERENCES 
 } from '@/lib/db/supabase-operations'
@@ -29,7 +30,8 @@ async function handleStarredModelsGet(request: NextRequest): Promise<NextRespons
     const preferences = await getUserPreferences(mockUserId)
     
     return NextResponse.json({ 
-      starredModels: preferences.starredModels
+      starredModels: preferences.starredModels,
+      primaryModel: preferences.primaryModel
     })
   } catch (error) {
     console.error('Starred models GET error:', error)
@@ -50,7 +52,10 @@ async function handleStarredModelsPost(request: NextRequest): Promise<NextRespon
     
     // Parse request body
     const body = await request.json()
-    const { modelId, action }: { modelId: string; action: 'star' | 'unstar' | 'toggle' } = body
+    const { modelId, action }: { 
+      modelId: string; 
+      action: 'star' | 'unstar' | 'toggle' | 'set_primary' 
+    } = body
 
     if (!modelId) {
       return NextResponse.json(
@@ -69,15 +74,27 @@ async function handleStarredModelsPost(request: NextRequest): Promise<NextRespon
       )
     }
 
-    // Toggle starred model in database
-    const updatedPreferences = await toggleStarredModel(mockUserId, modelId)
+    // Handle different actions
+    let updatedPreferences
+    let message = ''
+    
+    if (action === 'set_primary') {
+      updatedPreferences = await setPrimaryModel(mockUserId, modelId)
+      message = `Primary model set to ${modelId}`
+    } else {
+      updatedPreferences = await toggleStarredModel(mockUserId, modelId)
+      const isStarred = updatedPreferences.starredModels.includes(modelId)
+      message = `Model ${isStarred ? 'starred' : 'unstarred'} successfully`
+    }
+    
     const isStarred = updatedPreferences.starredModels.includes(modelId)
     
     return NextResponse.json({ 
       starredModels: updatedPreferences.starredModels,
+      primaryModel: updatedPreferences.primaryModel,
       modelId,
       isStarred,
-      message: `Model ${isStarred ? 'starred' : 'unstarred'} successfully`
+      message
     })
   } catch (error) {
     console.error('Starred models POST error:', error)

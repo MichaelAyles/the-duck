@@ -46,11 +46,26 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
     const client = new OpenRouterClient(apiKey)
     const allModels = await client.getModels()
     
-    // Add starred status and provider info to all models
+    // Get user preferences for primary model info
+    let primaryModel = starredModels[0] || DEFAULT_USER_PREFERENCES.primaryModel
+    if (includeStarred) {
+      try {
+        const mockUserId = 'mock-user-id'
+        if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+          const preferences = await getUserPreferences(mockUserId)
+          primaryModel = preferences.primaryModel
+        }
+      } catch (error) {
+        console.warn('Could not fetch primary model, using default:', error)
+      }
+    }
+
+    // Add starred status, primary status, and provider info to all models
     const modelsWithMeta = allModels.map(model => ({
       ...model,
       provider: model.id.split('/')[0], // Extract provider from model ID
-      starred: includeStarred ? starredModels.includes(model.id) : false
+      starred: includeStarred ? starredModels.includes(model.id) : false,
+      isPrimary: includeStarred ? model.id === primaryModel : false
     }))
 
     if (type === 'curated') {
@@ -61,6 +76,7 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
       return NextResponse.json({ 
         models: curatedModels,
         starredModels: includeStarred ? starredModels : undefined,
+        primaryModel: includeStarred ? primaryModel : undefined,
         totalAvailable: allModels.length
       })
     }
@@ -70,6 +86,7 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
       return NextResponse.json({ 
         models: modelsWithMeta,
         starredModels: includeStarred ? starredModels : undefined,
+        primaryModel: includeStarred ? primaryModel : undefined,
         totalAvailable: allModels.length,
         top5: getTop5Models(allModels)
       })

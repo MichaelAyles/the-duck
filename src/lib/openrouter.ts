@@ -229,33 +229,33 @@ export class OpenRouterClient {
 // Default curated models for the dropdown
 export const CURATED_MODELS = [
   {
-    id: 'anthropic/claude-3.5-sonnet',
-    name: 'Claude 3.5 Sonnet',
-    provider: 'Anthropic',
+    id: 'google/gemini-2.5-flash-preview-05-20',
+    name: 'Gemini 2.5 Flash Preview',
+    provider: 'Google',
     starred: true,
   },
   {
-    id: 'openai/gpt-4o',
-    name: 'GPT-4o',
-    provider: 'OpenAI',
+    id: 'google/gemini-2.5-pro-preview-05-06',
+    name: 'Gemini 2.5 Pro Preview',
+    provider: 'Google',
+    starred: true,
+  },
+  {
+    id: 'deepseek/deepseek-chat-v3-0324',
+    name: 'DeepSeek Chat v3',
+    provider: 'DeepSeek',
+    starred: true,
+  },
+  {
+    id: 'anthropic/claude-sonnet-4',
+    name: 'Claude Sonnet 4',
+    provider: 'Anthropic',
     starred: true,
   },
   {
     id: 'openai/gpt-4o-mini',
     name: 'GPT-4o Mini',
     provider: 'OpenAI',
-    starred: true,
-  },
-  {
-    id: 'google/gemini-flash-1.5',
-    name: 'Gemini Flash 1.5',
-    provider: 'Google',
-    starred: true,
-  },
-  {
-    id: 'meta-llama/llama-3.1-8b-instruct:free',
-    name: 'Llama 3.1 8B (Free)',
-    provider: 'Meta',
     starred: true,
   },
 ]

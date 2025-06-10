@@ -34,7 +34,19 @@ const TONE_OPTIONS = [
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { theme, setTheme } = useTheme();
-  const { curatedModels, allModels, isLoading, error, starredModels, toggleStar, fetchAllModels } = useModels();
+  const { 
+    curatedModels, 
+    allModels, 
+    isLoading, 
+    error, 
+    starredModels, 
+    primaryModel, 
+    isStarred,
+    isPrimary,
+    toggleStar, 
+    setPrimary,
+    fetchAllModels 
+  } = useModels();
 
   const handleToneChange = (value: number[]) => {
     const toneValue = TONE_OPTIONS[value[0]]?.value || "match-user";
@@ -174,7 +186,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       </button>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Click the stars to manage your favorite models. The top 5 models are starred by default.
+                      Click the stars to manage your favorite models. Your curated top 5 models include Google Gemini 2.5, DeepSeek v3, Claude Sonnet 4, and GPT-4o Mini.
                     </p>
                     
                     <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -195,17 +207,36 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                         (allModels.length > 0 ? allModels : curatedModels).map((model) => (
                           <div key={model.id} className="flex items-center justify-between p-2 rounded-lg border bg-background">
                             <div className="flex flex-col">
-                              <span className="font-medium text-sm">{model.name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm">{model.name}</span>
+                                {isPrimary?.(model.id) && (
+                                  <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
+                                    Primary
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-xs text-muted-foreground">{model.provider || model.id.split('/')[0]}</span>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => toggleStar?.(model.id)}
-                              className="text-lg hover:scale-110 transition-transform"
-                              title={model.starred ? 'Remove from favorites' : 'Add to favorites'}
-                            >
-                              {model.starred ? '⭐' : '☆'}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {isStarred?.(model.id) && !isPrimary?.(model.id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPrimary?.(model.id)}
+                                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                  title="Set as primary model"
+                                >
+                                  Set Primary
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => toggleStar?.(model.id)}
+                                className="text-lg hover:scale-110 transition-transform"
+                                title={isStarred?.(model.id) ? 'Remove from favorites' : 'Add to favorites'}
+                              >
+                                {isStarred?.(model.id) ? '⭐' : '☆'}
+                              </button>
+                            </div>
                           </div>
                         ))
                       ) : (
