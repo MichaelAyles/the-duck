@@ -1,8 +1,10 @@
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface DuckLogoProps {
   className?: string;
   size?: "sm" | "md" | "lg" | "xl";
+  variant?: "duck" | "full";
 }
 
 const sizeClasses = {
@@ -12,87 +14,27 @@ const sizeClasses = {
   xl: "h-16 w-16"
 };
 
-export function DuckLogo({ className, size = "md" }: DuckLogoProps) {
+const fullLogoSizeClasses = {
+  sm: "h-6 w-auto",
+  md: "h-8 w-auto", 
+  lg: "h-12 w-auto",
+  xl: "h-16 w-auto"
+};
+
+export function DuckLogo({ className, size = "md", variant = "duck" }: DuckLogoProps) {
+  const isFullLogo = variant === "full";
+  const logoSrc = isFullLogo ? "/images/logos/theduckchatfull.png" : "/images/logos/theduckchatduck.png";
+  const logoClasses = isFullLogo ? fullLogoSizeClasses[size] : sizeClasses[size];
+
   return (
-    <div className={cn("relative", sizeClasses[size], className)}>
-      <svg
-        viewBox="0 0 100 100"
-        fill="none"
-        className="w-full h-full"
-      >
-        {/* Duck body */}
-        <ellipse 
-          cx="55" 
-          cy="65" 
-          rx="25" 
-          ry="20" 
-          fill="currentColor"
-          className="text-primary"
-        />
-        
-        {/* Duck head */}
-        <circle 
-          cx="35" 
-          cy="40" 
-          r="18" 
-          fill="currentColor"
-          className="text-primary"
-        />
-        
-        {/* Duck bill */}
-        <ellipse 
-          cx="18" 
-          cy="42" 
-          rx="8" 
-          ry="4" 
-          fill="currentColor"
-          className="text-accent"
-        />
-        
-        {/* Duck eye */}
-        <circle 
-          cx="30" 
-          cy="35" 
-          r="3" 
-          fill="currentColor"
-          className="text-background"
-        />
-        <circle 
-          cx="31" 
-          cy="34" 
-          r="1.5" 
-          fill="currentColor"
-          className="text-foreground"
-        />
-        
-        {/* Wing detail */}
-        <ellipse 
-          cx="60" 
-          cy="60" 
-          rx="12" 
-          ry="8" 
-          fill="currentColor"
-          className="text-accent opacity-60"
-        />
-        
-        {/* Water ripples */}
-        <ellipse 
-          cx="55" 
-          cy="85" 
-          rx="30" 
-          ry="3" 
-          fill="currentColor"
-          className="text-muted-foreground opacity-30"
-        />
-        <ellipse 
-          cx="55" 
-          cy="88" 
-          rx="20" 
-          ry="2" 
-          fill="currentColor"
-          className="text-muted-foreground opacity-20"
-        />
-      </svg>
+    <div className={cn("relative", logoClasses, className)}>
+      <Image
+        src={logoSrc}
+        alt={isFullLogo ? "The Duck Chat Logo" : "Duck Logo"}
+        fill
+        className="object-contain"
+        priority
+      />
     </div>
   );
 } 

@@ -54,15 +54,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
-            <DuckLogo size="lg" className="transition-all duration-300 hover:scale-110" />
-            <div className="flex flex-col">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                The Duck
-              </h1>
-              <p className="text-xs text-muted-foreground -mt-1">
-                Quack-tastic AI conversations
-              </p>
-            </div>
+            <DuckLogo variant="full" size="lg" className="transition-all duration-300 hover:scale-110" />
           </div>
           
           <div className="hidden md:flex items-center gap-2">

@@ -118,6 +118,21 @@ const nextConfig: NextConfig = {
 
   // SWC minification is enabled by default in Next.js 13+
   
+  // 🔧 Webpack configuration
+  webpack: (config, { dev, isServer }) => {
+    // Suppress the Supabase realtime warnings
+    if (dev && !isServer) {
+      config.ignoreWarnings = [
+        ...(config.ignoreWarnings || []),
+        {
+          module: /@supabase\/realtime-js/,
+          message: /Critical dependency: the request of a dependency is an expression/,
+        },
+      ];
+    }
+    return config;
+  },
+
   // Production optimizations
   ...(process.env.NODE_ENV === 'production' && {
     productionBrowserSourceMaps: false,

@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Github } from 'lucide-react';
 import { getOAuthRedirectUrl } from '@/lib/auth-config';
+import { DuckLogo } from '@/components/duck-logo';
 
 export function LoginForm() {
   const { isConfigured } = useAuth();
@@ -18,7 +19,7 @@ export function LoginForm() {
     return (
       <Card className="p-8 max-w-md mx-auto">
         <div className="text-center space-y-4">
-          <div className="text-6xl">🦆</div>
+          <DuckLogo variant="duck" size="xl" />
           <h1 className="text-2xl font-bold">The Duck</h1>
           <p className="text-muted-foreground">
             Supabase authentication is not configured in this environment.
@@ -78,10 +79,9 @@ export function LoginForm() {
       <div className="text-center space-y-6">
         {/* Duck header */}
         <div className="space-y-2">
-          <div className="text-6xl animate-bounce">🦆</div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Welcome to The Duck
-          </h1>
+          <div className="animate-bounce">
+            <DuckLogo variant="full" size="xl" />
+          </div>
           <p className="text-muted-foreground">
             Your AI chat companion with a splash of personality
           </p>
