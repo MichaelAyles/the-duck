@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { OpenRouterClient, CURATED_MODELS } from '@/lib/openrouter'
+import { OpenRouterClient } from '@/lib/openrouter'
 import { 
   getUserPreferences,
   DEFAULT_USER_PREFERENCES
@@ -12,7 +12,13 @@ import {
 import { getUserId } from '@/lib/auth'
 
 // Move getTop5Models function here since it's just a utility function
-function getTop5Models(allModels: any[]): string[] {
+interface ModelData {
+  id: string
+  total_rank?: number
+  last_week_rank?: number
+}
+
+function getTop5Models(allModels: ModelData[]): string[] {
   if (!Array.isArray(allModels) || allModels.length === 0) {
     return []
   }

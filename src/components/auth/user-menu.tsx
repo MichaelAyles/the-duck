@@ -52,7 +52,7 @@ export function UserMenu() {
         description: "Your account and all associated data have been deleted.",
       });
       logout();
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete your account. Please try again.",

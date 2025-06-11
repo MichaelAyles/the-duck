@@ -142,7 +142,7 @@ Respond with ONLY the title, nothing else.`
     }
 
     const sessionData = await sessionResponse.json()
-    const existingSession = sessionData.session
+    // Session exists, we can proceed with title generation
 
     console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle}`)
 

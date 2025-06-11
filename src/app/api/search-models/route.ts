@@ -16,8 +16,19 @@ const DEFAULT_STARRED_MODELS = [
 
 const DEFAULT_PRIMARY_MODEL = DEFAULT_STARRED_MODELS[0]
 
+interface Model {
+  id: string
+  name: string
+  description?: string
+  context_length?: number
+  pricing?: {
+    prompt?: number
+    completion?: number
+  }
+}
+
 function searchModels(
-  allModels: any[], 
+  allModels: Model[], 
   searchQuery: string, 
   filters: {
     provider?: string
@@ -26,7 +37,7 @@ function searchModels(
     includeFreeTier?: boolean
     capabilities?: string[]
   } = {}
-): any[] {
+): Model[] {
   if (!allModels || allModels.length === 0) {
     return []
   }
@@ -36,7 +47,7 @@ function searchModels(
   // Text search
   if (searchQuery) {
     const query = searchQuery.toLowerCase()
-    filteredModels = filteredModels.filter((model: any) => 
+    filteredModels = filteredModels.filter((model) => 
       model.name.toLowerCase().includes(query) ||
       model.id.toLowerCase().includes(query) ||
       (model.description && model.description.toLowerCase().includes(query))
@@ -45,21 +56,21 @@ function searchModels(
 
   // Provider filter
   if (filters.provider) {
-    filteredModels = filteredModels.filter((model: any) => 
+    filteredModels = filteredModels.filter((model) => 
       model.id.startsWith(filters.provider + '/')
     )
   }
 
   // Context length filter
   if (filters.minContextLength !== undefined) {
-    filteredModels = filteredModels.filter((model: any) => 
+    filteredModels = filteredModels.filter((model) => 
       (model.context_length || 0) >= filters.minContextLength!
     )
   }
 
   // Cost filter (approximate based on pricing structure)
   if (filters.maxCostPerToken !== undefined) {
-    filteredModels = filteredModels.filter((model: any) => {
+    filteredModels = filteredModels.filter((model) => {
       if (!model.pricing) return true // Include models without pricing info
       const promptCost = model.pricing.prompt || 0
       const completionCost = model.pricing.completion || 0
@@ -70,20 +81,20 @@ function searchModels(
 
   // Free tier filter
   if (filters.includeFreeTier === false) {
-    filteredModels = filteredModels.filter((model: any) => 
+    filteredModels = filteredModels.filter((model) => 
       !model.id.includes(':free') && 
       !(model.pricing?.prompt === 0 && model.pricing?.completion === 0)
     )
   } else if (filters.includeFreeTier === true) {
     // Only show free models
-    filteredModels = filteredModels.filter((model: any) => 
+    filteredModels = filteredModels.filter((model) => 
       model.id.includes(':free') || 
       (model.pricing?.prompt === 0 && model.pricing?.completion === 0)
     )
   }
 
   // Sort by relevance and quality
-  return filteredModels.sort((a: any, b: any) => {
+  return filteredModels.sort((a, b) => {
     // Prioritize our curated top models
     const isACurated = DEFAULT_STARRED_MODELS.includes(a.id)
     const isBCurated = DEFAULT_STARRED_MODELS.includes(b.id)
@@ -99,7 +110,7 @@ function searchModels(
     }
 
     // Then by provider ranking
-    const providerScore = (model: any) => {
+    const providerScore = (model: Model) => {
       const provider = model.id.split('/')[0]
       const providerRanks: { [key: string]: number } = {
         'google': 10,
@@ -176,7 +187,7 @@ async function handleSearchModelsRequest(request: NextRequest): Promise<NextResp
       console.warn('Could not fetch user preferences, using defaults:', error)
     }
 
-    let results: any[]
+    let results: Model[]
 
     if (getRecommended) {
       // Get personalized recommendations based on starred models

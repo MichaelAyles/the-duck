@@ -19,10 +19,10 @@ function createSupabaseServerClient(request: NextRequest) {
         get(name: string) {
           return request.cookies.get(name)?.value
         },
-        set(name: string, value: string, options: CookieOptions) {
+        set(_name: string, _value: string, _options: CookieOptions) {
           // For API routes, we don't need to set cookies, but we need to provide the method
         },
-        remove(name: string, options: CookieOptions) {
+        remove(_name: string, _options: CookieOptions) {
           // For API routes, we don't need to remove cookies, but we need to provide the method
         },
       },

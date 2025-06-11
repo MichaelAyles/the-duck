@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { Database } from '@/types/supabase'
-
-type ChatSession = Database['public']['Tables']['chat_sessions']['Row']
 
 export async function GET(
   request: NextRequest,
@@ -70,7 +67,7 @@ export async function PUT(
     const { title, messages, is_active } = body
 
     // Build update object
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     }
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { Database } from '@/types/supabase'
 import { OpenRouterClient } from '@/lib/openrouter'
 
 export interface UserPreferencesData {
@@ -43,7 +42,17 @@ const DEFAULT_USER_PREFERENCES: UserPreferencesData = {
   }
 }
 
-function getTop5Models(allModels: any[]): string[] {
+interface OpenRouterModel {
+  id: string
+  name: string
+  context_length?: number
+  pricing?: {
+    prompt?: number
+    completion?: number
+  }
+}
+
+function getTop5Models(allModels: OpenRouterModel[]): string[] {
   if (!allModels || allModels.length === 0) {
     return DEFAULT_STARRED_MODELS
   }
@@ -64,7 +73,7 @@ function getTop5Models(allModels: any[]): string[] {
     'openai/gpt-3.5-turbo'
   ]
 
-  const availableModelIds = allModels.map((model: any) => model.id)
+  const availableModelIds = allModels.map((model) => model.id)
   const availableTopModels = curatedTopModels.filter((modelId: string) => 
     availableModelIds.includes(modelId)
   )
@@ -74,8 +83,8 @@ function getTop5Models(allModels: any[]): string[] {
   }
 
   const remainingModels = allModels
-    .filter((model: any) => !availableTopModels.includes(model.id))
-    .sort((a: any, b: any) => {
+    .filter((model) => !availableTopModels.includes(model.id))
+    .sort((a, b) => {
       const aIsFree = a.id.includes(':free') || (a.pricing?.prompt === 0 && a.pricing?.completion === 0)
       const bIsFree = b.id.includes(':free') || (b.pricing?.prompt === 0 && b.pricing?.completion === 0)
       
@@ -88,7 +97,7 @@ function getTop5Models(allModels: any[]): string[] {
         return contextDiff
       }
       
-      const providerScore = (model: any) => {
+      const providerScore = (model: OpenRouterModel) => {
         const provider = model.id.split('/')[0]
         const providerRanks: { [key: string]: number } = {
           'anthropic': 9,
@@ -108,12 +117,12 @@ function getTop5Models(allModels: any[]): string[] {
       
       return a.name.localeCompare(b.name)
     })
-    .map((model: any) => model.id)
+    .map((model) => model.id)
 
   return [...availableTopModels, ...remainingModels].slice(0, 5)
 }
 
-async function createUserPreferencesWithDynamicDefaults(userId: string): Promise<UserPreferencesData> {
+async function createUserPreferencesWithDynamicDefaults(_userId: string): Promise<UserPreferencesData> {
   try {
     let dynamicStarredModels = [...DEFAULT_STARRED_MODELS]
     
@@ -310,7 +319,7 @@ export async function POST(request: NextRequest) {
 
     const currentPrefs = currentData?.preferences as UserPreferencesData || await createUserPreferencesWithDynamicDefaults(user.id)
 
-    let updatedPrefs = { ...currentPrefs }
+    const updatedPrefs = { ...currentPrefs }
 
     // Handle different actions
     switch (action) {

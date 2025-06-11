@@ -3,6 +3,16 @@ import { nanoid } from 'nanoid'
 
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000 // 10 minutes in milliseconds
 
+interface SessionData {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  is_active: boolean
+  messages: Message[]
+  model: string
+}
+
 export interface ChatSummary {
   summary: string
   keyTopics: string[]
@@ -255,7 +265,7 @@ export class ChatService {
       const data = await response.json()
       const sessions = data.sessions || []
       
-      return sessions.map((session: any) => ({
+      return sessions.map((session: SessionData) => ({
         id: session.id,
         title: session.title,
         createdAt: session.created_at,
@@ -313,7 +323,7 @@ export class ChatService {
       const data = await response.json()
       const sessions = data.sessions || []
       
-      return sessions.map((session: any) => ({
+      return sessions.map((session: SessionData) => ({
         id: session.id,
         title: session.title,
         createdAt: session.created_at,
@@ -360,14 +370,14 @@ export class ChatService {
 
       // Calculate metrics from sessions
       const totalChats = sessions.length
-      const activeChats = sessions.filter((s: any) => s.is_active).length
-      const totalMessages = sessions.reduce((total: number, session: any) => {
+      const activeChats = sessions.filter((s: SessionData) => s.is_active).length
+      const totalMessages = sessions.reduce((total: number, session: SessionData) => {
         return total + (Array.isArray(session.messages) ? session.messages.length : 0)
       }, 0)
 
       // Calculate favorite models
       const modelCounts = new Map<string, number>()
-      sessions.forEach((session: any) => {
+      sessions.forEach((session: SessionData) => {
         const current = modelCounts.get(session.model) || 0
         modelCounts.set(session.model, current + 1)
       })
@@ -377,7 +387,7 @@ export class ChatService {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5)
 
-      const recentActivity = sessions.slice(0, 10).map((session: any) => ({
+      const recentActivity = sessions.slice(0, 10).map((session: SessionData) => ({
         id: session.id,
         title: session.title,
         createdAt: session.created_at,

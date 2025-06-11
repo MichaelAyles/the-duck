@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/types/supabase'
 
-type ChatSession = Database['public']['Tables']['chat_sessions']['Row']
 type NewChatSession = Database['public']['Tables']['chat_sessions']['Insert']
 
 export async function GET(request: NextRequest) {
@@ -79,7 +78,7 @@ export async function POST(request: NextRequest) {
     const sessionData: NewChatSession = {
       id,
       title,
-      messages: messages as any,
+      messages: messages as Database['public']['Tables']['chat_sessions']['Row']['messages'],
       model,
       user_id: user.id,
       updated_at: new Date().toISOString(),
