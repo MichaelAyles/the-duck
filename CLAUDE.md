@@ -4,14 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-The Duck is a Next.js 15 chat application that provides a multi-model LLM interface similar to ChatGPT, with support for various AI models through OpenRouter. It uses Supabase for authentication and data persistence.
+The Duck is a modern, secure Next.js 15 chat application that provides a multi-model LLM interface with a modular hook-based architecture. It uses Supabase for authentication and data persistence, with a secure server-side API architecture.
 
-## Critical Security Issues
+## ✅ Architecture Status
 
-**🚨 P0 CRITICAL**: This codebase has severe security vulnerabilities that MUST be addressed:
-1. Direct client-side database access in `supabase-operations.ts` exposes database credentials
-2. Multiple insecure test/debug API routes are exposed in production
-3. Database operations must be moved to server-side API routes with proper authentication
+**🔐 SECURE**: All critical security vulnerabilities have been eliminated:
+- ✅ Server-side API architecture with proper authentication boundaries
+- ✅ Zero client-side database access
+- ✅ All debug/test routes removed from production
+- ✅ Comprehensive input validation and error handling
+
+## 🏗️ Current Architecture
+
+### **Modular Hook-Based Design**
+The application uses a clean separation of concerns with focused React hooks:
+
+- **`useChatSession`**: Session management, message loading, welcome messages
+- **`useMessageHandling`**: Message sending, streaming, error handling with toast notifications
+- **`useChatSettings`**: Configuration, model preferences, settings changes
+- **`useChatLifecycle`**: Chat ending, inactivity handling, cleanup operations
+
+### **Centralized Configuration**
+All constants and configuration managed in `/src/lib/config.ts`:
+- API endpoints and timeouts
+- Default models and settings  
+- Welcome messages and UI text
+- Performance thresholds
 
 ## Technology Stack
 
@@ -93,9 +111,10 @@ Generate commit messages using this format:
 
 **Example Messages:**
 - `feat: Add file upload API with Supabase storage integration`
-- `fix: Resolve authentication timeout issues in chat sessions`
-- `refactor: Extract chat message handling into custom hooks`
-- `docs: Update API documentation for new user preferences endpoints`
+- `fix: Resolve state race conditions in message handling hooks`
+- `refactor: Extract chat lifecycle management into useChatLifecycle hook`
+- `docs: Update architecture documentation for hook-based design`
+- `style: Fix remaining lint errors and optimize React re-renders`
 
 ### 5. **Verification**
 After pushing, mention to the user that:
@@ -109,47 +128,99 @@ After pushing, mention to the user that:
 ## Architecture
 
 ### Directory Structure
-- `/src/app/` - Next.js App Router pages and API routes
-- `/src/components/` - React components (auth, chat, UI)
-- `/src/lib/` - Core utilities and services
-- `/src/hooks/` - Custom React hooks
+- `/src/app/` - Next.js App Router pages and secure API routes
+- `/src/components/` - React components with hook-based architecture
+- `/src/hooks/` - Custom React hooks for modular functionality
+- `/src/lib/` - Core utilities, services, and centralized configuration
 - `/src/types/` - TypeScript type definitions
 - `/sql/` - Database schema and migrations
 - `/docs/` - Technical documentation
 
-### Key Services
+### Key Services & Hooks
+- **Chat Hooks**: Modular hook-based architecture for clean separation of concerns
+  - `useChatSession`: Session management and message loading
+  - `useMessageHandling`: Message processing and streaming
+  - `useChatSettings`: Configuration and user preferences
+  - `useChatLifecycle`: Chat ending and cleanup operations
 - **Auth Service** (`lib/auth.ts`): Manages Supabase authentication
-- **Chat Service** (`lib/chat-service.ts`): Handles chat operations and streaming
-- **Database Operations** (`lib/db/`): Database interaction layer (needs refactoring)
-- **OpenRouter** (`lib/openrouter.ts`): LLM model management and API integration
+- **Chat Service** (`lib/chat-service.ts`): Business logic for chat operations
+- **Configuration** (`lib/config.ts`): Centralized constants and defaults
+- **Database Operations** (`lib/db/server-operations.ts`): Server-side authenticated operations
 
 ### Authentication Flow
 1. User signs in via Supabase Auth (Google/GitHub OAuth)
-2. Session stored in cookies via middleware
+2. Session stored in secure cookies via middleware
 3. AuthProvider provides session context throughout app
-4. API routes verify authentication before database operations
+4. All API routes verify authentication before any operations
+5. Row-Level Security (RLS) provides additional database-level protection
 
 ### Chat Architecture
-1. User selects AI model from OpenRouter's catalog
-2. Messages sent to `/api/chat` endpoint
-3. Server streams responses using Server-Sent Events
-4. Chat history saved to Supabase with user association
-5. Summaries generated for long conversations
+1. User selects AI model from OpenRouter's catalog via `useChatSettings`
+2. Messages processed through `useMessageHandling` hook
+3. Secure `/api/chat` endpoint handles streaming with authentication
+4. `useChatSession` manages chat history and persistence
+5. `useChatLifecycle` handles cleanup and summaries
 
 ### Database Schema
 - **chat_sessions**: Stores conversations with messages array
 - **chat_summaries**: AI-generated summaries linked to sessions
-- **user_preferences**: User settings (starred models, theme, etc.)
+- **user_preferences**: User settings (starred models, theme, preferences)
 - All tables use Row-Level Security (RLS) for data isolation
+- All access goes through authenticated server-side API routes
 
-## Security Refactoring Requirements
+## Hook Development Patterns
 
-When working on security improvements:
-1. Move all database operations from `supabase-operations.ts` to server-side API routes
-2. Remove or secure all test/debug endpoints before production
-3. Ensure all API routes check authentication before database access
-4. Use server-side Supabase client (`lib/supabase/server.ts`) for database operations
-5. Never expose Supabase service role key to client
+When working with the modular hook architecture:
+
+### **Creating New Hooks**
+1. **Single Responsibility**: Each hook should handle one specific concern
+2. **Proper Dependencies**: Use useCallback and useMemo to prevent unnecessary re-renders
+3. **Error Handling**: Include comprehensive error handling with toast notifications
+4. **Cleanup**: Always return cleanup functions from useEffect hooks
+5. **Type Safety**: Use proper TypeScript interfaces and avoid `any` types
+
+### **Hook Composition**
+```typescript
+// Example: Composing hooks in a component
+export const ChatInterface = () => {
+  const { user } = useAuth();
+  
+  const { sessionId, messages, setMessages, chatServiceRef, createNewSession } = useChatSession({
+    initialSessionId,
+    initialMessages,
+    userId: user?.id,
+    onSessionUpdate,
+  });
+
+  const { settings, handleSettingsChange } = useChatSettings();
+  
+  const { handleEndChat } = useChatLifecycle({
+    messages,
+    setMessages,
+    settings,
+    chatServiceRef,
+    userId: user?.id,
+    createNewSession,
+  });
+
+  const { isLoading, handleSendMessage } = useMessageHandling({
+    sessionId,
+    messages,
+    setMessages,
+    settings,
+    chatServiceRef,
+    userId: user?.id,
+  });
+  
+  // Component JSX using hook values
+};
+```
+
+### **Performance Considerations**
+- Use React.memo for expensive components
+- Implement proper dependency arrays in useCallback/useMemo
+- Avoid object recreation in render cycles
+- Use proper cleanup in useEffect hooks
 
 ## Environment Variables
 

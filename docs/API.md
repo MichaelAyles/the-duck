@@ -2,29 +2,41 @@
 
 ## Overview
 
-The Duck is a modern AI chat application built with Next.js 15, featuring streaming conversations, chat persistence, and intelligent summarization. This document provides comprehensive API documentation for developers.
+The Duck is a modern, secure AI chat application built with Next.js 15, featuring a modular hook-based architecture, authenticated streaming conversations, and comprehensive user management. This document provides API documentation for the secure server-side architecture.
 
 ## Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   API Routes    │    │   External APIs │
-│   (React 19)    │◄──►│   (Next.js)     │◄──►│   (OpenRouter)  │
+│   React Hooks   │    │   API Routes    │    │   External APIs │
+│   (Client)      │◄──►│   (Secure)      │◄──►│   (OpenRouter)  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          │                       ▼                       │
          │              ┌─────────────────┐              │
          └─────────────►│   Supabase DB   │◄─────────────┘
-                        │   (PostgreSQL)  │
+                        │   + Auth + RLS  │
                         └─────────────────┘
 ```
+
+## Security Model
+
+**🔐 All API routes require authentication**
+- Server-side Supabase client with proper auth verification
+- Row-Level Security (RLS) for database-level access control
+- No client-side database access
+- Comprehensive input validation with error handling
 
 ## API Endpoints
 
 ### 1. Chat Endpoint
 **POST** `/api/chat`
 
-Main endpoint for AI conversations with streaming support.
+Authenticated streaming chat endpoint with AI models.
+
+#### Authentication
+- Requires valid Supabase session cookie
+- Returns 401 if not authenticated
 
 #### Request Body
 ```typescript
@@ -34,51 +46,141 @@ Main endpoint for AI conversations with streaming support.
     content: string
   }>
   model: string                    // OpenRouter model ID
-  sessionId?: string              // Chat session ID (optional)
-  stream?: boolean                // Enable streaming (default: true)
-  temperature?: number            // 0.0 - 2.0 (default: 0.7)
-  max_tokens?: number            // Max response tokens
-  top_p?: number                 // Nucleus sampling parameter
+  stream?: boolean                 // Enable streaming (default: true)
+  tone?: string                   // Response tone preference
 }
 ```
 
 #### Response (Streaming)
 ```typescript
 // Server-Sent Events format
-data: {"type": "content", "content": "Hello"}
-data: {"type": "content", "content": " there!"}
-data: {"type": "done", "finishReason": "stop"}
-```
-
-#### Response (Non-Streaming)
-```typescript
-{
-  content: string
-  finishReason: 'stop' | 'length' | 'content_filter'
-  usage: {
-    prompt_tokens: number
-    completion_tokens: number
-    total_tokens: number
-  }
-}
+data: {"content": "Hello there!"}
+data: {"content": " How can I help you?"}
+data: [DONE]
 ```
 
 #### Error Responses
 ```typescript
 {
   error: string
-  details?: string
-  code?: 'INVALID_MODEL' | 'RATE_LIMITED' | 'API_ERROR'
+  details?: string               // Only in development
 }
 ```
 
-### 2. Models Endpoint
+### 2. Session Management
+**GET/POST/PUT/DELETE** `/api/sessions`
+**GET/PUT/DELETE** `/api/sessions/[sessionId]`
+
+Authenticated CRUD operations for chat sessions.
+
+#### GET `/api/sessions`
+List all user's chat sessions.
+
+**Response:**
+```typescript
+{
+  sessions: Array<{
+    id: string
+    title: string
+    created_at: string
+    updated_at: string
+    message_count: number
+  }>
+}
+```
+
+#### POST `/api/sessions`
+Create a new chat session.
+
+**Request Body:**
+```typescript
+{
+  title?: string
+  messages?: Message[]
+}
+```
+
+#### GET `/api/sessions/[sessionId]`
+Get specific session with messages.
+
+**Response:**
+```typescript
+{
+  id: string
+  title: string
+  messages: Message[]
+  created_at: string
+  updated_at: string
+}
+```
+
+#### PUT `/api/sessions/[sessionId]`
+Update session title or messages.
+
+**Request Body:**
+```typescript
+{
+  title?: string
+  messages?: Message[]
+}
+```
+
+#### DELETE `/api/sessions/[sessionId]`
+Delete a chat session.
+
+**Response:** `204 No Content`
+
+### 3. User Preferences
+**GET/PUT/POST** `/api/user/preferences`
+
+Manage user settings and model preferences.
+
+#### GET `/api/user/preferences`
+Get user's current preferences.
+
+**Response:**
+```typescript
+{
+  starredModels: string[]
+  primaryModel: string
+  theme: 'light' | 'dark' | 'system'
+  responseTone: 'friendly' | 'professional' | 'casual' | 'academic' | 'match'
+  storageEnabled: boolean
+  explicitPreferences: Record<string, any>
+  writingStyle: {
+    verbosity: 'brief' | 'medium' | 'detailed'
+    formality: 'casual' | 'neutral' | 'formal'
+    technicalLevel: 'beginner' | 'intermediate' | 'advanced'
+    preferredTopics: string[]
+    dislikedTopics: string[]
+  }
+}
+```
+
+#### PUT `/api/user/preferences`
+Update user preferences.
+
+**Request Body:** Partial preferences object
+
+#### POST `/api/user/preferences`
+Special actions (toggle starred, set primary model).
+
+**Request Body:**
+```typescript
+{
+  action: 'toggleStarred' | 'setPrimary'
+  modelId: string
+}
+```
+
+### 4. Models
 **GET** `/api/models`
 
-Retrieves available AI models from OpenRouter.
+Get available AI models from OpenRouter.
 
 #### Query Parameters
-- `refresh?: boolean` - Force refresh model cache
+- `search?: string` - Search model names/descriptions
+- `limit?: number` - Limit results (default: 50)
 
 #### Response
 ```typescript
@@ -88,236 +190,303 @@ Retrieves available AI models from OpenRouter.
     name: string
     description: string
     pricing: {
-      prompt: string      // Cost per token
-      completion: string  // Cost per token
+      prompt: string
+      completion: string
     }
     context_length: number
     architecture: {
       modality: string
       tokenizer: string
-      instruct_type?: string
-    }
-    top_provider: {
-      max_completion_tokens?: number
-      is_moderated: boolean
     }
   }>
-  favorites: string[]     // Curated model IDs
-  cached: boolean        // Whether response was cached
+  total: number
 }
 ```
 
-### 3. Summarize Endpoint
-**POST** `/api/summarize`
+### 5. Model Search
+**GET** `/api/search-models`
 
-Generates intelligent summaries of chat conversations.
+Search models with filtering and ranking.
+
+#### Query Parameters
+- `q: string` - Search query (required)
+- `limit?: number` - Results limit
+
+#### Response
+```typescript
+{
+  results: Array<{
+    id: string
+    name: string
+    description: string
+    relevanceScore: number
+  }>
+  query: string
+}
+```
+
+### 6. Starred Models
+**GET** `/api/starred-models`
+
+Get user's starred models with details.
+
+#### Response
+```typescript
+{
+  starredModels: Array<{
+    id: string
+    name: string
+    description: string
+    isPrimary: boolean
+  }>
+}
+```
+
+### 7. Title Generation
+**POST** `/api/generate-title`
+
+Generate title for chat session.
 
 #### Request Body
 ```typescript
 {
-  messages: Array<{
-    role: 'user' | 'assistant'
-    content: string
-  }>
-  sessionId: string
-}
-```
-
-#### Response
-```typescript
-{
-  summary: string
-  topics: string[]       // Extracted key topics
-  messageCount: number   // Number of messages summarized
-}
-```
-
-### 4. Database Test Endpoint
-**GET** `/api/database-test`
-
-Health check and testing endpoint for database operations.
-
-#### Response
-```typescript
-{
-  status: 'success' | 'error'
-  supabase: {
-    hasUrl: boolean
-    hasKey: boolean
-    isConfigured: boolean
-  }
-  operations: {
-    createSession: boolean
-    readSession: boolean
-    updateSession: boolean
-    deleteSession: boolean
-    createSummary: boolean
-    readSummary: boolean
-  }
-  testResults: {
-    sessionId: string
-    summaryId: string
-    cleanup: boolean
-  }
-  timestamp: string
-}
-```
-
-### 5. Debug Endpoint
-**GET** `/api/debug`
-
-Development endpoint for system diagnostics.
-
-#### Response
-```typescript
-{
-  environment: {
-    nodeEnv: string
-    hasOpenRouter: boolean
-    hasSupabase: boolean
-    hasDatabaseUrl: boolean
-  }
-  buildInfo: {
-    nextVersion: string
-    buildTime: string
-  }
-  performance: {
-    uptime: number
-    memoryUsage: NodeJS.MemoryUsage
-  }
-}
-```
-
-## Core Services
-
-### ChatService
-
-Central service managing chat persistence and lifecycle.
-
-```typescript
-class ChatService {
-  // Initialize new chat session
-  async initializeSession(initialMessage?: string): Promise<string>
-  
-  // Save messages to database
-  async saveMessages(sessionId: string, messages: Message[]): Promise<void>
-  
-  // Load chat history
-  async loadChatHistory(sessionId: string): Promise<Message[]>
-  
-  // Handle chat inactivity (auto-summarize after 10min)
-  setupInactivityHandler(sessionId: string, onSummarize: () => void): void
-  
-  // Summarize and end chat session
-  async summarizeAndEndChat(sessionId: string, messages: Message[]): Promise<string>
-}
-```
-
-### OpenRouterClient
-
-Client for OpenRouter AI API integration.
-
-```typescript
-class OpenRouterClient {
-  // Stream chat completion
-  async streamChatCompletion(params: {
-    messages: Message[]
-    model: string
-    temperature?: number
-    max_tokens?: number
-    stream?: boolean
-  }): Promise<ReadableStream>
-  
-  // Get available models
-  async getModels(refresh?: boolean): Promise<OpenRouterModel[]>
-  
-  // Get model pricing and info
-  async getModelInfo(modelId: string): Promise<OpenRouterModel>
-}
-```
-
-### Database Operations
-
-Type-safe database operations using Drizzle ORM.
-
-```typescript
-// Chat Sessions
-async function createChatSession(data: {
-  id: string
-  title?: string
   messages: Message[]
-}): Promise<ChatSession>
-
-async function getChatSession(id: string): Promise<ChatSession | null>
-
-async function updateChatSession(id: string, data: Partial<ChatSession>): Promise<void>
-
-// Chat Summaries  
-async function createChatSummary(data: {
   sessionId: string
-  summary: string
-  topics: string[]
-  messageCount: number
-}): Promise<ChatSummary>
+}
+```
 
-async function getChatSummaries(sessionId: string): Promise<ChatSummary[]>
+#### Response
+```typescript
+{
+  title: string
+  sessionId: string
+}
+```
+
+### 8. Chat History
+**GET** `/api/chat-history`
+
+Get paginated chat history for user.
+
+#### Query Parameters
+- `page?: number` - Page number (default: 1)
+- `limit?: number` - Results per page (default: 20)
+
+#### Response
+```typescript
+{
+  sessions: Array<{
+    id: string
+    title: string
+    lastMessage: string
+    messageCount: number
+    createdAt: string
+    updatedAt: string
+  }>
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+```
+
+### 9. Summarization
+**POST** `/api/summarize`
+
+Generate chat summary (authenticated).
+
+#### Request Body
+```typescript
+{
+  messages: Message[]
+  sessionId: string
+}
+```
+
+#### Response
+```typescript
+{
+  summary: string
+  sessionId: string
+}
+```
+
+## Hook Architecture
+
+### Core Chat Hooks
+
+#### `useChatSession`
+Manages session lifecycle and message loading.
+
+```typescript
+const {
+  sessionId,
+  messages,
+  setMessages,
+  chatServiceRef,
+  loadSessionMessages,
+  createNewSession
+} = useChatSession({
+  initialSessionId,
+  initialMessages,
+  userId,
+  onSessionUpdate
+});
+```
+
+#### `useMessageHandling`
+Handles message sending and streaming.
+
+```typescript
+const {
+  isLoading,
+  handleSendMessage,
+  generateTitleIfNeeded
+} = useMessageHandling({
+  sessionId,
+  messages,
+  setMessages,
+  settings,
+  chatServiceRef,
+  userId,
+  onSessionUpdate
+});
+```
+
+#### `useChatSettings`
+Manages user configuration and preferences.
+
+```typescript
+const {
+  settings,
+  isProcessingStorage,
+  setIsProcessingStorage,
+  handleSettingsChange
+} = useChatSettings();
+```
+
+#### `useChatLifecycle`
+Handles chat ending and cleanup.
+
+```typescript
+const {
+  handleEndChat,
+  setupInactivityHandler
+} = useChatLifecycle({
+  messages,
+  setMessages,
+  settings,
+  chatServiceRef,
+  userId,
+  createNewSession,
+  setIsProcessingStorage,
+  onSessionUpdate
+});
 ```
 
 ## Database Schema
 
-### Tables
+### Tables with RLS
 
 #### chat_sessions
 ```sql
 CREATE TABLE chat_sessions (
   id TEXT PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id),
   title TEXT,
   messages JSONB NOT NULL DEFAULT '[]',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  is_active BOOLEAN DEFAULT true
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- RLS Policy
+CREATE POLICY "Users can only access their own sessions"
+  ON chat_sessions FOR ALL
+  USING (auth.uid() = user_id);
 ```
 
 #### chat_summaries
 ```sql
 CREATE TABLE chat_summaries (
-  id TEXT PRIMARY KEY,
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id UUID REFERENCES auth.users(id),
   session_id TEXT REFERENCES chat_sessions(id) ON DELETE CASCADE,
   summary TEXT NOT NULL,
-  topics TEXT[] DEFAULT '{}',
-  message_count INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- RLS Policy
+CREATE POLICY "Users can only access their own summaries"
+  ON chat_summaries FOR ALL
+  USING (auth.uid() = user_id);
 ```
 
-### Indexes
-- `idx_chat_sessions_created_at` - Performance for recent chats
-- `idx_chat_sessions_active` - Filter active sessions
-- `idx_chat_summaries_session_id` - Join performance
-- `idx_chat_summaries_created_at` - Chronological ordering
+#### user_preferences
+```sql
+CREATE TABLE user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id),
+  preferences JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-## Environment Variables
+-- RLS Policy
+CREATE POLICY "Users can only access their own preferences"
+  ON user_preferences FOR ALL
+  USING (auth.uid() = user_id);
+```
 
-### Required
+## Authentication & Security
+
+### Authentication Flow
+1. User signs in via Supabase Auth (Google/GitHub)
+2. Session cookie set with secure httpOnly flags
+3. All API routes verify authentication via server-side Supabase client
+4. RLS policies provide additional database-level security
+
+### Security Features
+- ✅ Server-side API routes with authentication
+- ✅ Row-Level Security (RLS) on all tables
+- ✅ Input validation with comprehensive error handling
+- ✅ No client-side database access
+- ✅ Secure session management
+- ✅ Environment variable protection
+
+## Configuration
+
+### Environment Variables
 ```bash
-# OpenRouter API (AI Models)
-OPENROUTER_API_KEY=sk_or_...
-
-# Supabase Database
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# OpenRouter
+OPENROUTER_API_KEY=sk-or-...
 
 # Application
-NEXT_PUBLIC_APP_URL=http://localhost:12000
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
 ```
 
-### Optional
-```bash
-# Development
-NODE_ENV=development
-NEXT_PUBLIC_DEBUG=true
+### Centralized Config (`/src/lib/config.ts`)
+```typescript
+export const DEFAULT_AI_MODEL = "google/gemini-2.5-flash-preview-05-20";
+
+export const CHAT_CONFIG = {
+  TITLE_GENERATION_MESSAGE_LIMIT: 6,
+  TITLE_GENERATION_TRIGGER_COUNT: 2,
+  WELCOME_MESSAGE: "🦆 Hello! I'm The Duck...",
+  INACTIVITY_TIMEOUT_MINUTES: 30,
+};
+
+export const API_ENDPOINTS = {
+  CHAT: "/api/chat",
+  GENERATE_TITLE: "/api/generate-title",
+  USER_PREFERENCES: "/api/user/preferences",
+  SESSIONS: "/api/sessions",
+};
 ```
 
 ## Error Handling
@@ -325,167 +494,79 @@ NEXT_PUBLIC_DEBUG=true
 ### Standard Error Format
 ```typescript
 {
-  error: string           // Human-readable error message
-  details?: string        // Technical details (development only)
-  code?: string          // Error code for programmatic handling
-  timestamp: string      // ISO timestamp
+  error: string           // Human-readable message
+  details?: string        // Technical details (dev only)
+  timestamp: string       // ISO timestamp
 }
 ```
 
-### Common Error Codes
-- `INVALID_API_KEY` - OpenRouter API key invalid/missing
-- `INVALID_MODEL` - Requested model not available
-- `RATE_LIMITED` - API rate limit exceeded
-- `DATABASE_ERROR` - Supabase connection/query failed
-- `VALIDATION_ERROR` - Request payload validation failed
-- `STREAM_ERROR` - Streaming response interrupted
+### HTTP Status Codes
+- `200` - Success
+- `201` - Created
+- `204` - No Content (successful deletion)
+- `400` - Bad Request (validation error)
+- `401` - Unauthorized (not authenticated)
+- `403` - Forbidden (authenticated but no access)
+- `404` - Not Found
+- `429` - Rate Limited
+- `500` - Internal Server Error
 
-## Rate Limiting
+## Development & Testing
 
-### OpenRouter Limits
-- **Free Tier**: 20 requests/minute
-- **Paid Tier**: Varies by model and plan
-- **Best Practice**: Implement client-side debouncing
-
-### Implementation
-```typescript
-// Client-side debouncing example
-const debouncedSend = useMemo(
-  () => debounce(sendMessage, 500),
-  [sendMessage]
-);
+### Quality Checks
+```bash
+npm run workflow      # Complete validation pipeline
+npm run build         # Production build test
+npm run lint          # Code quality check
+npm run type-check    # TypeScript validation
 ```
 
-## Authentication Flow
-
-Currently operates without user authentication. Database uses anonymous access with Row Level Security (RLS) policies prepared for future auth integration.
-
-### Future Auth Integration
-```typescript
-// When implementing auth
-const { data: session } = await supabase.auth.getSession();
-const userId = session?.user?.id;
-
-// RLS policies will automatically filter by user_id
-```
-
-## WebSocket Events (Future)
-
-Planned real-time features:
-
-```typescript
-// Client events
-socket.emit('join_session', { sessionId });
-socket.emit('typing_start', { sessionId });
-socket.emit('typing_stop', { sessionId });
-
-// Server events  
-socket.on('user_joined', { userId, sessionId });
-socket.on('user_typing', { userId, sessionId });
-socket.on('message_received', { message, sessionId });
+### Environment Validation
+```bash
+npm run setup         # Interactive setup
+npm run check-env     # Validate configuration
 ```
 
 ## Performance Considerations
 
 ### Caching Strategy
-- **Models**: 1-hour cache with refresh capability
-- **Sessions**: No caching (real-time updates)
-- **Static Assets**: CDN with 1-year expiry
+- Models list cached for 1 hour
+- User preferences cached in React state
+- Session data fetched on demand
 
-### Database Optimization
-- Connection pooling via Supabase
-- Prepared statements with Drizzle ORM
-- Automatic indexing on foreign keys
+### Optimization Features
+- Server-Sent Events for efficient streaming
+- React hooks with proper memoization
+- Centralized configuration reduces bundle size
+- Toast notifications for user feedback
+
+### Database Performance
+- Proper indexing on foreign keys
 - JSONB for flexible message storage
-
-### Memory Management
-- Streaming responses prevent large memory usage
-- Automatic cleanup of inactive sessions
-- Pagination for chat history (future)
-
-## Development Tools
-
-### Environment Validation
-```bash
-npm run check-env    # Validate environment setup
-npm run setup        # Interactive environment setup
-```
-
-### Database Tools
-```bash
-npm run db:generate  # Generate migration files
-npm run db:migrate   # Apply migrations
-npm run db:studio    # Open Drizzle Studio
-```
-
-### Testing
-```bash
-npm run type-check   # TypeScript validation
-npm run lint         # ESLint checking
-npm run build        # Production build test
-```
+- RLS policies optimized for performance
+- Connection pooling via Supabase
 
 ## Monitoring & Debugging
 
-### Health Checks
-- `GET /api/debug` - System diagnostics
-- `GET /api/database-test` - Database connectivity
-- Environment validation at startup
-
-### Logging
-```typescript
-// Structured logging example
-console.log('[CHAT]', {
-  sessionId,
-  messageCount,
-  model,
-  timestamp: new Date().toISOString()
-});
-```
-
 ### Error Tracking
-Integration ready for services like:
-- Sentry (error tracking)
-- LogRocket (session replay)
-- Vercel Analytics (performance)
+- Comprehensive error boundaries
+- Toast notifications for user errors
+- Console logging for development
+- Structured error responses
 
-## Security Best Practices
-
-### API Security
-- API keys stored securely in environment
-- Input validation with Zod schemas
-- SQL injection prevention via ORM
-- Rate limiting implementation ready
-
-### Data Protection
-- No PII storage without explicit consent
-- Chat data encrypted at rest (Supabase)
-- HTTPS enforcement in production
-- CORS properly configured
-
-## Migration Guide
-
-### From Development to Production
-1. Set production environment variables
-2. Run database migrations: `npm run db:migrate`
-3. Enable RLS policies in Supabase
-4. Configure custom domain and SSL
-5. Set up monitoring and alerting
-
-### Version Compatibility
-- Node.js 18+ required
-- Next.js 15+ for App Router
-- React 19+ for concurrent features
-- PostgreSQL 13+ for JSONB support
+### Health Checks
+All API routes include basic health validation and return appropriate error codes for monitoring.
 
 ---
 
-## Support & Contributing
+## Migration Notes
 
-For questions or contributions:
-1. Check existing GitHub issues
-2. Review this documentation
-3. Test with `/api/debug` endpoint
-4. Include relevant logs and environment info
+This API documentation reflects the secure, production-ready architecture after the P1 refactor. Key changes from previous versions:
 
-Happy coding! 🦆 
+- ✅ All endpoints now require authentication
+- ✅ Server-side API routes replace client-side database access
+- ✅ Hook-based architecture for better maintainability
+- ✅ Centralized configuration management
+- ✅ Comprehensive error handling with user feedback
+
+For development guidance, see `CLAUDE.md` for hook patterns and development workflows.
