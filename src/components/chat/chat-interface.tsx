@@ -11,18 +11,7 @@ import { useChatSession } from "@/hooks/use-chat-session";
 import { useMessageHandling } from "@/hooks/use-message-handling";
 import { useChatSettings } from "@/hooks/use-chat-settings";
 import { useChatLifecycle } from "@/hooks/use-chat-lifecycle";
-
-export interface Message {
-  id: string;
-  role: "user" | "assistant" | "system";
-  content: string;
-  timestamp: Date;
-  metadata?: {
-    model?: string;
-    tokens?: number;
-    processingTime?: number;
-  };
-}
+import { Message } from "@/types/chat";
 
 export interface ChatSettings {
   model: string;

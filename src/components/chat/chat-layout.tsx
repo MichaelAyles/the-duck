@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { ChatInterface, Message } from "./chat-interface";
+import { Message } from "@/types/chat";
+import { ChatInterface } from "./chat-interface";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/hooks/use-toast";

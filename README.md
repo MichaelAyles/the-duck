@@ -191,7 +191,6 @@ The Duck is production-ready and can be safely deployed to Vercel with its secur
    OPENROUTER_API_KEY=your_openrouter_key
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
    NEXT_PUBLIC_APP_URL=your_vercel_url
    ```
 4. **Deploy**: Vercel will automatically build and deploy your application
@@ -242,7 +241,7 @@ All commits must pass:
 
 ## 📝 License
 
-This project is licensed under the **GNU General Public License v3.0** (GPL-3.0). See the [LICENSE](LICENSE) file for full details.
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for full details.
 
 ## 🦆 About The Duck
 

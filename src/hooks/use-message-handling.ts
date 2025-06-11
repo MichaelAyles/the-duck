@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { ChatService } from '@/lib/chat-service';
-import { Message, ChatSettings } from '@/components/chat/chat-interface';
+import { Message } from '@/types/chat';
+import { ChatSettings } from '@/components/chat/chat-interface';
 import { useToast } from '@/hooks/use-toast';
 import { CHAT_CONFIG, API_ENDPOINTS } from '@/lib/config';
 
@@ -155,6 +156,14 @@ export function useMessageHandling({
               const data = line.slice(6).trim();
               if (data === '[DONE]') {
                 setIsLoading(false);
+                
+                // Notify parent of session update when streaming completes
+                if (onSessionUpdate && sessionId) {
+                  setMessages(currentMessages => {
+                    setTimeout(() => onSessionUpdate(sessionId, currentMessages), 0);
+                    return currentMessages;
+                  });
+                }
                 return;
               }
 
@@ -210,14 +219,6 @@ export function useMessageHandling({
           },
         ];
       });
-    }
-
-    if (onSessionUpdate && sessionId) {
-      const updatedMessages = [...newMessages, assistantMessage]
-      onSessionUpdate(sessionId, updatedMessages)
-      setMessages(updatedMessages)
-    } else {
-      setMessages(prevMessages => [...prevMessages, assistantMessage]);
     }
 
     setIsLoading(false);

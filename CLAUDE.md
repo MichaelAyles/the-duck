@@ -227,7 +227,6 @@ export const ChatInterface = () => {
 Required environment variables (see `.env.local.example`):
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY` - Service role key (server-side only)
 - `OPENROUTER_API_KEY` - OpenRouter API key for LLM access
 
 ## Testing

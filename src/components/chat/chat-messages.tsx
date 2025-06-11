@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { User, Loader2 } from "lucide-react";
-import { Message } from "./chat-interface";
+import { Message } from "@/types/chat";
 import { MessageContent } from "./message-content";
 import { DuckLogo } from "@/components/duck-logo";
 import { cn } from "@/lib/utils";

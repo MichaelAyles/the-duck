@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { Message } from '@/components/chat/chat-interface'
+import { Message } from '@/types/chat'
 import { createClient } from '@/lib/supabase/server'
 import { nanoid } from 'nanoid'
 

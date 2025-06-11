@@ -1,4 +1,4 @@
-import { Message } from '@/components/chat/chat-interface'
+import { Message } from '@/types/chat'
 import { nanoid } from 'nanoid'
 
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000 // 10 minutes in milliseconds

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect } from 'react';
 import { ChatService } from '@/lib/chat-service';
-import { Message, ChatSettings } from '@/components/chat/chat-interface';
+import { Message } from '@/types/chat';
+import { ChatSettings } from '@/components/chat/chat-interface';
 import { useToast } from '@/hooks/use-toast';
 
 interface UseChatLifecycleProps {
@@ -94,7 +95,12 @@ export function useChatLifecycle({
   // Setup inactivity handler when component mounts and when messages change
   useEffect(() => {
     setupInactivityHandler();
-  }, [setupInactivityHandler]);
+    
+    // Cleanup function to prevent memory leaks
+    return () => {
+      chatServiceRef.current?.clearInactivityTimer();
+    };
+  }, [setupInactivityHandler, chatServiceRef]);
 
   return {
     handleEndChat,

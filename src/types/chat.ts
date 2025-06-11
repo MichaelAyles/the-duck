@@ -3,7 +3,15 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: Date
+  metadata?: {
+    model?: string
+    tokens?: number
+    processingTime?: number
+  }
 }
+
+// Alias for backwards compatibility
+export type Message = ChatMessage
 
 export interface OpenRouterModel {
   id: string

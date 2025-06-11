@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ChatService } from '@/lib/chat-service';
-import { Message } from '@/components/chat/chat-interface';
+import { Message } from '@/types/chat';
 import { CHAT_CONFIG } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
 
@@ -36,12 +36,12 @@ export function useChatSession({
   // Acknowledge the parameter to avoid unused variable warning
   void onSessionUpdate;
 
-  // Create welcome message helper
-  const createWelcomeMessage = useCallback((): Message => ({
-    id: crypto.randomUUID(),
+  // Create stable welcome message to prevent unnecessary re-renders
+  const welcomeMessage = useMemo((): Message => ({
+    id: "welcome-message", // Use stable ID instead of random UUID
     role: "assistant",
     content: CHAT_CONFIG.WELCOME_MESSAGE,
-    timestamp: new Date(),
+    timestamp: new Date(0), // Use epoch timestamp for stability
     metadata: {
       model: "system",
     },
@@ -68,7 +68,7 @@ export function useChatSession({
         console.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
       } else {
         // If no messages found, show welcome message
-        setMessages([createWelcomeMessage()]);
+        setMessages([welcomeMessage]);
         console.log('No messages found, showing welcome message');
       }
     } catch (error) {
@@ -82,9 +82,9 @@ export function useChatSession({
       });
       
       // On error, show welcome message
-      setMessages([createWelcomeMessage()]);
+      setMessages([welcomeMessage]);
     }
-  }, [userId, createWelcomeMessage, toast]);
+  }, [userId, welcomeMessage, toast]);
 
   // Create a new session
   const createNewSession = useCallback((): string => {
@@ -145,9 +145,9 @@ export function useChatSession({
   // Add welcome message when messages are empty
   useEffect(() => {
     if (messages.length === 0) {
-      setMessages([createWelcomeMessage()]);
+      setMessages([welcomeMessage]);
     }
-  }, [messages.length, createWelcomeMessage]);
+  }, [messages.length, welcomeMessage]);
 
   return {
     sessionId,
