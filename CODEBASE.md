@@ -1,6 +1,93 @@
 # Codebase Documentation
 
-This document provides a comprehensive overview of the files in this repository, their purpose, and their functionality.
+This document provides a comprehensive overview of The Duck application, including its architecture, functionality, and a critical review of the current implementation.
+
+## 1. Architecture Overview
+
+The Duck is a modern web application built on the Next.js 15 App Router architecture. It serves as an AI-powered chat interface, enabling users to interact with various Large Language Models (LLMs) via the OpenRouter API.
+
+### Tech Stack
+-   **Framework**: Next.js 15 (React 19)
+-   **Language**: TypeScript
+-   **UI**: Tailwind CSS with shadcn/ui and Radix UI for accessible components.
+-   **State Management**: React Context (`AuthProvider`) and component-level state.
+-   **Authentication**: Supabase Auth (OAuth with Google/GitHub).
+-   **Database**: Supabase PostgreSQL.
+-   **AI Integration**: OpenRouter API for multi-model support.
+
+### Key Functional Components
+-   **Client-Side**: The application is primarily a single-page application (SPA) centered around the `ChatInterface` component. It manages chat state, user settings, and session history.
+-   **Server-Side**: The backend consists of numerous Next.js API Routes (`src/app/api`) that handle tasks like streaming chat responses, generating titles, and fetching AI models.
+-   **Authentication Flow**: Authentication is handled by Supabase. A client-side `AuthProvider` manages the user session, and an OAuth callback route (`/auth/callback/route.ts`) finalizes the login process.
+
+## 2. Architecture Review
+
+This section provides a critical analysis of the architectural decisions and implementation quality.
+
+### The Good 🟢
+-   **Modern Frontend**: The use of Next.js with the App Router, React 19, and shadcn/ui results in a modern, performant, and maintainable user interface.
+-   **Well-Structured UI Components**: The React components in `src/components` are well-organized, with a clear separation of concerns (e.g., `ChatLayout`, `ChatInterface`, `ChatMessages`).
+-   **Solid Authentication**: The implementation of Supabase Auth via the `AuthProvider` context is robust, providing a clean way to manage user sessions across the application. The `isConfigured` flag for handling unconfigured Supabase environments is a thoughtful touch for development.
+-   **Feature-Rich**: The application boasts an impressive set of features, including multi-model support, chat persistence, AI-powered summarization, and a polished user experience.
+
+### The Bad 🟡
+-   **Redundant Dependencies**: The project includes `next-auth` as a dependency, but all authentication logic is handled by `@supabase/ssr` and the custom `AuthProvider`. This adds unnecessary bloat and potential confusion.
+-   **Overly Complex Component**: The `ChatInterface` component has become overly complex, managing numerous pieces of state and side effects through a tangle of `useEffect` hooks. This makes it difficult to reason about and prone to bugs.
+-   **Hardcoded Values**: There are several hardcoded values, such as the default AI model in `ChatInterface.tsx`, which should be configurable or dynamically fetched.
+-   **Lack of Centralized API Logic**: The client-side `ChatService` attempts to be an abstraction layer, but its responsibilities are blurred. It mixes API calls (`fetch`) with direct calls to a database service, leading to architectural inconsistency.
+
+### The Ugly 🔴 (Critical Issues)
+-   **CRITICAL SECURITY RISK: Direct Client-Side Database Access**: The most significant issue is that the application performs direct database operations from the client-side. The `ChatService`, which runs in the browser, imports and uses `DatabaseService` (`supabase-operations.ts`). This service makes raw Supabase calls (`upsert`, `select`, `delete`) directly from the client.
+    -   **Why this is critical**: This architecture exposes your entire database schema and logic to the client. While Supabase's Row-Level Security (RLS) is used as a safeguard, relying solely on RLS for security is extremely risky. Any misconfiguration in RLS policies could lead to a severe data breach, allowing malicious users to access, modify, or delete other users' data.
+    -   **Best Practice**: Client-side applications should **NEVER** contain direct database queries. All database interactions must be proxied through secure, server-side API endpoints that validate user authentication, authorization, and input.
+-   **Test Routes in Production**: The codebase contains numerous API routes for testing and debugging purposes (e.g., `/api/database-test`, `/api/security-test`, `/api/debug`). While the middleware attempts to block these, their very existence in the codebase is a security liability. They should be removed entirely from the production build.
+
+## 3. Recommendations
+
+1.  **Refactor All Database Operations**: **This is the highest priority.** All functions within `supabase-operations.ts` must be moved to the server side.
+    -   Create new, secure API endpoints for every database operation (e.g., `POST /api/chat`, `GET /api/chat/[sessionId]`, `DELETE /api/chat/[sessionId]`).
+    -   The client-side `ChatService` should be refactored to **only** make `fetch` calls to these new API endpoints. It should contain no `import` statements from `@/lib/db`.
+    -   This change will properly secure the application and create a clear, maintainable client-server boundary.
+2.  **Clean Up API Routes**: Remove all test, debug, and unused API routes from the `src/app/api` directory.
+3.  **Simplify `ChatInterface`**: Refactor the `ChatInterface` component. Consider moving complex logic into custom hooks (e.g., `useSessionManager`, `useChatGenerator`) to better separate concerns and reduce the number of `useEffect` hooks.
+4.  **Remove `next-auth`**: Since it is unused, remove the `next-auth` package to clean up dependencies (`npm uninstall next-auth`).
+5.  **Centralize Configuration**: Move hardcoded values like the default model name into a centralized configuration file or fetch them from a user preferences endpoint.
+
+## 4. Detailed File Breakdown
+
+This section provides an overview of key files and directories.
+
+### Root Directory
+-   `middleware.ts`: Applies security headers, handles CORS, and attempts to block access to sensitive test paths in production.
+-   `next.config.ts`: Main Next.js configuration for performance, security headers, and image optimization.
+-   `package.json`: Lists project dependencies and defines development scripts. The key dependencies are `next`, `react`, `@supabase/ssr`, and `lucide-react`.
+
+### `src/app` Directory
+-   `layout.tsx`: The root layout, setting up the HTML structure, theme provider, and global styles.
+-   `page.tsx`: The application's entry point. It uses the `useAuth` hook to determine if a user is logged in, showing either the `LoginForm` or the main `ChatLayout`.
+-   **`api/`**: Contains all server-side API routes. This directory is a mix of legitimate application endpoints (`/api/chat`) and insecure test endpoints (`/api/database-test`).
+
+### `src/components` Directory
+-   **`auth/`**: Contains components related to authentication.
+    -   `auth-provider.tsx`: A critical component that uses React Context to provide session and user data throughout the app. It correctly handles loading states and checks if Supabase is configured.
+    -   `login-form.tsx`: The UI for logging in via OAuth providers.
+-   **`chat/`**: The core UI components for the chat functionality.
+    -   `chat-layout.tsx`: Organizes the `ChatHistorySidebar` and `ChatInterface`.
+    -   `chat-interface.tsx`: The main "smart" component that orchestrates the chat experience. **(Needs refactoring due to high complexity).**
+    -   `chat-history-sidebar.tsx`: Displays past conversations and allows session management.
+-   **`ui/`**: Reusable, low-level UI components from `shadcn/ui`.
+
+### `src/hooks` Directory
+-   `use-models.ts`: A custom hook for fetching and managing the list of available AI models.
+-   `use-toast.ts`: A simple hook for displaying toast notifications.
+
+### `src/lib` Directory
+-   `chat-service.ts`: A client-side class intended to be an abstraction layer for chat logic. **(Needs major refactoring to remove direct database calls).**
+-   `supabase.ts`: Initializes and exports the client-side Supabase client.
+-   **`db/supabase-operations.ts`**: **This file is the source of the critical security vulnerability.** It contains functions that make direct database calls from the client. **All logic in this file must be moved to server-side API routes.**
+
+### `sql` Directory
+-   Contains SQL scripts for database migrations and RLS policies. The presence of `rls_policies.sql` shows that security was considered, but it's not a sufficient replacement for a secure server-side API.
 
 ## Root Directory
 
@@ -15,8 +102,6 @@ This document provides a comprehensive overview of the files in this repository,
 -   `eslint.config.mjs`: This file configures ESLint, a static analysis tool for identifying and reporting on problematic patterns found in ECMAScript/JavaScript code. It helps maintain code quality and consistency across the codebase.
 
 -   `tsconfig.json`: This is the configuration file for the TypeScript compiler. It specifies the root files and the compiler options required to compile the project, such as target JavaScript version, module system, and path aliases (`@/*`).
-
--   `package.json`: This file lists the project's dependencies (libraries and frameworks) and defines various scripts for development, building, and testing the application (e.g., `npm run dev`, `npm run build`).
 
 -   `README.md`: This file provides a general overview of the project, its purpose, and instructions on how to set it up and run it.
 

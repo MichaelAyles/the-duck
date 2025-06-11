@@ -1,30 +1,33 @@
 # 🦆 The Duck - Quack-tastic AI Conversations
 
-A modern, friendly, and performant LLM chat interface with authentication, personalized experiences, and model flexibility. Ready to make waves in your AI conversations!
+A modern, friendly, and performant LLM chat interface with authentication, personalized experiences, and model flexibility.
 
 ![The Duck Logo](public/duck-favicon.svg)
 
-**🌐 Live Demo**: [https://theduck.chat](https://theduck.chat) | [https://the-duck-seven.vercel.app](https://the-duck-seven.vercel.app)
+**🌐 Live Demo**: [https://theduck.chat](https://theduck.chat)
 
 ## ✨ Features
 
-🎯 **Multi-Model Support** - OpenRouter integration with curated model selection  
-🔐 **Authentication** - Google & GitHub OAuth with Supabase Auth  
-💬 **Real-time Streaming** - Server-Sent Events for live AI responses  
-🎨 **Beautiful UI** - Modern design with duck-themed styling and dark/light modes  
-💾 **Chat Persistence** - User-specific conversation history with Supabase  
-📊 **Smart Summaries** - AI-powered conversation analysis and insights  
-🔒 **Type-Safe** - Full TypeScript coverage with Supabase client  
-⚡ **Performance** - Optimized builds with modern bundling  
-🛡️ **Secure** - Environment validation, RLS policies, and security headers  
-🌊 **Duck Mode** - Quack-tastic conversation experience!
+-   **Multi-Model Support**: Connects to OpenRouter for a wide selection of LLMs.
+-   **Secure Authentication**: User authentication via Supabase Auth (Google & GitHub OAuth).
+-   **Real-time Streaming**: Server-Sent Events for live, streaming AI responses.
+-   **Chat Persistence**: Saves conversation history to your Supabase database.
+-   **Modern UI**: A polished, responsive interface built with Tailwind CSS and shadcn/ui.
+-   **Dark/Light Mode**: User-selectable themes for comfort.
+-   **Type-Safe**: Fully written in TypeScript.
+
+## ⚠️ Important Security Note
+
+This project is intended as a template and requires a **critical security refactor** before being used in production. The current architecture makes direct database calls from the client-side, which is a major security risk.
+
+Please see the **`todo.md`** file for a prioritized list of tasks required to secure the application, starting with moving all database operations to server-side API routes.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
-- Supabase account (for database and authentication)
-- OpenRouter API key
+-   Node.js 18+
+-   A Supabase account (for database and authentication)
+-   An OpenRouter API key
 
 ### 1. Clone & Install
 ```bash
@@ -34,196 +37,69 @@ npm install
 ```
 
 ### 2. Environment Setup
+Create a `.env.local` file by copying the example:
 ```bash
-# Copy the example environment file
 cp .env.example .env.local
-
-# Edit .env.local with your actual credentials
 ```
-
-Required environment variables:
-- `OPENROUTER_API_KEY` - Get from [OpenRouter](https://openrouter.ai/keys)
-- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key
-- `NEXT_PUBLIC_APP_URL` - Your app URL (for OAuth redirects)
+Then, edit `.env.local` with your credentials:
+-   `OPENROUTER_API_KEY`: Your key from [OpenRouter](https://openrouter.ai/keys).
+-   `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL.
+-   `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key.
+-   `NEXT_PUBLIC_APP_URL`: The deployment URL of your app (e.g., `http://localhost:12000` for local development or your Vercel URL).
 
 ### 3. Supabase Setup
+You must run the migration script to set up your database tables and security policies.
+1.  Go to your Supabase project dashboard.
+2.  Navigate to the **SQL Editor**.
+3.  Open `supabase_migration.sql` from this repository, copy its contents, and run it in the editor.
 
-#### Database Setup
-Your Supabase database should already have the required tables if you've run the migration SQL. If not, you can create them manually in your Supabase dashboard using the SQL editor with the contents of `supabase_migration.sql`.
-
-#### Authentication Setup
-1. Go to your Supabase project dashboard
-2. Navigate to Authentication > Providers
-3. Enable Google and GitHub OAuth providers
-4. Add your OAuth app credentials
-5. Set redirect URLs to: `https://your-domain.com/auth/callback`
-
-### 4. OAuth Provider Setup
-
-#### GitHub OAuth App
-1. Go to GitHub Settings > Developer settings > OAuth Apps
-2. Create new OAuth App with:
-   - **Homepage URL**: `https://your-domain.com`
-   - **Authorization callback URL**: `https://your-domain.com/auth/callback`
-3. Copy Client ID and Client Secret to Supabase
-
-#### Google OAuth App
-1. Go to Google Cloud Console > APIs & Services > Credentials
-2. Create OAuth 2.0 Client ID with:
-   - **Authorized redirect URIs**: `https://your-domain.com/auth/callback`
-3. Copy Client ID and Client Secret to Supabase
-
-### 5. Start Development
+### 4. Run Development Server
 ```bash
-# Verify your setup
-npm run setup
-
 # Start the development server
 npm run dev
 ```
-
-Open [http://localhost:12000](http://localhost:12000) to see The Duck in action! 🦆
-
-## 🛠️ Development Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server on port 12000 |
-| `npm run build` | Build for production |
-| `npm run start` | Start production server |
-| `npm run setup` | Validate environment and setup |
-| `npm run check-env` | Check environment configuration |
-| `npm run type-check` | Run TypeScript type checking |
-| `npm run lint` | Run ESLint |
+Open [http://localhost:12000](http://localhost:12000) to see The Duck in action!
 
 ## 🏗️ Architecture
 
 ### Tech Stack
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **Authentication**: Supabase Auth with OAuth (Google, GitHub)
-- **UI**: Tailwind CSS, shadcn/ui, Radix UI
-- **Database**: Supabase PostgreSQL with built-in client
-- **AI**: OpenRouter API with multiple model support
-- **Deployment**: Vercel with automatic deployments
+-   **Framework**: Next.js 15, React 19, TypeScript
+-   **UI**: Tailwind CSS, shadcn/ui, Radix UI
+-   **Authentication**: Supabase Auth
+-   **Database**: Supabase PostgreSQL
+-   **AI**: OpenRouter API
+-   **Deployment**: Vercel
 
-### Project Structure
+### Project Structure (Current)
 ```
 src/
-├── app/                    # Next.js App Router
-│   ├── auth/              # Authentication routes
-│   └── api/               # API routes
-├── components/             # React components
-│   ├── auth/              # Authentication components
-│   ├── chat/              # Chat interface components
-│   └── ui/                # Reusable UI components
-├── hooks/                 # Custom React hooks
-├── lib/                   # Utilities and services
-│   ├── db/                # Database schema and operations
-│   └── env.ts             # Environment validation
-└── types/                 # TypeScript type definitions
+├── app/              # Next.js App Router (Pages & API Routes)
+├── components/       # React components
+├── hooks/            # Custom React hooks
+├── lib/              # Utilities, services, and configuration
+│   └── db/           # (INSECURE) Direct DB operations
+└── types/            # TypeScript type definitions
 ```
+**Note**: The architecture needs to be refactored to move all logic from `src/lib/db/` into secure, server-side API routes within `src/app/api/`.
 
-## 🔐 Authentication & Security
+## 🔐 Security (Needs Improvement)
 
-### User Authentication
-- **OAuth Providers**: Google and GitHub integration
-- **Session Management**: Secure JWT tokens with Supabase
-- **Route Protection**: Automatic redirects for unauthenticated users
-- **User Profiles**: Persistent user data and preferences
-
-### Security Features
-- **Row Level Security (RLS)**: Database-level access control
-- **Input Validation**: Comprehensive request validation
-- **Rate Limiting**: API endpoint protection
-- **CORS Protection**: Secure cross-origin requests
-- **Environment Validation**: Runtime configuration checks
-
-## 🦆 Duck Features
-
-### Special Duck Mode
-Activate "Duck Mode" for a quack-tastic conversation experience where responses are translated into duck speak! Perfect for fun conversations.
-
-### Duck-Themed UI
-- Custom duck gradients and shadows
-- Animated duck logo with hover effects
-- Wave patterns and water-themed styling
-- Smooth transitions with "duck glow"
-
-### User Experience
-- **Persistent Chat History**: All conversations saved per user
-- **Cross-Device Sync**: Access your chats from anywhere
-- **Smart Summaries**: AI-powered conversation insights
-- **Personalized Settings**: Custom preferences and themes
+-   **Authentication**: Handled securely by Supabase.
+-   **Authorization**: Currently relies on PostgreSQL Row-Level Security (RLS). While RLS is a necessary layer, it is **not sufficient** on its own when database logic is exposed to the client. The application must be refactored to use server-side API routes as the primary security boundary.
+-   **Test Routes**: The codebase contains several test and debug API routes that should be removed before production deployment.
 
 ## 🚀 Deployment
 
-### Vercel Deployment (Recommended)
-1. Push your code to GitHub
-2. Connect repository to Vercel
-3. Add environment variables in Vercel dashboard:
-   ```
-   OPENROUTER_API_KEY=your_openrouter_key
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   NEXT_PUBLIC_APP_URL=https://your-domain.com
-   ```
-4. Deploy! 🎉
+This application can be deployed to Vercel. However, it is **strongly recommended** that you complete the security refactoring outlined in `todo.md` **before** deploying to a public environment.
 
-### Manual Deployment
-```bash
-npm run build
-npm run start
-```
-
-## 🧪 Testing
-
-Test database operations:
-```bash
-# Start development server
-npm run dev
-
-# Test database connectivity
-curl http://localhost:12000/api/database-test
-
-# Test chat functionality
-curl -X POST http://localhost:12000/api/database-test
-```
-
-Test authentication:
-```bash
-# Visit the app and try logging in with Google/GitHub
-# Check browser network tab for auth flow
-```
-
-## 🤝 Contributing
-
-We welcome contributions to make The Duck even more quack-tastic! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly (including authentication flows)
-5. Submit a pull request
-
-### Development Guidelines
-- Follow TypeScript best practices
-- Test authentication flows before submitting
-- Ensure database migrations are included
-- Update documentation for new features
+1.  Push your code to a GitHub repository.
+2.  Connect the repository to Vercel.
+3.  Add the required environment variables in the Vercel project settings.
+4.  Deploy.
 
 ## 📝 License
 
-This project is licensed under the **GNU General Public License v3.0** (GPL-3.0).
-
-This means:
-- ✅ You can use, modify, and distribute this software
-- ✅ You can use it for commercial purposes
-- ⚠️ Any derivative work must also be licensed under GPL-3.0
-- ⚠️ You must include the original license and copyright notice
-- ⚠️ You must disclose the source code of any distributed modifications
-
-See the [LICENSE](LICENSE) file for full details.
+This project is licensed under the **GNU General Public License v3.0** (GPL-3.0). See the [LICENSE](LICENSE) file for full details.
 
 ## 🦆 About The Duck
 
