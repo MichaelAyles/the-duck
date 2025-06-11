@@ -1,24 +1,61 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { ChatInterface } from "./chat-interface";
+import { ChatInterface, Message } from "./chat-interface";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useToast } from "@/hooks/use-toast";
 
 export function ChatLayout() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user } = useAuth();
+  const { toast } = useToast();
 
-  const handleSessionSelect = useCallback((sessionId: string) => {
+  const handleSessionSelect = useCallback(async (sessionId: string) => {
+    if (sessionId === currentSessionId) return;
+
+    setIsLoading(true);
     setCurrentSessionId(sessionId);
-    // Trigger a refresh of the chat history to ensure it's up to date
-    setRefreshTrigger(prev => prev + 1);
-  }, []);
+    setMessages([]); // Clear previous messages
+
+    try {
+      const response = await fetch(`/api/load-session?sessionId=${sessionId}`);
+      if (!response.ok) {
+        throw new Error("Failed to load session");
+      }
+      const data = await response.json();
+      setMessages(data.session?.messages || []);
+      toast({
+        title: "Chat Loaded",
+        description: `Successfully loaded session: ${data.session?.title?.slice(0, 30)}...`,
+      });
+    } catch (error) {
+      console.error("Error loading session:", error);
+      toast({
+        title: "Error",
+        description: "Could not load the selected chat session.",
+        variant: "destructive",
+      });
+      setCurrentSessionId(null); // Reset on error
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentSessionId, toast]);
 
   const handleNewChat = useCallback(() => {
     setCurrentSessionId(null);
+    setMessages([]);
+    setRefreshTrigger(prev => prev + 1); // Refresh history to show new chat
+  }, []);
+
+  const handleSessionUpdate = useCallback((sessionId: string, newMessages: Message[]) => {
+    setCurrentSessionId(sessionId);
+    setMessages(newMessages);
+    setRefreshTrigger(prev => prev + 1); // Refresh history to update timestamp
   }, []);
 
   const handleToggleSidebar = useCallback(() => {
@@ -47,7 +84,10 @@ export function ChatLayout() {
         <ChatInterface
           key={currentSessionId || 'new'} // Force re-render when session changes
           sessionId={currentSessionId}
-          onSessionUpdate={handleSessionSelect}
+          initialMessages={messages}
+          isLoading={isLoading}
+          onNewChat={handleNewChat}
+          onSessionUpdate={handleSessionUpdate}
         />
       </div>
     </div>

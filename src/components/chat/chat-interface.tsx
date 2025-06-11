@@ -30,12 +30,21 @@ export interface ChatSettings {
 
 interface ChatInterfaceProps {
   sessionId?: string | null;
-  onSessionUpdate?: (sessionId: string) => void;
+  initialMessages?: Message[];
+  isLoading?: boolean;
+  onNewChat?: () => void;
+  onSessionUpdate?: (sessionId: string, newMessages: Message[]) => void;
 }
 
-export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessionUpdate }: ChatInterfaceProps = {}) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+export const ChatInterface = React.memo(({ 
+  sessionId: initialSessionId, 
+  initialMessages,
+  isLoading: isPageLoading,
+  onNewChat,
+  onSessionUpdate 
+}: ChatInterfaceProps = {}) => {
+  const [messages, setMessages] = useState<Message[]>(initialMessages || []);
+  const [isLoading, setIsLoading] = useState(isPageLoading || false);
   const [settings, setSettings] = useState<ChatSettings>({
     model: "google/gemini-2.5-flash-preview-05-20", // Start with Flash, will be updated with user's primary model
     tone: "match-user",
@@ -119,6 +128,20 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
     }
   }, [initialSessionId, sessionId, user, loadSessionMessages]);
 
+  // When initialMessages changes, update our state
+  useEffect(() => {
+    if (initialMessages) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages]);
+
+  // When page loading state changes, update our state
+  useEffect(() => {
+    if (isPageLoading !== undefined) {
+      setIsLoading(isPageLoading);
+    }
+  }, [isPageLoading]);
+
   // Generate title after a few messages
   const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string) => {
     // Generate title after user sends 2nd message (to have some context)
@@ -169,7 +192,7 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
       
       // Notify parent about session change
       if (onSessionUpdate) {
-        onSessionUpdate(newSessionId);
+        onSessionUpdate(newSessionId, []);
       }
       
       // Setup inactivity handler
@@ -201,10 +224,10 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
 
     // Load messages for the session
     if (user) {
-      if (initialSessionId) {
-        // Load existing session messages
+      if (initialSessionId && !initialMessages?.length) {
+        // Load existing session messages if not already provided
         loadSessionMessages(initialSessionId);
-      } else {
+      } else if (!initialSessionId) {
         // New session - clear messages to trigger welcome message
         setMessages([]);
       }
@@ -261,18 +284,20 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
       },
     };
 
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    const newMessages = [...messages, userMessage, assistantMessage];
+
+    setMessages(newMessages);
     setIsLoading(true);
 
     try {
       // Save chat session if storage is enabled and user is authenticated
       if (settings.storageEnabled && user) {
-        await chatServiceRef.current?.saveChatSession([...messages, userMessage], settings.model);
+        await chatServiceRef.current?.saveChatSession(newMessages, settings.model);
       }
 
       // Generate title after a few messages if we have a session and user
       if (sessionId && user) {
-        generateTitleIfNeeded([...messages, userMessage], sessionId);
+        generateTitleIfNeeded(newMessages, sessionId);
       }
 
       const response = await fetch('/api/chat', {
@@ -281,7 +306,7 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map(msg => ({
+          messages: newMessages.map(msg => ({
             role: msg.role,
             content: msg.content,
           })),
@@ -367,6 +392,16 @@ export const ChatInterface = React.memo(({ sessionId: initialSessionId, onSessio
         ];
       });
     }
+
+    if (onSessionUpdate && sessionId) {
+      const updatedMessages = [...newMessages, assistantMessage]
+      onSessionUpdate(sessionId, updatedMessages)
+      setMessages(updatedMessages)
+    } else {
+      setMessages(newMessages => [...newMessages, assistantMessage]);
+    }
+
+    setIsLoading(false);
   };
 
   const handleSettingsChange = async (newSettings: Partial<ChatSettings>) => {
