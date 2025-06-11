@@ -125,7 +125,7 @@ export async function createUserPreferencesWithDynamicDefaults(userId: string): 
       }
     })
 
-    let dynamicDefaults = { ...DEFAULT_USER_PREFERENCES }
+    const dynamicDefaults = { ...DEFAULT_USER_PREFERENCES }
 
     if (response.ok) {
       const { data: allModels } = await response.json()

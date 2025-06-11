@@ -40,12 +40,32 @@ npm start
 # Run linting
 npm run lint
 
+# Run linting with auto-fix
+npm run lint:fix
+
 # Run type checking
 npm run type-check
+
+# Run complete workflow (build + lint + type-check)
+npm run workflow
 
 # Database setup (first time only)
 node scripts/dev-setup.js
 ```
+
+## Automated Workflow
+
+**IMPORTANT**: After completing any development task, always run the complete workflow:
+
+1. **Build**: `npm run build` - Ensure the project builds successfully
+2. **Lint**: `npm run lint:fix` - Fix linting errors automatically where possible
+3. **Type Check**: `npm run type-check` - Verify TypeScript types are correct
+4. **Commit**: Only commit if all checks pass
+5. **Push**: Push changes to remote repository
+
+Use the shorthand command: `npm run workflow` to run steps 1-3 automatically.
+
+**Pre-commit Hook**: A git hook is configured to automatically run these checks before any commit.
 
 ## Architecture
 

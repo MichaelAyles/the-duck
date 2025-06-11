@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { sessionId } = params
+    const { sessionId } = await params
 
     const { data, error } = await supabase
       .from('chat_sessions')
@@ -50,7 +50,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -62,7 +62,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { sessionId } = params
+    const { sessionId } = await params
     const body = await request.json()
     const { title, messages, is_active } = body
 
@@ -109,7 +109,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -121,7 +121,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { sessionId } = params
+    const { sessionId } = await params
 
     // Delete associated summary first (if exists)
     await supabase
