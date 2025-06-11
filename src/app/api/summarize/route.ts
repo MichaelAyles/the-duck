@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Message } from '@/components/chat/chat-interface'
+import { createClient } from '@/lib/supabase/server'
+import { nanoid } from 'nanoid'
 
 // Helper function to create a fallback summary
 function createFallbackSummary(messages: Message[]) {
@@ -31,7 +33,18 @@ function createFallbackSummary(messages: Message[]) {
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json()
+    const { messages, sessionId } = await req.json()
+
+    // Get authenticated user if we need to save the summary
+    let userId: string | null = null
+    if (sessionId) {
+      const supabase = await createClient()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (!authError && user) {
+        userId = user.id
+      }
+    }
 
     // Check if OpenRouter API key is available
     if (!process.env.OPENROUTER_API_KEY) {
@@ -111,6 +124,38 @@ Format your response as a JSON object with the following structure:
       
       // Parse the cleaned JSON response
       const summary = JSON.parse(cleanedText)
+      
+      // Save summary to database if sessionId and userId are available
+      if (sessionId && userId) {
+        try {
+          const supabase = await createClient()
+          
+          const summaryData = {
+            id: nanoid(),
+            session_id: sessionId,
+            summary: summary.summary,
+            key_topics: summary.keyTopics || [],
+            user_preferences: summary.userPreferences || {},
+            writing_style_analysis: summary.userPreferences?.implicit?.writingStyle || {},
+          }
+
+          const { error } = await supabase
+            .from('chat_summaries')
+            .upsert(summaryData, {
+              onConflict: 'session_id',
+              ignoreDuplicates: false,
+            })
+
+          if (error) {
+            console.error('Failed to save chat summary to database:', error)
+          } else {
+            console.log(`✅ Saved chat summary for session: ${sessionId}`)
+          }
+        } catch (dbError) {
+          console.error('Error saving summary to database:', dbError)
+        }
+      }
+      
       return NextResponse.json(summary)
     } catch (parseError) {
       console.warn('Failed to parse summary JSON, using fallback:', parseError)

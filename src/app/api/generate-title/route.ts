@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Message } from '@/components/chat/chat-interface'
-import { SupabaseDatabaseService } from '@/lib/db/supabase-operations'
 import { createClient } from '@/lib/supabase/server'
-import { OpenRouterClient } from '@/lib/openrouter'
 
 /**
  * 🏷️ Chat Title Generation API
@@ -128,29 +126,47 @@ Respond with ONLY the title, nothing else.`
       }
     }
 
-    // Verify user owns the session
-    const existingSession = await SupabaseDatabaseService.getChatSession(supabase, sessionId, user.id)
-    if (!existingSession) {
-      return NextResponse.json({ error: 'Chat session not found or access denied' }, { status: 404 })
+    // Verify user owns the session by fetching it first
+    const sessionResponse = await fetch(new URL(`/api/sessions/${sessionId}`, req.url).toString(), {
+      method: 'GET',
+      headers: {
+        'Cookie': req.headers.get('cookie') || '',
+      },
+    })
+
+    if (!sessionResponse.ok) {
+      if (sessionResponse.status === 404) {
+        return NextResponse.json({ error: 'Chat session not found or access denied' }, { status: 404 })
+      }
+      throw new Error('Failed to fetch session')
     }
+
+    const sessionData = await sessionResponse.json()
+    const existingSession = sessionData.session
 
     console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle}`)
 
-    // Save the new title to the database
-    await SupabaseDatabaseService.saveChatSession(
-      supabase,
-      sessionId,
-      generatedTitle,
-      existingSession.messages as any,
-      existingSession.model,
-      user.id
-    )
+    // Update the session with the new title
+    const updateResponse = await fetch(new URL(`/api/sessions/${sessionId}`, req.url).toString(), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': req.headers.get('cookie') || '',
+      },
+      body: JSON.stringify({
+        title: generatedTitle,
+      }),
+    })
+
+    if (!updateResponse.ok) {
+      console.error('Failed to update session title')
+    }
 
     return NextResponse.json({
       title: generatedTitle,
       method,
       sessionId,
-      updated: !!user // Indicate if we updated the database
+      updated: updateResponse.ok
     })
 
   } catch (error) {
@@ -165,4 +181,4 @@ Respond with ONLY the title, nothing else.`
       error: error instanceof Error ? error.message : 'Unknown error'
     })
   }
-} 
+}

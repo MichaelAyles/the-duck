@@ -1,19 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient } from '@/lib/openrouter'
 import { 
-  getUserPreferences,
-  DEFAULT_USER_PREFERENCES
-} from '@/lib/db/server-operations'
-import {
-  searchModels,
-  getRecommendedModels
-} from '@/lib/db/supabase-operations'
-import { 
   withSecurity, 
   withRateLimit, 
   SECURITY_CONFIG 
 } from '@/lib/security'
-import { getUserId } from '@/lib/auth'
+
+const DEFAULT_STARRED_MODELS = [
+  'google/gemini-2.5-flash-preview-05-20',
+  'google/gemini-2.5-pro-preview-05-06',
+  'deepseek/deepseek-chat-v3-0324',
+  'anthropic/claude-sonnet-4',
+  'openai/gpt-4o-mini'
+]
+
+const DEFAULT_PRIMARY_MODEL = DEFAULT_STARRED_MODELS[0]
+
+function searchModels(
+  allModels: any[], 
+  searchQuery: string, 
+  filters: {
+    provider?: string
+    minContextLength?: number
+    maxCostPerToken?: number
+    includeFreeTier?: boolean
+    capabilities?: string[]
+  } = {}
+): any[] {
+  if (!allModels || allModels.length === 0) {
+    return []
+  }
+
+  let filteredModels = allModels
+
+  // Text search
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase()
+    filteredModels = filteredModels.filter((model: any) => 
+      model.name.toLowerCase().includes(query) ||
+      model.id.toLowerCase().includes(query) ||
+      (model.description && model.description.toLowerCase().includes(query))
+    )
+  }
+
+  // Provider filter
+  if (filters.provider) {
+    filteredModels = filteredModels.filter((model: any) => 
+      model.id.startsWith(filters.provider + '/')
+    )
+  }
+
+  // Context length filter
+  if (filters.minContextLength !== undefined) {
+    filteredModels = filteredModels.filter((model: any) => 
+      (model.context_length || 0) >= filters.minContextLength!
+    )
+  }
+
+  // Cost filter (approximate based on pricing structure)
+  if (filters.maxCostPerToken !== undefined) {
+    filteredModels = filteredModels.filter((model: any) => {
+      if (!model.pricing) return true // Include models without pricing info
+      const promptCost = model.pricing.prompt || 0
+      const completionCost = model.pricing.completion || 0
+      const avgCost = (promptCost + completionCost) / 2
+      return avgCost <= filters.maxCostPerToken!
+    })
+  }
+
+  // Free tier filter
+  if (filters.includeFreeTier === false) {
+    filteredModels = filteredModels.filter((model: any) => 
+      !model.id.includes(':free') && 
+      !(model.pricing?.prompt === 0 && model.pricing?.completion === 0)
+    )
+  } else if (filters.includeFreeTier === true) {
+    // Only show free models
+    filteredModels = filteredModels.filter((model: any) => 
+      model.id.includes(':free') || 
+      (model.pricing?.prompt === 0 && model.pricing?.completion === 0)
+    )
+  }
+
+  // Sort by relevance and quality
+  return filteredModels.sort((a: any, b: any) => {
+    // Prioritize our curated top models
+    const isACurated = DEFAULT_STARRED_MODELS.includes(a.id)
+    const isBCurated = DEFAULT_STARRED_MODELS.includes(b.id)
+    
+    if (isACurated !== isBCurated) {
+      return isACurated ? -1 : 1
+    }
+
+    // Then by context length (higher is better)
+    const contextDiff = (b.context_length || 0) - (a.context_length || 0)
+    if (contextDiff !== 0) {
+      return contextDiff
+    }
+
+    // Then by provider ranking
+    const providerScore = (model: any) => {
+      const provider = model.id.split('/')[0]
+      const providerRanks: { [key: string]: number } = {
+        'google': 10,
+        'deepseek': 9,
+        'anthropic': 8,
+        'openai': 7,
+        'meta-llama': 6,
+        'mistralai': 5
+      }
+      return providerRanks[provider] || 0
+    }
+    
+    const providerDiff = providerScore(b) - providerScore(a)
+    if (providerDiff !== 0) {
+      return providerDiff
+    }
+
+    // Finally alphabetically
+    return a.name.localeCompare(b.name)
+  })
+}
 
 async function handleSearchModelsRequest(request: NextRequest): Promise<NextResponse> {
   try {
@@ -42,11 +149,28 @@ async function handleSearchModelsRequest(request: NextRequest): Promise<NextResp
     const allModels = await client.getModels()
 
     // Get user preferences with fallback to defaults
-    let userPreferences = DEFAULT_USER_PREFERENCES
+    let userPreferences = {
+      starredModels: DEFAULT_STARRED_MODELS,
+      primaryModel: DEFAULT_PRIMARY_MODEL
+    }
+    
     try {
-      const userId = await getUserId(request)
-      if (userId && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        userPreferences = await getUserPreferences(userId)
+      // Try to get user preferences from the API
+      const prefsResponse = await fetch(new URL('/api/user/preferences', request.url).toString(), {
+        method: 'GET',
+        headers: {
+          'Cookie': request.headers.get('cookie') || '',
+        },
+      })
+
+      if (prefsResponse.ok) {
+        const prefsData = await prefsResponse.json()
+        if (prefsData.preferences) {
+          userPreferences = {
+            starredModels: prefsData.preferences.starredModels || DEFAULT_STARRED_MODELS,
+            primaryModel: prefsData.preferences.primaryModel || DEFAULT_PRIMARY_MODEL
+          }
+        }
       }
     } catch (error) {
       console.warn('Could not fetch user preferences, using defaults:', error)
@@ -55,14 +179,25 @@ async function handleSearchModelsRequest(request: NextRequest): Promise<NextResp
     let results: any[]
 
     if (getRecommended) {
-      // Get personalized recommendations
-      const userId = await getUserId(request)
-      if (userId) {
-        results = await getRecommendedModels(userId, allModels, limit)
-      } else {
-        // If not authenticated, just return top models
-        results = allModels.slice(0, limit)
-      }
+      // Get personalized recommendations based on starred models
+      const preferredProviders = new Set(
+        userPreferences.starredModels.map(id => id.split('/')[0])
+      )
+      
+      // Prioritize models from same providers as starred models
+      results = allModels.sort((a, b) => {
+        const aStarred = userPreferences.starredModels.includes(a.id)
+        const bStarred = userPreferences.starredModels.includes(b.id)
+        
+        if (aStarred !== bStarred) return aStarred ? -1 : 1
+        
+        const aPreferredProvider = preferredProviders.has(a.id.split('/')[0])
+        const bPreferredProvider = preferredProviders.has(b.id.split('/')[0])
+        
+        if (aPreferredProvider !== bPreferredProvider) return aPreferredProvider ? -1 : 1
+        
+        return 0
+      })
     } else {
       // Perform parametric search
       results = searchModels(allModels, query, {
@@ -113,4 +248,4 @@ export const GET = withSecurity(
   withRateLimit(SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS.API)(
     handleSearchModelsRequest
   )
-) 
+)

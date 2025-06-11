@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { SupabaseDatabaseService } from '@/lib/db/supabase-operations'
 
 /**
  * 📜 Chat History API
  * 
  * Fetches user's chat history with pagination and search support
+ * This is a proxy to the sessions API for backward compatibility
  */
 
 export async function GET(req: NextRequest) {
   try {
+    // Check authentication first
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -17,25 +18,36 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
+    // Forward to sessions API with same parameters
     const { searchParams } = new URL(req.url)
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const offset = parseInt(searchParams.get('offset') || '0')
-    const search = searchParams.get('search') || ''
+    const sessionsUrl = new URL('/api/sessions', req.url)
+    
+    // Copy all search params
+    searchParams.forEach((value, key) => {
+      sessionsUrl.searchParams.set(key, value)
+    })
 
-    let sessions
+    const response = await fetch(sessionsUrl.toString(), {
+      method: 'GET',
+      headers: {
+        'Cookie': req.headers.get('cookie') || '',
+      },
+    })
 
-    if (search) {
-      sessions = await SupabaseDatabaseService.searchChatSessions(supabase, search, user.id, limit)
-    } else {
-      sessions = await SupabaseDatabaseService.getAllChatSessions(supabase, user.id, limit, offset)
+    if (!response.ok) {
+      const error = await response.json()
+      return NextResponse.json(error, { status: response.status })
     }
 
-    // Format the response
-    const formattedSessions = sessions.map(session => {
-      const messages = Array.isArray(session.messages) ? session.messages as any[] : []
+    const data = await response.json()
+    const sessions = data.sessions || []
+
+    // Format the response to match the expected format
+    const formattedSessions = sessions.map((session: any) => {
+      const messages = Array.isArray(session.messages) ? session.messages : []
       const messageCount = messages.length
-      const lastMessage = messages[messages.length - 1] as any
-      const firstUserMessage = messages.find((msg: any) => msg.role === 'user') as any
+      const lastMessage = messages[messages.length - 1]
+      const firstUserMessage = messages.find((msg: any) => msg.role === 'user')
 
       return {
         id: session.id,
@@ -51,9 +63,8 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    const total = search 
-      ? formattedSessions.length 
-      : (await SupabaseDatabaseService.getStats(supabase, user.id)).totalSessions
+    const limit = parseInt(searchParams.get('limit') || '20')
+    const offset = parseInt(searchParams.get('offset') || '0')
 
     return NextResponse.json({
       sessions: formattedSessions,
@@ -61,7 +72,7 @@ export async function GET(req: NextRequest) {
         limit,
         offset,
         hasMore: sessions.length === limit,
-        total: total
+        total: sessions.length // We don't have total count from the API
       }
     })
   } catch (error) {
@@ -81,6 +92,7 @@ export async function GET(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
+    // Check authentication first
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -95,7 +107,20 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 })
     }
 
-    await SupabaseDatabaseService.deleteChatSession(supabase, sessionId, user.id)
+    // Forward to sessions API
+    const deleteUrl = new URL(`/api/sessions/${sessionId}`, req.url)
+    
+    const response = await fetch(deleteUrl.toString(), {
+      method: 'DELETE',
+      headers: {
+        'Cookie': req.headers.get('cookie') || '',
+      },
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return NextResponse.json(error, { status: response.status })
+    }
 
     return NextResponse.json({
       success: true,
@@ -133,4 +158,4 @@ function getConversationPreview(messages: any[]): string {
   } else {
     return 'Conversation started'
   }
-} 
+}

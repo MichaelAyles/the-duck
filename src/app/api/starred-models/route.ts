@@ -1,76 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { 
-  toggleStarredModel,
-  setPrimaryModel,
-  getUserPreferences,
-  DEFAULT_USER_PREFERENCES 
-} from '@/lib/db/server-operations'
-import { 
   withSecurity, 
   withRateLimit, 
   SECURITY_CONFIG 
 } from '@/lib/security'
-import { getUserId, requireAuth } from '@/lib/auth'
+
+const DEFAULT_STARRED_MODELS = [
+  'google/gemini-2.5-flash-preview-05-20',
+  'google/gemini-2.5-pro-preview-05-06',
+  'deepseek/deepseek-chat-v3-0324',
+  'anthropic/claude-sonnet-4',
+  'openai/gpt-4o-mini'
+]
+
+const DEFAULT_PRIMARY_MODEL = DEFAULT_STARRED_MODELS[0]
 
 async function handleStarredModelsGet(request: NextRequest): Promise<NextResponse> {
   try {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      return NextResponse.json(
-        { 
-          error: 'Supabase not configured',
-          details: 'NEXT_PUBLIC_SUPABASE_URL environment variable is required'
-        },
-        { status: 500 }
-      )
-    }
+    // Try to get user preferences from the user preferences API
+    const response = await fetch(new URL('/api/user/preferences', request.url).toString(), {
+      method: 'GET',
+      headers: {
+        'Cookie': request.headers.get('cookie') || '',
+      },
+    })
 
-    // Get user ID - if not authenticated, return defaults
-    const userId = await getUserId(request)
-    if (!userId) {
+    if (!response.ok) {
+      // If not authenticated or error, return defaults
       return NextResponse.json({ 
-        starredModels: DEFAULT_USER_PREFERENCES.starredModels,
-        primaryModel: DEFAULT_USER_PREFERENCES.primaryModel,
-        message: 'Using default preferences (not authenticated)'
+        starredModels: DEFAULT_STARRED_MODELS,
+        primaryModel: DEFAULT_PRIMARY_MODEL,
+        message: 'Using default preferences'
       })
     }
 
-    // User is authenticated - try to get or create preferences
-    try {
-      const preferences = await getUserPreferences(userId)
-      
-      return NextResponse.json({ 
-        starredModels: preferences.starredModels,
-        primaryModel: preferences.primaryModel,
-        message: 'User preferences loaded successfully'
-      })
-    } catch (error) {
-      console.error('Error getting user preferences for user', userId, ':', error)
-      
-      // If we can't get/create preferences, return defaults but log the error
-      return NextResponse.json({ 
-        starredModels: DEFAULT_USER_PREFERENCES.starredModels,
-        primaryModel: DEFAULT_USER_PREFERENCES.primaryModel,
-        message: 'Using default preferences (error loading user preferences)',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      })
-    }
+    const data = await response.json()
+    const preferences = data.preferences
+
+    return NextResponse.json({ 
+      starredModels: preferences.starredModels || DEFAULT_STARRED_MODELS,
+      primaryModel: preferences.primaryModel || DEFAULT_PRIMARY_MODEL,
+      message: 'User preferences loaded successfully'
+    })
   } catch (error) {
     console.error('Starred models GET error:', error)
-    return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'Internal server error',
-        details: 'Failed to fetch starred models'
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ 
+      starredModels: DEFAULT_STARRED_MODELS,
+      primaryModel: DEFAULT_PRIMARY_MODEL,
+      message: 'Using default preferences (error loading)',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
   }
 }
 
 async function handleStarredModelsPost(request: NextRequest): Promise<NextResponse> {
   try {
-    // Require authentication for modifying starred models
-    const user = await requireAuth(request)
-    
     // Parse request body
     const body = await request.json()
     const { modelId, action }: { 
@@ -85,30 +69,45 @@ async function handleStarredModelsPost(request: NextRequest): Promise<NextRespon
       )
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      return NextResponse.json(
-        { 
-          error: 'Supabase not configured',
-          details: 'NEXT_PUBLIC_SUPABASE_URL environment variable is required'
-        },
-        { status: 500 }
-      )
+    // Map action to user preferences API action
+    const apiAction = action === 'set_primary' ? 'setPrimary' : 'toggleStarred'
+
+    // Forward request to user preferences API
+    const response = await fetch(new URL('/api/user/preferences', request.url).toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': request.headers.get('cookie') || '',
+      },
+      body: JSON.stringify({
+        action: apiAction,
+        modelId,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      
+      if (response.status === 401) {
+        return NextResponse.json(
+          { 
+            error: 'Authentication required',
+            details: 'You must be logged in to modify starred models'
+          },
+          { status: 401 }
+        )
+      }
+      
+      throw new Error(errorData.error || 'Failed to update preferences')
     }
 
-    // Handle different actions
-    let updatedPreferences
-    let message = ''
-    
-    if (action === 'set_primary') {
-      updatedPreferences = await setPrimaryModel(user.id, modelId)
-      message = `Primary model set to ${modelId}`
-    } else {
-      updatedPreferences = await toggleStarredModel(user.id, modelId)
-      const isStarred = updatedPreferences.starredModels.includes(modelId)
-      message = `Model ${isStarred ? 'starred' : 'unstarred'} successfully`
-    }
-    
+    const data = await response.json()
+    const updatedPreferences = data.preferences
     const isStarred = updatedPreferences.starredModels.includes(modelId)
+    
+    const message = action === 'set_primary' 
+      ? `Primary model set to ${modelId}`
+      : `Model ${isStarred ? 'starred' : 'unstarred'} successfully`
     
     return NextResponse.json({ 
       starredModels: updatedPreferences.starredModels,
@@ -120,20 +119,10 @@ async function handleStarredModelsPost(request: NextRequest): Promise<NextRespon
   } catch (error) {
     console.error('Starred models POST error:', error)
     
-    if (error instanceof Error && error.message === 'Authentication required') {
-      return NextResponse.json(
-        { 
-          error: 'Authentication required',
-          details: 'You must be logged in to modify starred models'
-        },
-        { status: 401 }
-      )
-    }
-    
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Internal server error',
-        details: 'Failed to toggle starred model'
+        details: 'Failed to update starred models'
       },
       { status: 500 }
     )
@@ -151,4 +140,4 @@ export const POST = withSecurity(
   withRateLimit(SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS.API)(
     handleStarredModelsPost
   )
-) 
+)

@@ -1,4 +1,3 @@
-import { DatabaseService } from './db/operations'
 import { Message } from '@/components/chat/chat-interface'
 import { nanoid } from 'nanoid'
 
@@ -63,13 +62,23 @@ export class ChatService {
 
       const title = this.generateTitle(messages)
       
-      await DatabaseService.saveChatSession(
-        this.sessionId,
-        title,
-        messages,
-        model,
-        this.userId
-      )
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: this.sessionId,
+          title,
+          messages,
+          model,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save chat session')
+      }
     } catch (error) {
       // Handle errors gracefully
       console.warn('Chat session save failed (storage may be disabled):', error)
@@ -88,11 +97,28 @@ export class ChatService {
       }
 
       console.log(`Loading session ${this.sessionId} for user ${this.userId}`)
-      const session = await DatabaseService.getChatSession(this.sessionId, this.userId)
+      
+      const response = await fetch(`/api/sessions/${this.sessionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log(`Session ${this.sessionId} not found`)
+          return []
+        }
+        throw new Error('Failed to load chat session')
+      }
+
+      const data = await response.json()
+      const session = data.session
       
       if (session && Array.isArray(session.messages)) {
         console.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
-        return session.messages as unknown as Message[]
+        return session.messages as Message[]
       }
       
       console.log(`No messages found for session ${this.sessionId}`)
@@ -111,7 +137,10 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ 
+          messages,
+          sessionId: this.sessionId 
+        }),
       })
 
       if (!response.ok) {
@@ -120,15 +149,8 @@ export class ChatService {
 
       const summary = await response.json()
 
-      // Save the summary to the database
-      await DatabaseService.saveChatSummary(
-        nanoid(),
-        this.sessionId,
-        summary.summary,
-        summary.keyTopics,
-        summary.userPreferences,
-        summary.userPreferences?.implicit?.writingStyle || {}
-      )
+      // Note: The summarize API should handle saving the summary to the database
+      // This keeps the client-side code simpler and more secure
 
       return summary
     } catch (error) {
@@ -155,7 +177,20 @@ export class ChatService {
 
   public async endChatSession(): Promise<void> {
     try {
-      await DatabaseService.endChatSession(this.sessionId, this.userId)
+      const response = await fetch(`/api/sessions/${this.sessionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          is_active: false,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to end chat session')
+      }
+
       this.clearInactivityTimer()
     } catch (error) {
       console.warn('Failed to end chat session:', error)
@@ -206,9 +241,21 @@ export class ChatService {
         return []
       }
 
-      const sessions = await DatabaseService.getAllChatSessions(this.userId, limit)
+      const response = await fetch(`/api/sessions?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to load chat history')
+      }
+
+      const data = await response.json()
+      const sessions = data.sessions || []
       
-      return sessions.map(session => ({
+      return sessions.map((session: any) => ({
         id: session.id,
         title: session.title,
         createdAt: session.created_at,
@@ -224,7 +271,17 @@ export class ChatService {
   public async deleteChatSession(sessionId?: string): Promise<void> {
     try {
       const targetSessionId = sessionId || this.sessionId
-      await DatabaseService.deleteChatSession(targetSessionId, this.userId)
+      
+      const response = await fetch(`/api/sessions/${targetSessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete chat session')
+      }
     } catch (error) {
       console.warn('Failed to delete chat session:', error)
       throw error
@@ -242,9 +299,21 @@ export class ChatService {
         return []
       }
 
-      const sessions = await DatabaseService.searchChatSessions(searchTerm, this.userId, limit)
+      const response = await fetch(`/api/sessions?search=${encodeURIComponent(searchTerm)}&limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to search chat sessions')
+      }
+
+      const data = await response.json()
+      const sessions = data.sessions || []
       
-      return sessions.map(session => ({
+      return sessions.map((session: any) => ({
         id: session.id,
         title: session.title,
         createdAt: session.created_at,
@@ -273,23 +342,58 @@ export class ChatService {
         return null
       }
 
-      const activity = await DatabaseService.getUserActivity(this.userId)
+      // For now, we'll use the sessions endpoint to calculate activity
+      // In the future, this could be a dedicated endpoint for better performance
+      const response = await fetch('/api/sessions?limit=100', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to get user activity')
+      }
+
+      const data = await response.json()
+      const sessions = data.sessions || []
+
+      // Calculate metrics from sessions
+      const totalChats = sessions.length
+      const activeChats = sessions.filter((s: any) => s.is_active).length
+      const totalMessages = sessions.reduce((total: number, session: any) => {
+        return total + (Array.isArray(session.messages) ? session.messages.length : 0)
+      }, 0)
+
+      // Calculate favorite models
+      const modelCounts = new Map<string, number>()
+      sessions.forEach((session: any) => {
+        const current = modelCounts.get(session.model) || 0
+        modelCounts.set(session.model, current + 1)
+      })
+
+      const favoriteModels = Array.from(modelCounts.entries())
+        .map(([model, count]) => ({ model, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+
+      const recentActivity = sessions.slice(0, 10).map((session: any) => ({
+        id: session.id,
+        title: session.title,
+        createdAt: session.created_at,
+        messageCount: Array.isArray(session.messages) ? session.messages.length : 0,
+      }))
       
       return {
-        totalChats: activity.totalChats,
-        activeChats: activity.activeChats,
-        totalMessages: activity.totalMessages,
-        favoriteModels: activity.favoriteModels,
-        recentActivity: activity.recentActivity.map(session => ({
-          id: session.id,
-          title: session.title,
-          createdAt: session.created_at,
-          messageCount: Array.isArray(session.messages) ? session.messages.length : 0,
-        })),
+        totalChats,
+        activeChats,
+        totalMessages,
+        favoriteModels,
+        recentActivity,
       }
     } catch (error) {
       console.warn('Failed to get user activity:', error)
       return null
     }
   }
-} 
+}
