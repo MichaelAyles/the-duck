@@ -1,0 +1,243 @@
+"use client";
+
+import { useState, useCallback } from 'react';
+import { ChatService } from '@/lib/chat-service';
+import { Message, ChatSettings } from '@/components/chat/chat-interface';
+import { useToast } from '@/hooks/use-toast';
+import { CHAT_CONFIG, API_ENDPOINTS } from '@/lib/config';
+
+interface UseMessageHandlingProps {
+  sessionId: string | null;
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  settings: ChatSettings;
+  chatServiceRef: React.MutableRefObject<ChatService | null>;
+  userId?: string;
+  onSessionUpdate?: (sessionId: string, newMessages: Message[]) => void;
+}
+
+interface UseMessageHandlingReturn {
+  isLoading: boolean;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  handleSendMessage: (content: string) => Promise<void>;
+  generateTitleIfNeeded: (messages: Message[], sessionId: string) => Promise<void>;
+}
+
+export function useMessageHandling({
+  sessionId,
+  messages,
+  setMessages,
+  settings,
+  chatServiceRef,
+  userId,
+  onSessionUpdate,
+}: UseMessageHandlingProps): UseMessageHandlingReturn {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Generate title after a few messages
+  const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string) => {
+    // Generate title after user sends configured number of messages
+    const userMessages = messages.filter(msg => msg.role === 'user');
+    if (userMessages.length === CHAT_CONFIG.TITLE_GENERATION_TRIGGER_COUNT) {
+      try {
+        const response = await fetch(API_ENDPOINTS.GENERATE_TITLE, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: messages.slice(0, CHAT_CONFIG.TITLE_GENERATION_MESSAGE_LIMIT),
+            sessionId
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Generated title:', data.title);
+          // The title will be updated in the database automatically
+          // and the sidebar will refresh to show the new title
+        } else {
+          console.error('Failed to generate title:', response.status, response.statusText);
+        }
+      } catch (error) {
+        console.error('Error generating title:', error);
+        // Title generation is not critical, so we don't show toast for this error
+      }
+    }
+  }, []);
+
+  const handleSendMessage = useCallback(async (content: string) => {
+    if (!content.trim() || isLoading) return;
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: content.trim(),
+      timestamp: new Date(),
+    };
+
+    const assistantMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      metadata: {
+        model: settings.model,
+      },
+    };
+
+    const newMessages = [...messages, userMessage, assistantMessage];
+
+    setMessages(newMessages);
+    setIsLoading(true);
+
+    try {
+      // Save chat session if storage is enabled and user is authenticated
+      if (settings.storageEnabled && userId) {
+        try {
+          await chatServiceRef.current?.saveChatSession(newMessages, settings.model);
+        } catch (error) {
+          console.error('Error saving chat session:', error);
+          toast({
+            title: "Save Warning",
+            description: "Your message was sent but may not be saved to history.",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Generate title after a few messages if we have a session and user
+      if (sessionId && userId) {
+        generateTitleIfNeeded(newMessages, sessionId);
+      }
+
+      const response = await fetch(API_ENDPOINTS.CHAT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: newMessages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          model: settings.model,
+          stream: true,
+          tone: settings.tone,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send message');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') {
+                setIsLoading(false);
+                return;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
+                
+                if (parsed.content) {
+                  setMessages(prev => {
+                    const updated = [...prev];
+                    const lastMessage = updated[updated.length - 1];
+                    if (lastMessage && lastMessage.role === 'assistant') {
+                      lastMessage.content += parsed.content;
+                    }
+                    return updated;
+                  });
+                }
+              } catch {
+                // Skip invalid JSON lines
+                continue;
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error sending message:", error);
+      
+      // Show user-friendly error toast
+      toast({
+        title: "Message Failed",
+        description: error instanceof Error ? error.message : 'Failed to send message. Please try again.',
+        variant: "destructive",
+      });
+      
+      setMessages(prev => {
+        const updated = prev.slice(0, -1);
+        return [
+          ...updated,
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: `I apologize, but I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+            timestamp: new Date(),
+            metadata: {
+              model: settings.model,
+            },
+          },
+        ];
+      });
+    }
+
+    if (onSessionUpdate && sessionId) {
+      const updatedMessages = [...newMessages, assistantMessage]
+      onSessionUpdate(sessionId, updatedMessages)
+      setMessages(updatedMessages)
+    } else {
+      setMessages(prevMessages => [...prevMessages, assistantMessage]);
+    }
+
+    setIsLoading(false);
+  }, [
+    isLoading,
+    messages,
+    settings,
+    userId,
+    sessionId,
+    chatServiceRef,
+    generateTitleIfNeeded,
+    onSessionUpdate,
+    setMessages,
+    toast,
+  ]);
+
+  return {
+    isLoading,
+    setIsLoading,
+    handleSendMessage,
+    generateTitleIfNeeded,
+  };
+}
