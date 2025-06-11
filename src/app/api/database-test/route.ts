@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { DatabaseService } from '@/lib/db/operations'
 import { Message } from '@/components/chat/chat-interface'
 import { nanoid } from 'nanoid'
@@ -12,14 +13,18 @@ import { nanoid } from 'nanoid'
 
 export async function GET() {
   try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id
+
     // Test database statistics
-    const stats = await DatabaseService.getStats();
+    const stats = await DatabaseService.getStats(supabase, userId);
     
     // Test retrieving recent sessions
-    const recentSessions = await DatabaseService.getAllChatSessions(undefined, 5);
+    const recentSessions = await DatabaseService.getAllChatSessions(supabase, userId, 5);
     
     // Test getting sessions with summaries
-    const sessionsWithSummaries = await DatabaseService.getSessionsWithSummaries(undefined, 3);
+    const sessionsWithSummaries = await DatabaseService.getSessionsWithSummaries(supabase, userId, 3);
     
     return NextResponse.json({
       status: 'success',
@@ -62,6 +67,13 @@ export async function GET() {
 
 export async function POST() {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     // Create a test chat session
     const testSessionId = `test-${nanoid()}`;
     const testMessages: Message[] = [
@@ -81,15 +93,18 @@ export async function POST() {
 
     // Test saving a chat session
     const savedSession = await DatabaseService.saveChatSession(
+      supabase,
       testSessionId,
       'Supabase Database Test',
       testMessages,
-      'gpt-4o-mini'
+      'gpt-4o-mini',
+      user.id
     );
 
     // Test creating a summary
     const testSummaryId = `summary-${nanoid()}`;
     const savedSummary = await DatabaseService.saveChatSummary(
+      supabase,
       testSummaryId,
       testSessionId,
       'Test summary for Supabase database verification',
@@ -99,11 +114,11 @@ export async function POST() {
     );
 
     // Test retrieving the session
-    const retrievedSession = await DatabaseService.getChatSession(testSessionId);
-    const retrievedSummary = await DatabaseService.getChatSummary(testSessionId);
+    const retrievedSession = await DatabaseService.getChatSession(supabase, testSessionId, user.id);
+    const retrievedSummary = await DatabaseService.getChatSummary(supabase, testSessionId);
 
     // Clean up test data
-    await DatabaseService.deleteChatSession(testSessionId);
+    await DatabaseService.deleteChatSession(supabase, testSessionId, user.id);
 
     return NextResponse.json({
       status: 'success',
