@@ -1,15 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { SupabaseDatabaseService } from '@/lib/db/supabase-operations'
-import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 /**
- * 📥 Load Chat Session API
+ * 📚 Load a specific chat session
  * 
- * Loads messages for a specific chat session
+ * This route is responsible for loading the messages of a specific chat 
+ * session from the database when a user selects a conversation from their 
+ * chat history.
  */
-
 export async function GET(req: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(req.url)
     const sessionId = searchParams.get('sessionId')
 
@@ -20,55 +28,22 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Get user from auth
-    const authHeader = req.headers.get('authorization')
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: authHeader ? { Authorization: authHeader } : {}
-        }
-      }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-
-    // Load the session
-    const session = await SupabaseDatabaseService.getChatSession(sessionId, user.id)
+    const session = await SupabaseDatabaseService.getChatSession(supabase, sessionId, user.id)
 
     if (!session) {
       return NextResponse.json(
-        { error: 'Session not found or access denied' },
+        { error: 'Chat session not found or you do not have access' },
         { status: 404 }
       )
     }
 
-    // Format the messages
-    const messages = Array.isArray(session.messages) ? session.messages : []
-
-    return NextResponse.json({
-      sessionId: session.id,
-      title: session.title,
-      messages,
-      model: session.model,
-      createdAt: session.created_at,
-      updatedAt: session.updated_at,
-      isActive: session.is_active
-    })
+    return NextResponse.json({ session })
 
   } catch (error) {
     console.error('Load session error:', error)
     return NextResponse.json(
       { 
-        error: 'Failed to load session',
+        error: 'Failed to load chat session',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

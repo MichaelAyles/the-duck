@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { Message } from '@/components/chat/chat-interface'
 import { SupabaseDatabaseService } from '@/lib/db/supabase-operations'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
+import { OpenRouterClient } from '@/lib/openrouter'
 
 /**
  * 🏷️ Chat Title Generation API
@@ -27,8 +28,15 @@ function createFallbackTitle(messages: Message[]): string {
   return title || 'New Chat'
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     const { messages, sessionId } = await req.json()
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -44,20 +52,6 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
-
-    // Get user from auth for database operations
-    const authHeader = req.headers.get('authorization')
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: authHeader ? { Authorization: authHeader } : {}
-        }
-      }
-    )
-
-    const { data: { user } } = await supabase.auth.getUser()
 
     let generatedTitle = createFallbackTitle(messages)
     let method = 'fallback'
@@ -134,27 +128,23 @@ Respond with ONLY the title, nothing else.`
       }
     }
 
-    // Update the chat session with the new title if we have a user
-    if (user) {
-      try {
-        // Get the existing session to preserve other data
-        const existingSession = await SupabaseDatabaseService.getChatSession(sessionId, user.id)
-        
-        if (existingSession) {
-          // Update the session with the new title
-          await SupabaseDatabaseService.saveChatSession(
-            sessionId,
-            generatedTitle,
-            existingSession.messages as any,
-            existingSession.model,
-            user.id
-          )
-        }
-      } catch (dbError) {
-        console.error('Error updating session title in database:', dbError)
-        // Don't fail the request, just log the error
-      }
+    // Verify user owns the session
+    const existingSession = await SupabaseDatabaseService.getChatSession(supabase, sessionId, user.id)
+    if (!existingSession) {
+      return NextResponse.json({ error: 'Chat session not found or access denied' }, { status: 404 })
     }
+
+    console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle}`)
+
+    // Save the new title to the database
+    await SupabaseDatabaseService.saveChatSession(
+      supabase,
+      sessionId,
+      generatedTitle,
+      existingSession.messages as any,
+      existingSession.model,
+      user.id
+    )
 
     return NextResponse.json({
       title: generatedTitle,

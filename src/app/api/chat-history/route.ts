@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { SupabaseDatabaseService } from '@/lib/db/supabase-operations'
-import { createClient } from '@supabase/supabase-js'
 
 /**
  * 📜 Chat History API
@@ -10,43 +10,24 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function GET(req: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(req.url)
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = parseInt(searchParams.get('offset') || '0')
     const search = searchParams.get('search') || ''
 
-    // Get user from auth header or session
-    const authHeader = req.headers.get('authorization')
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: authHeader ? { Authorization: authHeader } : {}
-        }
-      }
-    )
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-
     let sessions
-    
+
     if (search) {
-      // Search chat sessions by title or content
-      sessions = await SupabaseDatabaseService.searchChatSessions(search, user.id, limit)
+      sessions = await SupabaseDatabaseService.searchChatSessions(supabase, search, user.id, limit)
     } else {
-      // Get all chat sessions with pagination
-      sessions = await SupabaseDatabaseService.getAllChatSessions(user.id, limit + offset)
-      // Apply offset manually since Supabase doesn't have built-in offset
-      sessions = sessions.slice(offset)
+      sessions = await SupabaseDatabaseService.getAllChatSessions(supabase, user.id, limit, offset)
     }
 
     // Format the response
@@ -70,16 +51,19 @@ export async function GET(req: NextRequest) {
       }
     })
 
+    const total = search 
+      ? formattedSessions.length 
+      : (await SupabaseDatabaseService.getStats(supabase, user.id)).totalSessions
+
     return NextResponse.json({
       sessions: formattedSessions,
       pagination: {
         limit,
         offset,
         hasMore: sessions.length === limit,
-        total: formattedSessions.length
+        total: total
       }
     })
-
   } catch (error) {
     console.error('Chat history error:', error)
     return NextResponse.json(
@@ -97,45 +81,26 @@ export async function GET(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(req.url)
     const sessionId = searchParams.get('sessionId')
 
     if (!sessionId) {
-      return NextResponse.json(
-        { error: 'Session ID is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Session ID is required' }, { status: 400 })
     }
 
-    // Get user from auth
-    const authHeader = req.headers.get('authorization')
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: authHeader ? { Authorization: authHeader } : {}
-        }
-      }
-    )
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
-
-    // Delete the session (this will also delete associated summaries due to CASCADE)
-    await SupabaseDatabaseService.deleteChatSession(sessionId, user.id)
+    await SupabaseDatabaseService.deleteChatSession(supabase, sessionId, user.id)
 
     return NextResponse.json({
       success: true,
       message: 'Chat session deleted successfully'
     })
-
   } catch (error) {
     console.error('Delete chat error:', error)
     return NextResponse.json(
@@ -156,7 +121,6 @@ function getConversationPreview(messages: any[]): string {
     return 'Empty conversation'
   }
 
-  // Get first user message and first assistant response
   const firstUser = messages.find(msg => msg.role === 'user')
   const firstAssistant = messages.find(msg => msg.role === 'assistant' && msg.content.length > 10)
 

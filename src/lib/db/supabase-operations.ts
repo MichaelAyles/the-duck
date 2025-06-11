@@ -1,3 +1,4 @@
+import { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase';
 import { Database } from '@/types/supabase';
 import { Message } from '@/components/chat/chat-interface';
@@ -20,12 +21,15 @@ export type NewChatSession = Database['public']['Tables']['chat_sessions']['Inse
 export type ChatSummary = Database['public']['Tables']['chat_summaries']['Row'];
 export type NewChatSummary = Database['public']['Tables']['chat_summaries']['Insert'];
 
+type SupabaseService = SupabaseClient<Database>
+
 export class SupabaseDatabaseService {
   
   /**
    * 💾 Save or update a chat session in Supabase
    */
   static async saveChatSession(
+    supabase: SupabaseService,
     sessionId: string,
     title: string,
     messages: Message[],
@@ -42,7 +46,6 @@ export class SupabaseDatabaseService {
         updated_at: new Date().toISOString(),
       };
 
-      const supabase = getSupabaseClient()
       const { data, error } = await supabase
         .from('chat_sessions')
         .upsert(sessionData, {
@@ -72,8 +75,7 @@ export class SupabaseDatabaseService {
   /**
    * 📖 Get a specific chat session by ID
    */
-  static async getChatSession(sessionId: string, userId?: string): Promise<ChatSession | null> {
-    const supabase = getSupabaseClient()
+  static async getChatSession(supabase: SupabaseService, sessionId: string, userId?: string): Promise<ChatSession | null> {
     let query = supabase
       .from('chat_sessions')
       .select('*')
@@ -101,13 +103,12 @@ export class SupabaseDatabaseService {
   /**
    * 📚 Get all chat sessions for a user (or all if no user specified)
    */
-  static async getAllChatSessions(userId?: string, limit = 50): Promise<ChatSession[]> {
-    const supabase = getSupabaseClient()
+  static async getAllChatSessions(supabase: SupabaseService, userId?: string, limit = 50, offset = 0): Promise<ChatSession[]> {
     let query = supabase
       .from('chat_sessions')
       .select('*')
       .order('updated_at', { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
 
     // Add user filter if provided
     if (userId) {
@@ -127,8 +128,7 @@ export class SupabaseDatabaseService {
   /**
    * 🏁 Mark a chat session as inactive (ended)
    */
-  static async endChatSession(sessionId: string, userId?: string): Promise<void> {
-    const supabase = getSupabaseClient()
+  static async endChatSession(supabase: SupabaseService, sessionId: string, userId?: string): Promise<void> {
     let query = supabase
       .from('chat_sessions')
       .update({ 
@@ -156,6 +156,7 @@ export class SupabaseDatabaseService {
    * 📝 Save a chat summary for a completed session
    */
   static async saveChatSummary(
+    supabase: SupabaseService,
     summaryId: string,
     sessionId: string,
     summary: string,
@@ -173,7 +174,6 @@ export class SupabaseDatabaseService {
         writing_style_analysis: writingStyleAnalysis as any, // Supabase JSONB type
       };
 
-      const supabase = getSupabaseClient()
       const { data, error } = await supabase
         .from('chat_summaries')
         .upsert(summaryData, {
@@ -203,8 +203,7 @@ export class SupabaseDatabaseService {
   /**
    * 📊 Get chat summary by session ID
    */
-  static async getChatSummary(sessionId: string): Promise<ChatSummary | null> {
-    const supabase = getSupabaseClient()
+  static async getChatSummary(supabase: SupabaseService, sessionId: string): Promise<ChatSummary | null> {
     const { data, error } = await supabase
       .from('chat_summaries')
       .select('*')
@@ -226,9 +225,7 @@ export class SupabaseDatabaseService {
   /**
    * 🗑️ Delete a chat session and its associated summary
    */
-  static async deleteChatSession(sessionId: string, userId?: string): Promise<void> {
-    const supabase = getSupabaseClient()
-    
+  static async deleteChatSession(supabase: SupabaseService, sessionId: string, userId?: string): Promise<void> {
     // First delete the summary (foreign key will handle cascade, but let's be explicit)
     await supabase
       .from('chat_summaries')
@@ -259,11 +256,10 @@ export class SupabaseDatabaseService {
   /**
    * 📊 Get chat sessions with their summaries (joined query)
    */
-  static async getSessionsWithSummaries(userId?: string, limit = 20): Promise<Array<{
+  static async getSessionsWithSummaries(supabase: SupabaseService, userId?: string, limit = 20): Promise<Array<{
     session: ChatSession;
     summary: ChatSummary | null;
   }>> {
-    const supabase = getSupabaseClient()
     let query = supabase
       .from('chat_sessions')
       .select(`
@@ -304,105 +300,125 @@ export class SupabaseDatabaseService {
   /**
    * 📈 Get database statistics
    */
-  static async getStats(userId?: string): Promise<{
+  static async getStats(supabase: SupabaseService, userId?: string): Promise<{
     totalSessions: number;
     activeSessions: number;
     totalSummaries: number;
   }> {
-    // Build base queries
-    const supabase = getSupabaseClient()
-    let sessionsQuery = supabase
-      .from('chat_sessions')
-      .select('*', { count: 'exact', head: true });
-
-    let activeSessionsQuery = supabase
-      .from('chat_sessions')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_active', true);
-
-    let summariesQuery = supabase
-      .from('chat_summaries')
-      .select('*', { count: 'exact', head: true });
-
-    // Add user filters if provided
-    if (userId) {
-      sessionsQuery = sessionsQuery.eq('user_id', userId);
-      activeSessionsQuery = activeSessionsQuery.eq('user_id', userId);
+    try {
+      const sessionQuery = supabase
+        .from('chat_sessions')
+        .select('id, is_active', { count: 'exact', head: true });
       
-      // For summaries, we need to join with sessions to filter by user
-      summariesQuery = supabase
+      const summaryQuery = supabase
         .from('chat_summaries')
-        .select('*, chat_sessions!inner(user_id)', { count: 'exact', head: true })
-        .eq('chat_sessions.user_id', userId);
+        .select('id', { count: 'exact', head: true });
+
+      if (userId) {
+        sessionQuery.eq('user_id', userId);
+        // We can't directly filter summaries by user_id, so we do it post-query or join
+      }
+
+      const [
+        { count: totalSessions, error: sessionError },
+        { data: activeSessionsData, error: activeError },
+        { count: totalSummaries, error: summaryError }
+      ] = await Promise.all([
+        sessionQuery,
+        supabase.from('chat_sessions').select('id').eq('is_active', true).eq('user_id', userId || ''),
+        summaryQuery
+      ]);
+
+      if (sessionError || activeError || summaryError) {
+        console.error('Error getting stats:', sessionError || activeError || summaryError);
+        throw new Error('Failed to get stats');
+      }
+
+      return {
+        totalSessions: totalSessions || 0,
+        activeSessions: activeSessionsData?.length || 0,
+        totalSummaries: totalSummaries || 0
+      };
+    } catch (error) {
+      console.error('Error in getStats:', error);
+      throw error;
     }
-
-    // Execute all queries
-    const [
-      { count: totalSessions, error: sessionsError },
-      { count: activeSessions, error: activeError },
-      { count: totalSummaries, error: summariesError }
-    ] = await Promise.all([
-      sessionsQuery,
-      activeSessionsQuery,
-      summariesQuery
-    ]);
-
-    if (sessionsError || activeError || summariesError) {
-      const errors = [sessionsError, activeError, summariesError].filter(Boolean);
-      console.error('Failed to get stats:', errors);
-      throw new Error(`Database error: ${errors.map(e => e?.message).join(', ')}`);
-    }
-
-    return {
-      totalSessions: totalSessions || 0,
-      activeSessions: activeSessions || 0,
-      totalSummaries: totalSummaries || 0,
-    };
   }
 
   /**
-   * 🔍 Search chat sessions by content
+   * 🔎 Search for chat sessions by term
    */
   static async searchChatSessions(
+    supabase: SupabaseService,
     searchTerm: string,
     userId?: string,
     limit = 20
   ): Promise<ChatSession[]> {
-    const supabase = getSupabaseClient()
     let query = supabase
       .from('chat_sessions')
       .select('*')
-      .or(`title.ilike.%${searchTerm}%,messages.cs.{"content":"*${searchTerm}*"}`)
+      .textSearch('title', searchTerm, { 
+        type: 'websearch',
+        config: 'english' 
+      })
       .order('updated_at', { ascending: false })
-      .limit(limit);
+      .limit(limit)
 
-    // Add user filter if provided
     if (userId) {
-      query = query.eq('user_id', userId);
+      query = query.eq('user_id', userId)
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query
 
     if (error) {
-      console.error('Failed to search chat sessions:', error);
-      throw new Error(`Database error: ${error.message}`);
+      console.error('Failed to search chat sessions:', error)
+      // Attempt a simpler search if full-text fails
+      return this.searchChatSessionsLegacy(supabase, searchTerm, userId, limit)
     }
 
-    return data || [];
+    return data || []
+  }
+
+  /**
+   * 🔎 Legacy search for chat sessions (simple like)
+   */
+  static async searchChatSessionsLegacy(
+    supabase: SupabaseService,
+    searchTerm: string,
+    userId?: string,
+    limit = 20
+  ): Promise<ChatSession[]> {
+    let query = supabase
+      .from('chat_sessions')
+      .select('*')
+      .ilike('title', `%${searchTerm}%`)
+      .order('updated_at', { ascending: false })
+      .limit(limit)
+    
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Failed to search (legacy) chat sessions:', error)
+      throw new Error(`Database error: ${error.message}`)
+    }
+
+    return data || []
   }
 
   /**
    * 👤 Get user activity and analytics
    */
-  static async getUserActivity(userId: string): Promise<{
+  static async getUserActivity(supabase: SupabaseService, userId: string): Promise<{
     totalChats: number;
     activeChats: number;
     totalMessages: number;
     favoriteModels: Array<{ model: string; count: number }>;
     recentActivity: ChatSession[];
   }> {
-    const supabase = getSupabaseClient()
-    
     // Get user's chat sessions
     const { data: sessions, error } = await supabase
       .from('chat_sessions')
@@ -580,9 +596,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferencesData = {
   }
 }
 
-export async function getUserPreferences(userId: string): Promise<UserPreferencesData> {
+export async function getUserPreferences(supabase: SupabaseService, userId: string): Promise<UserPreferencesData> {
   try {
-    const supabase = getSupabaseClient()
     const { data, error } = await supabase
       .from('user_preferences')
       .select('preferences')
@@ -593,7 +608,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
       if (error.code === 'PGRST116') {
         // No preferences found, create default preferences with dynamic top 5
         console.log('No user preferences found, creating defaults for user:', userId)
-        return await createUserPreferencesWithDynamicDefaults(userId)
+        return await createUserPreferencesWithDynamicDefaults(supabase, userId)
       }
       throw new Error(`Failed to get user preferences: ${error.message}`)
     }
@@ -608,7 +623,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
 /**
  * 🎯 Create user preferences with dynamic defaults from current top 5 models
  */
-export async function createUserPreferencesWithDynamicDefaults(userId: string): Promise<UserPreferencesData> {
+export async function createUserPreferencesWithDynamicDefaults(supabase: SupabaseService, userId: string): Promise<UserPreferencesData> {
   try {
     // Get dynamic top 5 models from OpenRouter
     let dynamicStarredModels = [...DEFAULT_STARRED_MODELS] // Fallback to hardcoded defaults
@@ -632,7 +647,7 @@ export async function createUserPreferencesWithDynamicDefaults(userId: string): 
       primaryModel: dynamicStarredModels[0] || DEFAULT_USER_PREFERENCES.primaryModel
     }
 
-    return await createUserPreferences(userId, defaultPrefs)
+    return await createUserPreferences(supabase, userId, defaultPrefs)
   } catch (error) {
     console.error('Error creating user preferences with dynamic defaults:', error)
     throw error
@@ -640,11 +655,11 @@ export async function createUserPreferencesWithDynamicDefaults(userId: string): 
 }
 
 export async function createUserPreferences(
+  supabase: SupabaseService,
   userId: string, 
   preferences: UserPreferencesData
 ): Promise<UserPreferencesData> {
   try {
-    const supabase = getSupabaseClient()
     const { data, error } = await supabase
       .from('user_preferences')
       .insert([{
@@ -667,12 +682,13 @@ export async function createUserPreferences(
 }
 
 export async function updateUserPreferences(
+  supabase: SupabaseService,
   userId: string, 
   preferences: Partial<UserPreferencesData>
 ): Promise<UserPreferencesData> {
   try {
     // First get current preferences
-    const currentPrefs = await getUserPreferences(userId)
+    const currentPrefs = await getUserPreferences(supabase, userId)
     
     // Merge with new preferences
     const updatedPrefs = {
@@ -684,7 +700,6 @@ export async function updateUserPreferences(
       }
     }
 
-    const supabase = getSupabaseClient()
     const { data, error } = await supabase
       .from('user_preferences')
       .update({
@@ -706,9 +721,9 @@ export async function updateUserPreferences(
   }
 }
 
-export async function toggleStarredModel(userId: string, modelId: string): Promise<UserPreferencesData> {
+export async function toggleStarredModel(supabase: SupabaseService, userId: string, modelId: string): Promise<UserPreferencesData> {
   try {
-    const currentPrefs = await getUserPreferences(userId)
+    const currentPrefs = await getUserPreferences(supabase, userId)
     const starredModels = [...currentPrefs.starredModels]
     
     if (starredModels.includes(modelId)) {
@@ -720,7 +735,7 @@ export async function toggleStarredModel(userId: string, modelId: string): Promi
       starredModels.push(modelId)
     }
 
-    return await updateUserPreferences(userId, { starredModels })
+    return await updateUserPreferences(supabase, userId, { starredModels })
   } catch (error) {
     console.error('Error toggling starred model:', error)
     throw error
@@ -730,17 +745,17 @@ export async function toggleStarredModel(userId: string, modelId: string): Promi
 /**
  * Set the user's primary model (their default selection)
  */
-export async function setPrimaryModel(userId: string, modelId: string): Promise<UserPreferencesData> {
+export async function setPrimaryModel(supabase: SupabaseService, userId: string, modelId: string): Promise<UserPreferencesData> {
   try {
     // Ensure the model is in starred models when set as primary
-    const currentPrefs = await getUserPreferences(userId)
+    const currentPrefs = await getUserPreferences(supabase, userId)
     const starredModels = [...currentPrefs.starredModels]
     
     if (!starredModels.includes(modelId)) {
       starredModels.push(modelId)
     }
 
-    return await updateUserPreferences(userId, { 
+    return await updateUserPreferences(supabase, userId, { 
       primaryModel: modelId,
       starredModels 
     })
@@ -863,13 +878,14 @@ export function searchModels(
  * Get recommended models based on user activity and preferences
  */
 export async function getRecommendedModels(
+  supabase: SupabaseService,
   userId: string, 
   allModels: any[], 
   limit: number = 10
 ): Promise<any[]> {
   try {
-    const preferences = await getUserPreferences(userId)
-    const userActivity = await SupabaseDatabaseService.getUserActivity(userId)
+    const preferences = await getUserPreferences(supabase, userId)
+    const userActivity = await SupabaseDatabaseService.getUserActivity(supabase, userId)
     
     // Get user's favorite models from their chat history
     const usedModels = userActivity.favoriteModels.map(fav => fav.model)
