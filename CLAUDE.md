@@ -63,8 +63,10 @@ npm run build          # Ensure project builds successfully
 npm run lint:fix       # Fix linting errors automatically
 npm run type-check     # Verify TypeScript types are correct
 ```
-- If ANY step fails, fix the issues before proceeding
-- Do not commit broken code
+- **CRITICAL**: If ANY step fails, fix ALL issues before proceeding
+- **MANDATORY**: All lint errors must be resolved before committing
+- **NO EXCEPTIONS**: Do not commit broken code or code with lint errors
+- Re-run validation commands until all pass with zero errors
 
 ### 2. **Documentation Updates**
 - Update `todo.md` to mark completed tasks as ✅
@@ -86,6 +88,8 @@ Generate commit messages using this format:
 - **docs**: Documentation updates
 - **style**: Code formatting, lint fixes
 - **chore**: Maintenance tasks, dependency updates
+
+**CRITICAL**: Never include self-citations or references to Claude Code in commit messages.
 
 **Example Messages:**
 - `feat: Add file upload API with Supabase storage integration`

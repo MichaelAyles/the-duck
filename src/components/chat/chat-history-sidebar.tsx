@@ -10,7 +10,6 @@ import {
   Search, 
   Trash2, 
   Plus, 
-  Calendar,
   Clock,
   MoreVertical,
   Loader2,
@@ -117,7 +116,7 @@ export function ChatHistorySidebar({
   }, [searchQuery, fetchChatHistory]);
 
   // Generate title for a session
-  const generateTitle = async (sessionId: string, messages: any[]) => {
+  const generateTitle = async (sessionId: string, messages: Array<{ role: string; content: string }>) => {
     setIsGeneratingTitle(sessionId);
     
     try {

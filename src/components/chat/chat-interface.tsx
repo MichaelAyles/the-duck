@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ChatHeader } from "./chat-header";
 import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
@@ -32,7 +32,6 @@ interface ChatInterfaceProps {
   sessionId?: string | null;
   initialMessages?: Message[];
   isLoading?: boolean;
-  onNewChat?: () => void;
   onSessionUpdate?: (sessionId: string, newMessages: Message[]) => void;
 }
 
@@ -40,7 +39,6 @@ export const ChatInterface = React.memo(({
   sessionId: initialSessionId, 
   initialMessages,
   isLoading: isPageLoading,
-  onNewChat,
   onSessionUpdate 
 }: ChatInterfaceProps = {}) => {
   const [messages, setMessages] = useState<Message[]>(initialMessages || []);
@@ -206,7 +204,7 @@ export const ChatInterface = React.memo(({
     } finally {
       setIsProcessingStorage(false);
     }
-  }, [messages, settings.storageEnabled, onSessionUpdate, user?.id]);
+  }, [messages, settings.storageEnabled, onSessionUpdate, user]);
 
   // Initialize session and chat service
   useEffect(() => {
@@ -239,7 +237,7 @@ export const ChatInterface = React.memo(({
     return () => {
       chatServiceRef.current?.clearInactivityTimer();
     };
-  }, [initialSessionId, user?.id, loadSessionMessages]);
+  }, [initialSessionId, user?.id, loadSessionMessages, handleEndChat, initialMessages?.length, messages.length, user]);
 
   // Add welcome message
   useEffect(() => {
@@ -398,7 +396,7 @@ export const ChatInterface = React.memo(({
       onSessionUpdate(sessionId, updatedMessages)
       setMessages(updatedMessages)
     } else {
-      setMessages(newMessages => [...newMessages, assistantMessage]);
+      setMessages(prevMessages => [...prevMessages, assistantMessage]);
     }
 
     setIsLoading(false);

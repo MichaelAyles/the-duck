@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { Database } from '@/types/supabase';
 
 /**
  * 🗄️ Server-side Database Operations
@@ -15,7 +14,7 @@ export interface UserPreferencesData {
   theme: 'light' | 'dark' | 'system'
   responseTone: 'friendly' | 'professional' | 'casual' | 'academic' | 'match'
   storageEnabled: boolean
-  explicitPreferences: Record<string, any>
+  explicitPreferences: Record<string, unknown>
   writingStyle: {
     verbosity: 'brief' | 'medium' | 'detailed'
     formality: 'casual' | 'neutral' | 'formal'
@@ -25,10 +24,17 @@ export interface UserPreferencesData {
   }
 }
 
+// Define interface for OpenRouter model data
+interface OpenRouterModel {
+  id: string;
+  total_rank?: number;
+  last_week_rank?: number;
+}
+
 /**
  * Get the top 5 models based on OpenRouter rankings
  */
-export function getTop5Models(allModels: any[]): string[] {
+export function getTop5Models(allModels: OpenRouterModel[]): string[] {
   if (!Array.isArray(allModels) || allModels.length === 0) {
     return []
   }
@@ -171,7 +177,7 @@ export async function createUserPreferences(
       .from('user_preferences')
       .upsert({
         user_id: userId,
-        preferences: preferences as any
+        preferences: preferences as unknown
       }, {
         onConflict: 'user_id',
         ignoreDuplicates: false
@@ -215,7 +221,7 @@ export async function updateUserPreferences(
 
     const { data, error } = await supabase
       .from('user_preferences')
-      .update({ preferences: updated as any })
+      .update({ preferences: updated as unknown })
       .eq('user_id', userId)
       .select('preferences')
       .single()

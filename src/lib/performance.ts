@@ -41,7 +41,7 @@ class PerformanceMonitor {
           });
         });
         observer.observe({ type: 'paint', buffered: true });
-      } catch (error) {
+      } catch {
         // Silently fail if performance observation is not supported
       }
     }
@@ -50,7 +50,7 @@ class PerformanceMonitor {
   // Get memory usage (Chrome only)
   getMemoryUsage() {
     if (typeof window !== 'undefined' && 'performance' in window && 'memory' in performance) {
-      const memory = (performance as any).memory;
+      const memory = (performance as unknown as { memory: { usedJSHeapSize: number; totalJSHeapSize: number; jsHeapSizeLimit: number } }).memory;
       this.metrics.memoryUsage = {
         used: memory.usedJSHeapSize,
         total: memory.totalJSHeapSize,
@@ -107,7 +107,7 @@ export function useRenderTimer(componentName: string) {
         console.log(`🚀 ${componentName} render time: ${duration.toFixed(2)}ms`);
       }
     }
-  });
+  }, [componentName]);
 
   return renderTime;
 }
@@ -156,7 +156,7 @@ export function getBundleMetrics() {
 // Performance optimization utilities
 export const PerformanceUtils = {
   // Debounce function calls
-  debounce<T extends (...args: any[]) => any>(
+  debounce<T extends (...args: unknown[]) => unknown>(
     func: T,
     wait: number,
     immediate = false
@@ -179,7 +179,7 @@ export const PerformanceUtils = {
   },
 
   // Throttle function calls
-  throttle<T extends (...args: any[]) => any>(
+  throttle<T extends (...args: unknown[]) => unknown>(
     func: T,
     limit: number
   ): (...args: Parameters<T>) => void {
@@ -195,7 +195,7 @@ export const PerformanceUtils = {
   },
 
   // Lazy load images
-  lazyLoadImage(src: string, placeholder?: string): Promise<string> {
+  lazyLoadImage(src: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve(src);
@@ -261,7 +261,7 @@ export class PerformanceReporter {
     return PerformanceReporter.instance;
   }
 
-  async reportMetrics(metrics: Partial<PerformanceMetrics>, context?: Record<string, any>) {
+  async reportMetrics(metrics: Partial<PerformanceMetrics>, context?: Record<string, unknown>) {
     if (process.env.NODE_ENV !== 'production') return;
 
     try {
@@ -295,7 +295,7 @@ export class PerformanceReporter {
 
   private generateRecommendations(
     metrics: Partial<PerformanceMetrics>,
-    bundleMetrics: any
+    bundleMetrics: unknown
   ): string[] {
     const recommendations: string[] = [];
 
@@ -305,7 +305,7 @@ export class PerformanceReporter {
     }
 
     // Bundle size recommendations
-    if (bundleMetrics && bundleMetrics.total > 1024 * 1024) { // 1MB
+    if (bundleMetrics && typeof bundleMetrics === 'object' && bundleMetrics !== null && 'total' in bundleMetrics && (bundleMetrics as { total: number }).total > 1024 * 1024) { // 1MB
       recommendations.push('📦 Bundle size is large. Consider dynamic imports and tree shaking.');
     }
 
@@ -328,15 +328,16 @@ export class PerformanceReporter {
 export interface PerformanceReport {
   timestamp: string;
   metrics: Partial<PerformanceMetrics>;
-  bundleMetrics: any;
+  bundleMetrics: unknown;
   recommendations: string[];
 }
 
 // Simple memoization hooks
-export function useMemoizedCallback<T extends (...args: any[]) => any>(
+export function useMemoizedCallback<T extends (...args: unknown[]) => unknown>(
   callback: T,
   deps: React.DependencyList
 ): T {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return React.useCallback(callback, deps) as T;
 }
 
@@ -344,6 +345,7 @@ export function useMemoizedValue<T>(
   factory: () => T,
   deps: React.DependencyList
 ): T {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return React.useMemo(factory, deps);
 }
 
@@ -351,7 +353,7 @@ export function useMemoizedValue<T>(
 export const PerformanceTesting = {
   // Stress test component rendering
   async stressTestRender(
-    component: React.ComponentType<any>,
+    component: React.ComponentType<unknown>,
     iterations = 100
   ): Promise<{ avgRenderTime: number; maxRenderTime: number; minRenderTime: number }> {
     const renderTimes: number[] = [];
@@ -398,7 +400,7 @@ export const PerformanceTesting = {
         responseSize,
         success: response.ok,
       };
-    } catch (error) {
+    } catch {
       return {
         requestTime: performance.now() - start,
         responseSize: 0,

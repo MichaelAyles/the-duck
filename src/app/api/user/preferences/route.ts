@@ -122,7 +122,7 @@ function getTop5Models(allModels: OpenRouterModel[]): string[] {
   return [...availableTopModels, ...remainingModels].slice(0, 5)
 }
 
-async function createUserPreferencesWithDynamicDefaults(_userId: string): Promise<UserPreferencesData> {
+async function createUserPreferencesWithDynamicDefaults(): Promise<UserPreferencesData> {
   try {
     let dynamicStarredModels = [...DEFAULT_STARRED_MODELS]
     
@@ -150,7 +150,7 @@ async function createUserPreferencesWithDynamicDefaults(_userId: string): Promis
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
     
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       if (error.code === 'PGRST116') {
         // No preferences found, create defaults
-        const defaultPrefs = await createUserPreferencesWithDynamicDefaults(user.id)
+        const defaultPrefs = await createUserPreferencesWithDynamicDefaults()
         
         const { data: newData, error: createError } = await supabase
           .from('user_preferences')
@@ -317,7 +317,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const currentPrefs = currentData?.preferences as UserPreferencesData || await createUserPreferencesWithDynamicDefaults(user.id)
+    const currentPrefs = currentData?.preferences as UserPreferencesData || await createUserPreferencesWithDynamicDefaults()
 
     const updatedPrefs = { ...currentPrefs }
 

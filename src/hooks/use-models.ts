@@ -60,7 +60,7 @@ export function useModels() {
     }
 
     fetchCuratedModels()
-  }, [starredModels, isStarred]) // Re-fetch when starred models change
+  }, [starredModels, isStarred, isPrimary]) // Re-fetch when starred models change
 
   const fetchAllModels = async () => {
     if (allModels.length > 0) return // Already fetched

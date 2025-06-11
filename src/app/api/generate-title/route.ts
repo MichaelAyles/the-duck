@@ -141,7 +141,7 @@ Respond with ONLY the title, nothing else.`
       throw new Error('Failed to fetch session')
     }
 
-    const sessionData = await sessionResponse.json()
+    await sessionResponse.json()
     // Session exists, we can proceed with title generation
 
     console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle}`)

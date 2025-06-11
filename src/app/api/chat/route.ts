@@ -16,15 +16,33 @@ function convertToDuckSpeak(text: string): string {
   return text.replace(/\b\w+\b/g, 'quack');
 }
 
-// Core handler function
-async function handleChatRequest(request: NextRequest, validatedData: any): Promise<NextResponse> {
-  try {
-    const { messages, model, stream, options, tone } = validatedData;
+// Define interface for validated chat request data
+interface ChatRequestData {
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  model: string;
+  sessionId?: string;
+  stream?: boolean;
+  options?: {
+    temperature?: number;
+    max_tokens?: number;
+    top_p?: number;
+    frequency_penalty?: number;
+    presence_penalty?: number;
+  };
+  tone?: string;
+}
 
-    // Sanitize messages content
-    const sanitizedMessages = messages.map((message: any) => ({
-      ...message,
-      content: InputValidation.sanitizeInput(message.content)
+// Core handler function
+async function handleChatRequest(request: NextRequest, validatedData: ChatRequestData): Promise<NextResponse> {
+  try {
+    const { messages, model, stream = true, options = {}, tone = "match-user" } = validatedData;
+
+    // Sanitize messages content and ensure proper format
+    const sanitizedMessages = messages.map((message, index) => ({
+      id: `msg-${index}`, // Add required id field
+      role: message.role as 'user' | 'assistant' | 'system',
+      content: InputValidation.sanitizeInput(message.content),
+      timestamp: new Date() // Add required timestamp field
     }));
 
     const apiKey = process.env.OPENROUTER_API_KEY!; // API key validated by middleware
@@ -109,7 +127,7 @@ export const POST = withSecurity(
 );
 
 // Handle OPTIONS requests for CORS
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

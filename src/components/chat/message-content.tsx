@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import { useTheme } from "next-themes";
 import { Copy, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import React, { useState, Suspense, lazy } from "react";
+import React, { useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 
 interface MessageContentProps {
@@ -47,6 +47,7 @@ interface CodeBlockProps {
 
 // Memoized code block component to prevent unnecessary re-renders
 const CodeBlock = React.memo(({ language, code, theme, onCopy, isCopied }: CodeBlockProps) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [syntaxStyle, setSyntaxStyle] = useState<any>(null);
 
   React.useEffect(() => {

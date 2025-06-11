@@ -42,12 +42,23 @@ export async function GET(req: NextRequest) {
     const data = await response.json()
     const sessions = data.sessions || []
 
+    // Define interface for session data
+    interface SessionData {
+      id: string;
+      title: string;
+      created_at: string;
+      updated_at: string;
+      is_active: boolean;
+      messages: Array<{ role: string; content: string }>;
+      model: string;
+    }
+
     // Format the response to match the expected format
-    const formattedSessions = sessions.map((session: any) => {
+    const formattedSessions = sessions.map((session: SessionData) => {
       const messages = Array.isArray(session.messages) ? session.messages : []
       const messageCount = messages.length
       const lastMessage = messages[messages.length - 1]
-      const firstUserMessage = messages.find((msg: any) => msg.role === 'user')
+      const firstUserMessage = messages.find((msg) => msg.role === 'user')
 
       return {
         id: session.id,
@@ -141,7 +152,7 @@ export async function DELETE(req: NextRequest) {
 /**
  * Helper function to create a conversation preview
  */
-function getConversationPreview(messages: any[]): string {
+function getConversationPreview(messages: Array<{ role: string; content: string }>): string {
   if (!Array.isArray(messages) || messages.length === 0) {
     return 'Empty conversation'
   }

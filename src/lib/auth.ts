@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 
 /**
  * 🔐 Server-side Authentication Utilities
@@ -19,10 +19,10 @@ function createSupabaseServerClient(request: NextRequest) {
         get(name: string) {
           return request.cookies.get(name)?.value
         },
-        set(_name: string, _value: string, _options: CookieOptions) {
+        set() {
           // For API routes, we don't need to set cookies, but we need to provide the method
         },
-        remove(_name: string, _options: CookieOptions) {
+        remove() {
           // For API routes, we don't need to remove cookies, but we need to provide the method
         },
       },

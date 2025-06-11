@@ -47,6 +47,9 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
     setPrimary,
     fetchAllModels 
   } = useModels();
+  
+  // Suppress unused variable warning
+  void primaryModel;
 
   const handleToneChange = (value: number[]) => {
     const toneValue = TONE_OPTIONS[value[0]]?.value || "match-user";

@@ -86,7 +86,6 @@ export function ChatLayout() {
           sessionId={currentSessionId}
           initialMessages={messages}
           isLoading={isLoading}
-          onNewChat={handleNewChat}
           onSessionUpdate={handleSessionUpdate}
         />
       </div>

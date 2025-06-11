@@ -11,7 +11,7 @@ interface PerformanceTestResult {
   name: string;
   duration: number;
   status: 'success' | 'failure' | 'warning';
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   recommendations: string[];
 }
 
@@ -176,7 +176,7 @@ async function testSupabasePerformance(): Promise<PerformanceTestResult> {
     );
 
     // Test simple query
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('chat_sessions')
       .select('id')
       .limit(1);
@@ -355,10 +355,17 @@ async function testEnvironmentConfig(): Promise<PerformanceTestResult> {
   }
 }
 
+// Define interface for stress test request
+interface StressTestRequest {
+  testType: string;
+  iterations?: number;
+  concurrency?: number;
+}
+
 // POST endpoint for stress testing
 export async function POST(request: NextRequest) {
   try {
-    const { testType, iterations = 10, concurrency = 1 } = await request.json();
+    const { testType, iterations = 10, concurrency = 1 }: StressTestRequest = await request.json();
 
     const results = await runStressTest(testType, iterations, concurrency);
     
@@ -380,8 +387,24 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function runStressTest(testType: string, iterations: number, concurrency: number) {
-  const results = {
+// Define interface for stress test results
+interface StressTestResults {
+  testType: string;
+  iterations: number;
+  concurrency: number;
+  startTime: number;
+  endTime: number;
+  totalDuration: number;
+  averageResponseTime: number;
+  minResponseTime: number;
+  maxResponseTime: number;
+  successCount: number;
+  errorCount: number;
+  throughput: number;
+}
+
+async function runStressTest(testType: string, iterations: number, concurrency: number): Promise<StressTestResults> {
+  const results: StressTestResults = {
     testType,
     iterations,
     concurrency,
@@ -409,7 +432,7 @@ async function runStressTest(testType: string, iterations: number, concurrency: 
           results.errorCount++;
         }
         return performance.now() - start;
-      } catch (error) {
+      } catch {
         results.errorCount++;
         return performance.now() - start;
       }

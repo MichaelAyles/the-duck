@@ -19,7 +19,9 @@ export function LoginForm() {
     return (
       <Card className="p-8 max-w-md mx-auto">
         <div className="text-center space-y-4">
-          <DuckLogo variant="duck" size="xl" />
+          <div className="flex justify-center">
+            <DuckLogo variant="duck" size="xl" />
+          </div>
           <h1 className="text-2xl font-bold">The Duck</h1>
           <p className="text-muted-foreground">
             Supabase authentication is not configured in this environment.
@@ -79,7 +81,7 @@ export function LoginForm() {
       <div className="text-center space-y-6">
         {/* Duck header */}
         <div className="space-y-2">
-          <div className="animate-bounce">
+          <div className="animate-bounce flex justify-center">
             <DuckLogo variant="full" size="xl" />
           </div>
           <p className="text-muted-foreground">
