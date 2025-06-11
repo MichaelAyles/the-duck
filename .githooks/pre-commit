@@ -10,11 +10,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Run lint
+# Run lint - allow warnings but not errors
 echo "🔍 Running lint..."
 npm run lint
-if [ $? -ne 0 ]; then
-    echo "❌ Lint failed. Commit aborted."
+LINT_EXIT_CODE=$?
+if [ $LINT_EXIT_CODE -ne 0 ]; then
+    echo "⚠️  Lint issues found. Use 'git commit --no-verify' to bypass."
+    echo "🔧 Run 'npm run lint:fix' to auto-fix issues."
     exit 1
 fi
 

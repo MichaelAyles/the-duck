@@ -53,19 +53,54 @@ npm run workflow
 node scripts/dev-setup.js
 ```
 
-## Automated Workflow
+## Claude Code Automated Task Completion Workflow
 
-**IMPORTANT**: After completing any development task, always run the complete workflow:
+**MANDATORY**: After completing ANY development task, Claude Code must ALWAYS execute this complete workflow:
 
-1. **Build**: `npm run build` - Ensure the project builds successfully
-2. **Lint**: `npm run lint:fix` - Fix linting errors automatically where possible
-3. **Type Check**: `npm run type-check` - Verify TypeScript types are correct
-4. **Commit**: Only commit if all checks pass
-5. **Push**: Push changes to remote repository
+### 1. **Quality Validation**
+```bash
+npm run build          # Ensure project builds successfully
+npm run lint:fix       # Fix linting errors automatically
+npm run type-check     # Verify TypeScript types are correct
+```
+- If ANY step fails, fix the issues before proceeding
+- Do not commit broken code
 
-Use the shorthand command: `npm run workflow` to run steps 1-3 automatically.
+### 2. **Documentation Updates**
+- Update `todo.md` to mark completed tasks as ✅
+- Update `CLAUDE.md` if new patterns/conventions were established
+- Update any relevant documentation files if APIs or architecture changed
 
-**Pre-commit Hook**: A git hook is configured to automatically run these checks before any commit.
+### 3. **Commit & Deploy**
+```bash
+git add -A                           # Stage all changes
+git commit -m "[generated message]"  # Commit with descriptive message
+git push origin main                 # Push to main branch for Vercel deployment
+```
+
+### 4. **Commit Message Generation Rules**
+Generate commit messages using this format:
+- **feat**: New features or major functionality
+- **fix**: Bug fixes or corrections
+- **refactor**: Code restructuring without functionality changes
+- **docs**: Documentation updates
+- **style**: Code formatting, lint fixes
+- **chore**: Maintenance tasks, dependency updates
+
+**Example Messages:**
+- `feat: Add file upload API with Supabase storage integration`
+- `fix: Resolve authentication timeout issues in chat sessions`
+- `refactor: Extract chat message handling into custom hooks`
+- `docs: Update API documentation for new user preferences endpoints`
+
+### 5. **Verification**
+After pushing, mention to the user that:
+- ✅ Build validation passed
+- ✅ Code pushed to main branch
+- ✅ Vercel deployment will update automatically
+- ✅ Documentation updated
+
+**This workflow is MANDATORY for every task completion - no exceptions.**
 
 ## Architecture
 

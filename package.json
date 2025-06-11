@@ -13,7 +13,8 @@
     "type-check": "tsc --noEmit",
     "analyze": "ANALYZE=true npm run build",
     "test:ci": "npm run build && npm run lint && npm run type-check",
-    "workflow": "npm run build && npm run lint:fix && npm run type-check"
+    "workflow": "npm run build && npm run lint:fix && npm run type-check",
+    "deploy": "git push origin main"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
