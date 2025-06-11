@@ -6,7 +6,7 @@ interface Model {
   name: string
   provider?: string
   starred?: boolean
-  isPrimary?: boolean
+  isActive?: boolean
 }
 
 export function useModels() {
@@ -17,11 +17,11 @@ export function useModels() {
   
   const { 
     starredModels, 
-    primaryModel, 
+    activeModel, 
     isStarred, 
-    isPrimary, 
+    isActive, 
     toggleStar, 
-    setPrimary, 
+    setActive, 
     loading: starredLoading 
   } = useStarredModels()
 
@@ -42,11 +42,11 @@ export function useModels() {
           throw new Error(data.details || data.error)
         }
         
-        // Update starred status and primary status from our hook
+        // Update starred status and active status from our hook
         const modelsWithStarred = (data.models || []).map((model: Model) => ({
           ...model,
           starred: isStarred(model.id),
-          isPrimary: isPrimary(model.id)
+          isActive: isActive(model.id)
         }))
         
         setCuratedModels(modelsWithStarred)
@@ -60,7 +60,7 @@ export function useModels() {
     }
 
     fetchCuratedModels()
-  }, [starredModels, isStarred, isPrimary]) // Re-fetch when starred models change
+  }, [starredModels, isStarred, isActive]) // Re-fetch when starred models change
 
   const fetchAllModels = async () => {
     if (allModels.length > 0) return // Already fetched
@@ -80,11 +80,11 @@ export function useModels() {
         throw new Error(data.details || data.error)
       }
       
-      // Update starred status and primary status from our hook
+      // Update starred status and active status from our hook
       const modelsWithStarred = (data.models || []).map((model: Model) => ({
         ...model,
         starred: isStarred(model.id),
-        isPrimary: isPrimary(model.id)
+        isActive: isActive(model.id)
       }))
       
       setAllModels(modelsWithStarred)
@@ -108,10 +108,10 @@ export function useModels() {
     fetchAllModels,
     // Starred model functionality
     starredModels,
-    primaryModel,
+    activeModel,
     isStarred,
-    isPrimary,
+    isActive,
     toggleStar,
-    setPrimary,
+    setActive,
   }
 }

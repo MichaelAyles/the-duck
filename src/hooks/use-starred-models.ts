@@ -1,27 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
-
-const DEFAULT_STARRED_MODELS = [
-  'google/gemini-2.5-flash-preview-05-20',
-  'google/gemini-2.5-pro-preview-05-06',
-  'deepseek/deepseek-chat-v3-0324',
-  'anthropic/claude-sonnet-4',
-  'openai/gpt-4o-mini'
-]
+import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 
 export interface UseStarredModelsReturn {
   starredModels: string[]
-  primaryModel: string
+  activeModel: string
   isStarred: (modelId: string) => boolean
-  isPrimary: (modelId: string) => boolean
+  isActive: (modelId: string) => boolean
   toggleStar: (modelId: string) => Promise<void>
-  setPrimary: (modelId: string) => Promise<void>
+  setActive: (modelId: string) => Promise<void>
   loading: boolean
   error: string | null
 }
 
 export function useStarredModels(): UseStarredModelsReturn {
-  const [starredModels, setStarredModels] = useState<string[]>(DEFAULT_STARRED_MODELS)
-  const [primaryModel, setPrimaryModelState] = useState<string>(DEFAULT_STARRED_MODELS[0])
+  const [starredModels, setStarredModels] = useState<string[]>([...DEFAULT_ACTIVE_MODELS])
+  const [activeModel, setActiveModelState] = useState<string>(DEFAULT_ACTIVE_MODELS[0])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,7 +42,7 @@ export function useStarredModels(): UseStarredModelsReturn {
       }
       
       setStarredModels(data.starredModels || [])
-      setPrimaryModelState(data.primaryModel || DEFAULT_STARRED_MODELS[0])
+      setActiveModelState(data.activeModel || data.primaryModel || DEFAULT_ACTIVE_MODELS[0])
       
       if (data.message) {
         console.log('Starred models loaded:', data.message)
@@ -105,8 +98,8 @@ export function useStarredModels(): UseStarredModelsReturn {
       
       // Update with actual response from server
       setStarredModels(data.starredModels || newStarredModels)
-      if (data.primaryModel) {
-        setPrimaryModelState(data.primaryModel)
+      if (data.activeModel || data.primaryModel) {
+        setActiveModelState(data.activeModel || data.primaryModel)
       }
     } catch (err) {
       console.error('Error toggling starred model:', err)
@@ -119,7 +112,7 @@ export function useStarredModels(): UseStarredModelsReturn {
     }
   }, [starredModels])
 
-  const setPrimary = useCallback(async (modelId: string) => {
+  const setActive = useCallback(async (modelId: string) => {
     if (!modelId) return
 
     try {
@@ -127,7 +120,7 @@ export function useStarredModels(): UseStarredModelsReturn {
       setError(null)
 
       // Optimistic update
-      setPrimaryModelState(modelId)
+      setActiveModelState(modelId)
 
       // Persist to backend
       const response = await fetch('/api/starred-models', {
@@ -137,13 +130,13 @@ export function useStarredModels(): UseStarredModelsReturn {
         },
         body: JSON.stringify({
           modelId,
-          action: 'set_primary'
+          action: 'set_primary' // Keep API action as 'set_primary' for backend compatibility
         }),
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.details || errorData.error || 'Failed to set primary model')
+        throw new Error(errorData.details || errorData.error || 'Failed to set active model')
       }
 
       const data = await response.json()
@@ -155,9 +148,9 @@ export function useStarredModels(): UseStarredModelsReturn {
       
       // Update with actual response from server
       setStarredModels(data.starredModels || starredModels)
-      setPrimaryModelState(data.primaryModel || modelId)
+      setActiveModelState(data.activeModel || data.primaryModel || modelId)
     } catch (err) {
-      console.error('Error setting primary model:', err)
+      console.error('Error setting active model:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       
       // Revert optimistic update on error
@@ -171,17 +164,17 @@ export function useStarredModels(): UseStarredModelsReturn {
     return starredModels.includes(modelId)
   }, [starredModels])
 
-  const isPrimary = useCallback((modelId: string): boolean => {
-    return primaryModel === modelId
-  }, [primaryModel])
+  const isActive = useCallback((modelId: string): boolean => {
+    return activeModel === modelId
+  }, [activeModel])
 
   return {
     starredModels,
-    primaryModel,
+    activeModel,
     isStarred,
-    isPrimary,
+    isActive,
     toggleStar,
-    setPrimary,
+    setActive,
     loading,
     error
   }

@@ -7,6 +7,15 @@
 // Default AI model settings
 export const DEFAULT_AI_MODEL = "google/gemini-2.5-flash-preview-05-20";
 
+// Centralized default active models (5 curated models)
+export const DEFAULT_ACTIVE_MODELS: string[] = [
+  'google/gemini-2.5-flash-preview-05-20',
+  'google/gemini-2.5-pro-preview-05-06', 
+  'deepseek/deepseek-chat-v3-0324',
+  'anthropic/claude-sonnet-4',
+  'openai/gpt-4o-mini'
+];
+
 // Default chat settings
 export const DEFAULT_CHAT_SETTINGS = {
   tone: "match-user" as const,

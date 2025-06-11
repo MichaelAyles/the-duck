@@ -54,8 +54,8 @@ export interface UserPreferences {
     verbosity: 'short' | 'medium' | 'long'
     formality: 'casual' | 'neutral' | 'formal'
     technicalLevel: 'basic' | 'intermediate' | 'advanced'
-    preferredTopics: string[]
-    dislikedTopics: string[]
+    activeTopics: string[]
+    avoidedTopics: string[]
   }
 }
 

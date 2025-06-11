@@ -24,7 +24,7 @@ function createFallbackSummary(messages: Message[]) {
           formality: 0.5,
           verbosity: 0.5,
           technicalLevel: 0.5,
-          preferredResponseLength: 0.5
+          activeResponseLength: 0.5
         }
       }
     }
@@ -83,7 +83,7 @@ Format your response as a JSON object with the following structure:
         "formality": 0.5, // 0 = casual, 1 = formal
         "verbosity": 0.5, // 0 = concise, 1 = detailed
         "technicalLevel": 0.5, // 0 = basic, 1 = technical
-        "preferredResponseLength": 0.5 // 0 = short, 1 = long
+        "activeResponseLength": 0.5 // 0 = short, 1 = long
       }
     }
   }

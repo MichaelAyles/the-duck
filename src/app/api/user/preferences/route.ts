@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 import { OpenRouterClient } from '@/lib/openrouter'
 
 export interface UserPreferencesData {
@@ -13,22 +14,14 @@ export interface UserPreferencesData {
     verbosity: 'short' | 'medium' | 'long'
     formality: 'casual' | 'neutral' | 'formal'
     technicalLevel: 'basic' | 'intermediate' | 'advanced'
-    preferredTopics: string[]
-    dislikedTopics: string[]
+    activeTopics: string[]
+    avoidedTopics: string[]
   }
 }
 
-const DEFAULT_STARRED_MODELS = [
-  'google/gemini-2.5-flash-preview-05-20',
-  'google/gemini-2.5-pro-preview-05-06',
-  'deepseek/deepseek-chat-v3-0324',
-  'anthropic/claude-sonnet-4',
-  'openai/gpt-4o-mini'
-]
-
 const DEFAULT_USER_PREFERENCES: UserPreferencesData = {
-  starredModels: DEFAULT_STARRED_MODELS,
-  primaryModel: DEFAULT_STARRED_MODELS[0],
+  starredModels: [...DEFAULT_ACTIVE_MODELS],
+  primaryModel: DEFAULT_ACTIVE_MODELS[0],
   theme: 'system',
   responseTone: 'match',
   storageEnabled: true,
@@ -37,8 +30,8 @@ const DEFAULT_USER_PREFERENCES: UserPreferencesData = {
     verbosity: 'medium',
     formality: 'neutral',
     technicalLevel: 'intermediate',
-    preferredTopics: [],
-    dislikedTopics: []
+    activeTopics: [],
+    avoidedTopics: []
   }
 }
 
@@ -54,7 +47,7 @@ interface OpenRouterModel {
 
 function getTop5Models(allModels: OpenRouterModel[]): string[] {
   if (!allModels || allModels.length === 0) {
-    return DEFAULT_STARRED_MODELS
+    return [...DEFAULT_ACTIVE_MODELS]
   }
 
   const curatedTopModels = [
@@ -124,7 +117,7 @@ function getTop5Models(allModels: OpenRouterModel[]): string[] {
 
 async function createUserPreferencesWithDynamicDefaults(): Promise<UserPreferencesData> {
   try {
-    let dynamicStarredModels = [...DEFAULT_STARRED_MODELS]
+    let dynamicStarredModels = [...DEFAULT_ACTIVE_MODELS]
     
     try {
       const openRouterClient = new OpenRouterClient()

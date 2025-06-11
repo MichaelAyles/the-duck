@@ -23,7 +23,7 @@ export interface ChatSummary {
         formality: number
         verbosity: number
         technicalLevel: number
-        preferredResponseLength: number
+        activeResponseLength: number
       }
     }
   }
@@ -177,7 +177,7 @@ export class ChatService {
               formality: 0.5,
               verbosity: 0.5,
               technicalLevel: 0.5,
-              preferredResponseLength: 0.5
+              activeResponseLength: 0.5
             }
           }
         }

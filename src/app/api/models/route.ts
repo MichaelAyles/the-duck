@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient } from '@/lib/openrouter'
+import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 import { 
   getUserPreferences,
   DEFAULT_USER_PREFERENCES
@@ -20,7 +21,8 @@ interface ModelData {
 
 function getTop5Models(allModels: ModelData[]): string[] {
   if (!Array.isArray(allModels) || allModels.length === 0) {
-    return []
+    // Fallback to centralized default active models
+    return [...DEFAULT_ACTIVE_MODELS]
   }
   
   return allModels
@@ -64,18 +66,14 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
 
     // Fetch all available models from OpenRouter
     const apiKey = process.env.OPENROUTER_API_KEY
-    if (!apiKey) {
-      return NextResponse.json(
-        { 
-          error: 'OpenRouter API key not configured',
-          details: 'OPENROUTER_API_KEY environment variable is required to fetch models'
-        },
-        { status: 500 }
-      )
-    }
-
     const client = new OpenRouterClient(apiKey)
+    
+    // Get models - will use defaults if no API key
     const allModels = await client.getModels()
+    
+    if (!apiKey) {
+      console.warn('OpenRouter API key not configured, using default active models')
+    }
     
     // Get user preferences for primary model info
     let primaryModel = starredModels[0] || DEFAULT_USER_PREFERENCES.primaryModel

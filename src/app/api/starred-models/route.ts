@@ -4,16 +4,9 @@ import {
   withRateLimit, 
   SECURITY_CONFIG 
 } from '@/lib/security'
+import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 
-const DEFAULT_STARRED_MODELS = [
-  'google/gemini-2.5-flash-preview-05-20',
-  'google/gemini-2.5-pro-preview-05-06',
-  'deepseek/deepseek-chat-v3-0324',
-  'anthropic/claude-sonnet-4',
-  'openai/gpt-4o-mini'
-]
-
-const DEFAULT_PRIMARY_MODEL = DEFAULT_STARRED_MODELS[0]
+const DEFAULT_PRIMARY_MODEL = DEFAULT_ACTIVE_MODELS[0]
 
 async function handleStarredModelsGet(request: NextRequest): Promise<NextResponse> {
   try {
@@ -28,7 +21,7 @@ async function handleStarredModelsGet(request: NextRequest): Promise<NextRespons
     if (!response.ok) {
       // If not authenticated or error, return defaults
       return NextResponse.json({ 
-        starredModels: DEFAULT_STARRED_MODELS,
+        starredModels: [...DEFAULT_ACTIVE_MODELS],
         primaryModel: DEFAULT_PRIMARY_MODEL,
         message: 'Using default preferences'
       })
@@ -38,14 +31,14 @@ async function handleStarredModelsGet(request: NextRequest): Promise<NextRespons
     const preferences = data.preferences
 
     return NextResponse.json({ 
-      starredModels: preferences.starredModels || DEFAULT_STARRED_MODELS,
+      starredModels: preferences.starredModels || [...DEFAULT_ACTIVE_MODELS],
       primaryModel: preferences.primaryModel || DEFAULT_PRIMARY_MODEL,
       message: 'User preferences loaded successfully'
     })
   } catch (error) {
     console.error('Starred models GET error:', error)
     return NextResponse.json({ 
-      starredModels: DEFAULT_STARRED_MODELS,
+      starredModels: [...DEFAULT_ACTIVE_MODELS],
       primaryModel: DEFAULT_PRIMARY_MODEL,
       message: 'Using default preferences (error loading)',
       error: error instanceof Error ? error.message : 'Unknown error'

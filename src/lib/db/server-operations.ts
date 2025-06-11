@@ -19,8 +19,8 @@ export interface UserPreferencesData {
     verbosity: 'brief' | 'medium' | 'detailed'
     formality: 'casual' | 'neutral' | 'formal'
     technicalLevel: 'beginner' | 'intermediate' | 'advanced'
-    preferredTopics: string[]
-    dislikedTopics: string[]
+    activeTopics: string[]
+    avoidedTopics: string[]
   }
 }
 
@@ -70,8 +70,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferencesData = {
     verbosity: 'medium',
     formality: 'neutral',
     technicalLevel: 'intermediate',
-    preferredTopics: [],
-    dislikedTopics: []
+    activeTopics: [],
+    avoidedTopics: []
   }
 };
 

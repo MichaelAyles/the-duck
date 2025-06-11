@@ -40,16 +40,16 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
     isLoading, 
     error, 
     starredModels, 
-    primaryModel, 
+    activeModel, 
     isStarred,
-    isPrimary,
+    isActive,
     toggleStar, 
-    setPrimary,
+    setActive,
     fetchAllModels 
   } = useModels();
   
   // Suppress unused variable warning
-  void primaryModel;
+  void activeModel;
 
   const handleToneChange = (value: number[]) => {
     const toneValue = TONE_OPTIONS[value[0]]?.value || "match-user";
@@ -73,14 +73,16 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
           </div>
           
           <div className="hidden md:flex items-center gap-2">
-            <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })}>
-              <SelectTrigger className="w-64 duck-shadow hover:duck-glow transition-all duration-300">
-                <SelectValue className="truncate">
-                  {curatedModels.find(m => m.id === settings.model)?.name || 
-                   allModels.find(m => m.id === settings.model)?.name || 
-                   settings.model}
-                </SelectValue>
-              </SelectTrigger>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground font-medium">Active Model:</span>
+              <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })}>
+                <SelectTrigger className="w-64 duck-shadow hover:duck-glow transition-all duration-300">
+                  <SelectValue className="truncate font-medium">
+                    {curatedModels.find(m => m.id === settings.model)?.name || 
+                     allModels.find(m => m.id === settings.model)?.name || 
+                     settings.model}
+                  </SelectValue>
+                </SelectTrigger>
               <SelectContent className="w-80">
                 {isLoading ? (
                   <SelectItem value="loading" disabled>
@@ -159,6 +161,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                 )}
               </SelectContent>
             </Select>
+            </div>
           </div>
         </div>
 
@@ -324,23 +327,23 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                             <div className="flex flex-col min-w-0 flex-1 mr-2">
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className="font-medium text-sm truncate">{model.name}</span>
-                                {isPrimary?.(model.id) && (
+                                {isActive?.(model.id) && (
                                   <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded flex-shrink-0">
-                                    Primary
+                                    Active
                                   </span>
                                 )}
                               </div>
                               <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              {isStarred?.(model.id) && !isPrimary?.(model.id) && (
+                              {isStarred?.(model.id) && !isActive?.(model.id) && (
                                 <button
                                   type="button"
-                                  onClick={() => setPrimary?.(model.id)}
+                                  onClick={() => setActive?.(model.id)}
                                   className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
-                                  title="Set as primary model"
+                                  title="Set as active model"
                                 >
-                                  Set Primary
+                                  Set Active
                                 </button>
                               )}
                               <button

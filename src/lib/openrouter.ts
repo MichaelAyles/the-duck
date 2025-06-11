@@ -1,4 +1,5 @@
 import { OpenRouterModel, ChatMessage } from '@/types/chat'
+import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 
 interface OpenRouterModelResponse {
   id: string;
@@ -30,41 +31,30 @@ export class OpenRouterClient {
 
   async getModels(): Promise<OpenRouterModel[]> {
     if (!this.apiKey) {
-      // Return default models when no API key is available
-      return [
-        {
-          id: 'openai/gpt-4o-mini',
-          name: 'GPT-4o Mini',
-          description: 'A smaller version of GPT-4o',
+      // Return centralized default active models when no API key is available
+      console.warn('OpenRouter API key not configured, returning default active models')
+      
+      return DEFAULT_ACTIVE_MODELS.map((modelId) => {
+        const [provider, ...modelParts] = modelId.split('/')
+        const modelName = modelParts.join('/')
+        
+        return {
+          id: modelId,
+          name: this.getModelDisplayName(modelId),
+          description: `${provider} model: ${modelName}`,
           pricing: { prompt: 0.0001, completion: 0.0002, currency: 'USD' },
-          context_length: 8192,
+          context_length: 16384,
           architecture: {
             modality: 'text',
-            tokenizer: 'cl100k_base',
+            tokenizer: 'default',
             instruct_type: 'chat'
           },
           top_provider: {
             max_completion_tokens: 4096,
             is_moderated: true
           }
-        },
-        {
-          id: 'anthropic/claude-3.5-sonnet',
-          name: 'Claude 3.5 Sonnet',
-          description: 'Anthropic\'s Claude 3.5 Sonnet model',
-          pricing: { prompt: 0.00015, completion: 0.00025, currency: 'USD' },
-          context_length: 16384,
-          architecture: {
-            modality: 'text',
-            tokenizer: 'claude',
-            instruct_type: 'chat'
-          },
-          top_provider: {
-            max_completion_tokens: 8192,
-            is_moderated: true
-          }
         }
-      ]
+      })
     }
 
     try {
@@ -223,6 +213,18 @@ export class OpenRouterClient {
       console.error('Error in OpenRouter chat:', error)
       throw error
     }
+  }
+
+  private getModelDisplayName(modelId: string): string {
+    const displayNames: Record<string, string> = {
+      'google/gemini-2.5-flash-preview-05-20': 'Gemini 2.5 Flash Preview',
+      'google/gemini-2.5-pro-preview-05-06': 'Gemini 2.5 Pro Preview', 
+      'deepseek/deepseek-chat-v3-0324': 'DeepSeek Chat v3',
+      'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
+      'openai/gpt-4o-mini': 'GPT-4o Mini'
+    }
+    
+    return displayNames[modelId] || modelId.split('/')[1] || modelId
   }
 }
 

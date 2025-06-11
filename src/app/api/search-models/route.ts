@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient } from '@/lib/openrouter'
+import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 import { 
   withSecurity, 
   withRateLimit, 
   SECURITY_CONFIG 
 } from '@/lib/security'
 
-const DEFAULT_STARRED_MODELS = [
-  'google/gemini-2.5-flash-preview-05-20',
-  'google/gemini-2.5-pro-preview-05-06',
-  'deepseek/deepseek-chat-v3-0324',
-  'anthropic/claude-sonnet-4',
-  'openai/gpt-4o-mini'
-]
-
-const DEFAULT_PRIMARY_MODEL = DEFAULT_STARRED_MODELS[0]
+const DEFAULT_PRIMARY_MODEL = DEFAULT_ACTIVE_MODELS[0]
 
 interface Model {
   id: string
@@ -96,8 +89,8 @@ function searchModels(
   // Sort by relevance and quality
   return filteredModels.sort((a, b) => {
     // Prioritize our curated top models
-    const isACurated = DEFAULT_STARRED_MODELS.includes(a.id)
-    const isBCurated = DEFAULT_STARRED_MODELS.includes(b.id)
+    const isACurated = DEFAULT_ACTIVE_MODELS.includes(a.id)
+    const isBCurated = DEFAULT_ACTIVE_MODELS.includes(b.id)
     
     if (isACurated !== isBCurated) {
       return isACurated ? -1 : 1
@@ -161,7 +154,7 @@ async function handleSearchModelsRequest(request: NextRequest): Promise<NextResp
 
     // Get user preferences with fallback to defaults
     let userPreferences = {
-      starredModels: DEFAULT_STARRED_MODELS,
+      starredModels: [...DEFAULT_ACTIVE_MODELS],
       primaryModel: DEFAULT_PRIMARY_MODEL
     }
     
@@ -178,7 +171,7 @@ async function handleSearchModelsRequest(request: NextRequest): Promise<NextResp
         const prefsData = await prefsResponse.json()
         if (prefsData.preferences) {
           userPreferences = {
-            starredModels: prefsData.preferences.starredModels || DEFAULT_STARRED_MODELS,
+            starredModels: prefsData.preferences.starredModels || [...DEFAULT_ACTIVE_MODELS],
             primaryModel: prefsData.preferences.primaryModel || DEFAULT_PRIMARY_MODEL
           }
         }
@@ -191,7 +184,7 @@ async function handleSearchModelsRequest(request: NextRequest): Promise<NextResp
 
     if (getRecommended) {
       // Get personalized recommendations based on starred models
-      const preferredProviders = new Set(
+      const activeProviders = new Set(
         userPreferences.starredModels.map(id => id.split('/')[0])
       )
       
@@ -202,10 +195,10 @@ async function handleSearchModelsRequest(request: NextRequest): Promise<NextResp
         
         if (aStarred !== bStarred) return aStarred ? -1 : 1
         
-        const aPreferredProvider = preferredProviders.has(a.id.split('/')[0])
-        const bPreferredProvider = preferredProviders.has(b.id.split('/')[0])
+        const aActiveProvider = activeProviders.has(a.id.split('/')[0])
+        const bActiveProvider = activeProviders.has(b.id.split('/')[0])
         
-        if (aPreferredProvider !== bPreferredProvider) return aPreferredProvider ? -1 : 1
+        if (aActiveProvider !== bActiveProvider) return aActiveProvider ? -1 : 1
         
         return 0
       })
