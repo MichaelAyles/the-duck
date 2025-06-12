@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   isConfigured: boolean;
+  debugInfo?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,13 +19,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<string>('Initializing...');
   
-  // Check if Supabase is properly configured (not using mock client)
-  const isConfigured = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  // Check if Supabase is properly configured
+  const isConfigured = isSupabaseConfigured;
 
   useEffect(() => {
     if (!isConfigured) {
       // If using mock client, set loading to false immediately
+      setDebugInfo('Supabase not configured - running without auth');
+      console.log('Auth: Supabase not configured - proceeding without authentication');
       setLoading(false);
       return;
     }
@@ -32,20 +36,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Timeout fallback to prevent infinite loading
     const timeout = setTimeout(() => {
       console.warn('Auth loading timeout - proceeding without authentication');
+      setDebugInfo('Auth timeout - proceeding without session');
       setLoading(false);
     }, 5000); // 5 second timeout
 
     // Get initial session - only if we have a real Supabase client
     const getInitialSession = async () => {
       try {
-        // Type guard to check if auth methods exist
-        if ('getSession' in supabase.auth) {
+        setDebugInfo('Checking for existing session...');
+        console.log('Auth: Checking for existing session...');
+        
+        // Check if supabase client exists and has auth methods
+        if (supabase && 'getSession' in supabase.auth) {
+          console.log('Auth: Supabase client available, getting session');
           const { data: { session } } = await supabase.auth.getSession();
+          console.log('Auth: Session retrieved:', session ? 'authenticated' : 'no session');
           setSession(session);
           setUser(session?.user ?? null);
+          setDebugInfo(session ? 'User authenticated' : 'No active session');
+        } else {
+          console.warn('Supabase client not available - skipping session retrieval');
+          setDebugInfo('Supabase client unavailable');
         }
       } catch (error) {
         console.error('Error getting session:', error);
+        setDebugInfo(`Auth error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
         clearTimeout(timeout);
         setLoading(false);
@@ -57,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes - only if we have a real Supabase client
     let unsubscribe: (() => void) | null = null;
     
-    if ('onAuthStateChange' in supabase.auth) {
+    if (supabase && 'onAuthStateChange' in supabase.auth) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         (_event: AuthChangeEvent, session: Session | null) => {
           setSession(session);
@@ -78,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [isConfigured]);
 
   const logout = async () => {
-    if (isConfigured && 'signOut' in supabase.auth) {
+    if (isConfigured && supabase && 'signOut' in supabase.auth) {
       await supabase.auth.signOut();
     }
   };
@@ -89,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     logout,
     isConfigured,
+    debugInfo,
   };
 
   return (

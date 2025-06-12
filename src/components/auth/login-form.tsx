@@ -37,7 +37,7 @@ export function LoginForm() {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      if ('signInWithOAuth' in supabase.auth) {
+      if (supabase && 'signInWithOAuth' in supabase.auth) {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -58,7 +58,7 @@ export function LoginForm() {
   const handleGithubLogin = async () => {
     setIsLoading(true);
     try {
-      if ('signInWithOAuth' in supabase.auth) {
+      if (supabase && 'signInWithOAuth' in supabase.auth) {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'github',
           options: {
@@ -130,7 +130,7 @@ export function LoginForm() {
             </div>
           </div>
 
-          {isConfigured && 'supabaseUrl' in supabase && (
+          {isConfigured && supabase && 'supabaseUrl' in supabase && (
             <Auth
               supabaseClient={supabase}
               appearance={{

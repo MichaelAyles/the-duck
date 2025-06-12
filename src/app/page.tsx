@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { DuckLogo } from "@/components/duck-logo";
 
 export default function Home() {
-  const { user, loading, isConfigured } = useAuth();
+  const { user, loading, isConfigured, debugInfo } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -23,6 +23,9 @@ export default function Home() {
             <DuckLogo variant="duck" size="xl" />
           </div>
           <p className="text-muted-foreground">Loading...</p>
+          {debugInfo && (
+            <p className="text-xs text-muted-foreground/70">{debugInfo}</p>
+          )}
         </div>
       </div>
     );

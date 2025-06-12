@@ -8,11 +8,21 @@ import { Database } from '@/types/supabase'
  * and SSR support for seamless client-server authentication.
  */
 
-// Initialize Supabase client - environment variables are required
-export const supabase = createBrowserClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// Validate environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Supabase environment variables are missing. Authentication will be disabled.')
+}
+
+// Initialize Supabase client with fallback for missing env vars
+export const supabase = supabaseUrl && supabaseAnonKey 
+  ? createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
+  : null
+
+// Helper to check if Supabase is configured
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey)
 
 // Re-export the Database type for convenience
 export type { Database } 
