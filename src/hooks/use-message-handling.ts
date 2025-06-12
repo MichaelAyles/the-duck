@@ -5,7 +5,7 @@ import { ChatService } from '@/lib/chat-service';
 import { Message } from '@/types/chat';
 import { ChatSettings } from '@/components/chat/chat-interface';
 import { useToast } from '@/hooks/use-toast';
-import { CHAT_CONFIG, API_ENDPOINTS } from '@/lib/config';
+import { API_ENDPOINTS } from '@/lib/config';
 
 interface UseMessageHandlingProps {
   sessionId: string | null;
@@ -37,11 +37,21 @@ export function useMessageHandling({
   const { toast } = useToast();
   const lastSummarizeTime = useRef<number>(0);
 
-  // Generate title after a few messages
+  // Generate/update title for every message exchange
   const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string) => {
-    // Generate title after user sends configured number of messages
-    const userMessages = messages.filter(msg => msg.role === 'user');
-    if (userMessages.length === CHAT_CONFIG.TITLE_GENERATION_TRIGGER_COUNT) {
+    // Filter out welcome message and empty messages
+    const conversationMessages = messages.filter(msg => 
+      msg.id !== "welcome-message" && 
+      msg.metadata?.model !== "system" &&
+      msg.content.trim()
+    );
+    
+    const userMessages = conversationMessages.filter(msg => msg.role === 'user');
+    const assistantMessages = conversationMessages.filter(msg => msg.role === 'assistant' && msg.content.trim());
+    
+    // Generate title after we have at least one complete exchange (user + assistant response)
+    // or when we have multiple user messages
+    if (userMessages.length >= 1 && (assistantMessages.length >= 1 || userMessages.length >= 2)) {
       try {
         const response = await fetch(API_ENDPOINTS.GENERATE_TITLE, {
           method: 'POST',
@@ -49,14 +59,14 @@ export function useMessageHandling({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            messages: messages.slice(0, CHAT_CONFIG.TITLE_GENERATION_MESSAGE_LIMIT),
+            messages: conversationMessages, // Use full conversation context
             sessionId
           }),
         });
 
         if (response.ok) {
           const data = await response.json();
-          console.log('Generated title:', data.title);
+          console.log('Generated/updated title:', data.title);
           // The title will be updated in the database automatically
           // and the sidebar will refresh to show the new title
         } else {
@@ -195,6 +205,15 @@ export function useMessageHandling({
               const data = line.slice(6).trim();
               if (data === '[DONE]') {
                 setIsLoading(false);
+                
+                // Generate title when response is complete
+                if (sessionId && userId) {
+                  setMessages(currentMessages => {
+                    // Trigger title generation with the completed conversation
+                    setTimeout(() => generateTitleIfNeeded(currentMessages, sessionId), 100);
+                    return currentMessages;
+                  });
+                }
                 
                 // Notify parent of session update when streaming completes
                 if (onSessionUpdate && sessionId) {
