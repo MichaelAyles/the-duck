@@ -10,48 +10,54 @@ The Duck is a modern web application built on the Next.js 15 App Router architec
 -   **Framework**: Next.js 15 (React 19)
 -   **Language**: TypeScript
 -   **UI**: Tailwind CSS with shadcn/ui and Radix UI for accessible components.
--   **State Management**: React Context (`AuthProvider`) and component-level state.
+-   **State Management**: React Context (`AuthProvider`) and modular hooks architecture.
 -   **Authentication**: Supabase Auth (OAuth with Google/GitHub).
--   **Database**: Supabase PostgreSQL.
+-   **Database**: Supabase PostgreSQL with Row-Level Security.
 -   **AI Integration**: OpenRouter API for multi-model support.
+-   **Real-time**: Server-Sent Events for streaming chat responses.
 
 ### Key Functional Components
--   **Client-Side**: The application is primarily a single-page application (SPA) centered around the `ChatInterface` component. It manages chat state, user settings, and session history.
--   **Server-Side**: The backend consists of numerous Next.js API Routes (`src/app/api`) that handle tasks like streaming chat responses, generating titles, and fetching AI models.
--   **Authentication Flow**: Authentication is handled by Supabase. A client-side `AuthProvider` manages the user session, and an OAuth callback route (`/auth/callback/route.ts`) finalizes the login process.
+-   **Client-Side**: The application uses a modular hook-based architecture with specialized hooks (`useChatSession`, `useMessageHandling`, `useChatSettings`, `useChatLifecycle`) for clean separation of concerns.
+-   **Server-Side**: Secure Next.js API Routes handle all database operations, AI interactions, and user preferences. No direct database access from the client.
+-   **Authentication Flow**: Supabase Auth with secure session management through middleware and RLS policies. All API routes verify authentication before operations.
 
 ## 2. Architecture Review
 
 This section provides a critical analysis of the architectural decisions and implementation quality.
 
 ### The Good 🟢
--   **Modern Frontend**: The use of Next.js with the App Router, React 19, and shadcn/ui results in a modern, performant, and maintainable user interface.
--   **Well-Structured UI Components**: The React components in `src/components` are well-organized, with a clear separation of concerns (e.g., `ChatLayout`, `ChatInterface`, `ChatMessages`).
--   **Solid Authentication**: The implementation of Supabase Auth via the `AuthProvider` context is robust, providing a clean way to manage user sessions across the application. The `isConfigured` flag for handling unconfigured Supabase environments is a thoughtful touch for development.
--   **Feature-Rich**: The application boasts an impressive set of features, including multi-model support, chat persistence, AI-powered summarization, and a polished user experience.
+-   **Modern Frontend**: Next.js 15 with App Router, React 19, and shadcn/ui for a performant, maintainable UI.
+-   **Secure Architecture**: All database operations proxied through authenticated server-side API routes. No client-side database access.
+-   **Modular Hook Architecture**: Clean separation of concerns with specialized hooks (`useChatSession`, `useMessageHandling`, etc.).
+-   **Comprehensive Error Handling**: User-friendly toast notifications for all error scenarios.
+-   **Feature-Rich**: Multi-model support, chat persistence, AI-powered summarization, learning preferences, and polished UX.
+-   **Type Safety**: Complete TypeScript coverage with proper interfaces and no `any` types.
+-   **Centralized Configuration**: All constants and defaults managed in a single config file.
 
-### The Bad 🟡
--   **Redundant Dependencies**: The project includes `next-auth` as a dependency, but all authentication logic is handled by `@supabase/ssr` and the custom `AuthProvider`. This adds unnecessary bloat and potential confusion.
--   **Overly Complex Component**: The `ChatInterface` component has become overly complex, managing numerous pieces of state and side effects through a tangle of `useEffect` hooks. This makes it difficult to reason about and prone to bugs.
--   **Hardcoded Values**: There are several hardcoded values, such as the default AI model in `ChatInterface.tsx`, which should be configurable or dynamically fetched.
--   **Lack of Centralized API Logic**: The client-side `ChatService` attempts to be an abstraction layer, but its responsibilities are blurred. It mixes API calls (`fetch`) with direct calls to a database service, leading to architectural inconsistency.
+### The Bad 🟡 (Resolved)
+-   **✅ Redundant Dependencies**: Removed unused `next-auth` package and obsolete Drizzle ORM directory.
+-   **✅ Overly Complex Component**: Refactored `ChatInterface` into modular hooks with clear responsibilities.
+-   **✅ Hardcoded Values**: All configuration centralized in `/src/lib/config.ts`.
+-   **✅ API Architecture**: Clear client-server boundary with all database operations on server-side.
 
-### The Ugly 🔴 (Critical Issues)
--   **CRITICAL SECURITY RISK: Direct Client-Side Database Access**: The most significant issue is that the application performs direct database operations from the client-side. The `ChatService`, which runs in the browser, imports and uses `DatabaseService` (`supabase-operations.ts`). This service makes raw Supabase calls (`upsert`, `select`, `delete`) directly from the client.
-    -   **Why this is critical**: This architecture exposes your entire database schema and logic to the client. While Supabase's Row-Level Security (RLS) is used as a safeguard, relying solely on RLS for security is extremely risky. Any misconfiguration in RLS policies could lead to a severe data breach, allowing malicious users to access, modify, or delete other users' data.
-    -   **Best Practice**: Client-side applications should **NEVER** contain direct database queries. All database interactions must be proxied through secure, server-side API endpoints that validate user authentication, authorization, and input.
--   **Test Routes in Production**: The codebase contains numerous API routes for testing and debugging purposes (e.g., `/api/database-test`, `/api/security-test`, `/api/debug`). While the middleware attempts to block these, their very existence in the codebase is a security liability. They should be removed entirely from the production build.
+### The Ugly 🔴 (All Resolved)
+-   **✅ SECURITY FIXED: No Client-Side Database Access**: All database operations moved to secure server-side API routes with proper authentication.
+-   **✅ Test Routes Removed**: All debug/test API routes removed from codebase.
+-   **✅ Clean Codebase**: Removed redundant files, unused assets, and obsolete dependencies.
 
-## 3. Recommendations
+## 3. Current Issues & Priorities
 
-1.  **Refactor All Database Operations**: **This is the highest priority.** All functions within `supabase-operations.ts` must be moved to the server side.
-    -   Create new, secure API endpoints for every database operation (e.g., `POST /api/chat`, `GET /api/chat/[sessionId]`, `DELETE /api/chat/[sessionId]`).
-    -   The client-side `ChatService` should be refactored to **only** make `fetch` calls to these new API endpoints. It should contain no `import` statements from `@/lib/db`.
-    -   This change will properly secure the application and create a clear, maintainable client-server boundary.
-2.  **Clean Up API Routes**: Remove all test, debug, and unused API routes from the `src/app/api` directory.
-3.  **Simplify `ChatInterface`**: Refactor the `ChatInterface` component. Consider moving complex logic into custom hooks (e.g., `useSessionManager`, `useChatGenerator`) to better separate concerns and reduce the number of `useEffect` hooks.
-4.  **Remove `next-auth`**: Since it is unused, remove the `next-auth` package to clean up dependencies (`npm uninstall next-auth`).
-5.  **Centralize Configuration**: Move hardcoded values like the default model name into a centralized configuration file or fetch them from a user preferences endpoint.
+### Critical Issues (P1.5)
+1. **State Race Conditions**: Dual message update paths in `useMessageHandling` causing inconsistency
+2. **Memory Leaks**: Missing cleanup functions in useEffect hooks with timers
+3. **Performance**: Unnecessary re-renders and excessive dependencies in callbacks
+
+### Completed Improvements
+-   ✅ **Secure Architecture**: All database operations moved to server-side
+-   ✅ **Clean Codebase**: Removed test routes, unused dependencies, redundant files
+-   ✅ **Modular Architecture**: Refactored into specialized hooks
+-   ✅ **Centralized Config**: All settings in `/src/lib/config.ts`
+-   ✅ **Type Safety**: Complete TypeScript coverage
 
 ## 4. Detailed File Breakdown
 
@@ -117,37 +123,31 @@ This directory contains the core application logic, including all pages, layouts
 
 ### `src/app/api` Directory
 
-This directory contains all the API routes for the application, handling server-side logic and communication with external services.
+This directory contains secure API routes for server-side operations. All routes verify authentication before database access.
 
--   `auth-test/route.ts`: This route provides a simple test endpoint for checking the application's authentication configuration and Supabase connection. It's intended for development and debugging purposes.
+-   `chat/route.ts`: Main chat endpoint handling streaming AI responses. Validates authentication and rate limits.
 
--   `chat-history/route.ts`: This route handles fetching and deleting a user's chat history. It interacts with the `ChatService` to retrieve a list of past conversations or to delete a specific chat session from the database.
+-   `chat-history/route.ts`: Manages user's chat history - fetching and deleting sessions with proper authorization.
 
--   `chat/route.ts`: This is the main chat API endpoint. It handles both streaming and non-streaming chat requests. It receives messages from the client, sends them to the OpenRouter API for processing by an AI model, and then streams the response back to the client. It is protected by security middleware for rate limiting, API key validation, and input validation.
+-   `generate-title/route.ts`: Auto-generates chat titles using AI summarization.
 
--   `database-test/route.ts`: This route provides a test endpoint for verifying that all database operations (CRUD - Create, Read, Update, Delete) are functioning correctly. It's used during development to ensure the database service is working as expected.
+-   `learning-preferences/route.ts`: Manages user learning preferences for AI personalization.
 
--   `debug/route.ts`: This route is a development-only endpoint for fetching raw data from the database for debugging purposes. It allows developers to inspect the state of the database directly.
+-   `load-session/route.ts`: Loads specific chat session messages with authentication checks.
 
--   `fix-schema/route.ts`: This is a development-only route that provides an endpoint for applying fixes to the database schema, such as adding missing columns or indexes, without needing to run a full migration.
+-   `models/route.ts`: Fetches available AI models from OpenRouter API.
 
--   `generate-title/route.ts`: This route handles the automatic generation of titles for new chat conversations. It takes the initial messages of a chat, sends them to a cost-effective AI model, and uses the generated summary as the chat title.
+-   `search-models/route.ts`: Provides model search functionality with caching.
 
--   `load-session/route.ts`: This route is responsible for loading the messages of a specific chat session from the database when a user selects a conversation from their chat history.
+-   `sessions/[sessionId]/route.ts`: RESTful API for individual session operations.
 
--   `models/route.ts`: This route fetches the list of available AI models from the OpenRouter API. It can fetch either a curated list of recommended models or a complete list of all available models.
+-   `sessions/route.ts`: Handles chat session creation and listing.
 
--   `performance-test/route.ts`: This route provides an endpoint for running various performance tests on the application, such as stress testing component rendering and measuring network performance.
+-   `starred-models/route.ts`: Manages user's starred/favorite models.
 
--   `security-test/route.ts`: This route provides an endpoint for testing the application's security features, including rate limiting, input sanitization, and API key validation.
+-   `summarize/route.ts`: Generates AI-powered chat summaries and preference analysis.
 
--   `starred-models/route.ts`: This route handles fetching and updating a user's list of "starred" or favorite models. This allows users to customize their model selection list.
-
--   `summarize/route.ts`: This route takes a chat conversation and uses an AI model to generate a summary, identify key topics, and analyze user preferences based on the conversation.
-
--   `test-chat-save/route.ts`: This is a development endpoint used to verify that chat sessions are being saved to the database correctly.
-
--   `user-preferences/route.ts`: This route handles fetching and updating user-specific preferences, such as the theme, response tone, and other settings.
+-   `user/preferences/route.ts`: Handles user preference management (theme, settings, etc.).
 
 ### `src/app/actions` Directory
 
@@ -217,12 +217,17 @@ This directory contains reusable, low-level UI components, often built on top of
 
 ## `src/hooks` Directory
 
-This directory contains custom React hooks that encapsulate and reuse stateful logic across different components.
+This directory contains custom React hooks following a modular architecture pattern.
 
--   `use-chat.ts`: This hook manages the entire state and logic for a chat session. It handles sending messages, receiving streamed responses, managing loading states, and handling errors.
--   `use-models.ts`: This hook is responsible for fetching and managing the list of available AI models from the backend, including both curated and starred models.
--   `use-starred-models.ts`: This hook specifically manages the user's list of starred models, including fetching them from the database and providing a function to toggle the starred status of a model.
--   `use-toast.ts`: This hook provides a simple function (`toast()`) that components can use to trigger the display of toast notifications.
+-   `use-chat-session.ts`: Manages session state, message loading, and welcome messages
+-   `use-message-handling.ts`: Handles message sending, streaming responses, and error management
+-   `use-chat-settings.ts`: Manages user settings, model preferences, and configuration changes
+-   `use-chat-lifecycle.ts`: Handles chat ending, inactivity detection, and cleanup operations
+-   `use-learning-preferences.ts`: Manages user learning preferences and AI personalization
+-   `use-models.ts`: Fetches and manages available AI models from OpenRouter
+-   `use-starred-models.ts`: Manages user's starred/favorite models
+-   `use-model-search.ts`: Provides debounced search functionality for model selection
+-   `use-toast.ts`: Simple toast notification system
 
 ## `src/lib` Directory
 
@@ -248,9 +253,7 @@ This directory contains library code, utility functions, and services that are n
 
 ### `src/lib/db` Directory
 
--   `operations.ts`: This file acts as a re-exporter for the main database service, abstracting the specific implementation (`SupabaseDatabaseService`) and providing a consistent `DatabaseService` export for use throughout the application.
-
--   `supabase-operations.ts`: This file contains all the functions for interacting with the Supabase database. It includes methods for all CRUD (Create, Read, Update, Delete) operations on chat sessions, chat summaries, and user preferences.
+-   `server-operations.ts`: Server-side only database operations with proper authentication checks. All database interactions are performed through secure server-side API routes, never from the client.
 
 ### `src/lib/supabase` Directory
 
@@ -277,9 +280,10 @@ This directory contains utility scripts for aiding development.
 
 -   `dev-setup.js`: This is an interactive Node.js script that helps developers set up their local environment. It checks for required environment variables, verifies that necessary dependencies are installed, and can help create the initial `.env.local` file.
 
-## `drizzle` Directory
+## Removed Directories
 
-This directory contains files related to the Drizzle ORM, which was previously used for database operations before the project switched to using the Supabase client directly.
+### `drizzle` Directory (Removed)
+Previously contained Drizzle ORM migration files. Removed as the project uses direct Supabase SQL queries.
 
--   `0000_flippant_korg.sql`: This is the initial database schema migration generated by Drizzle, defining the first version of the tables.
--   `0001_enhanced_production.sql`: This Drizzle migration adds performance optimizations (like indexes), security features (like RLS), and database triggers to the schema. 
+### `database` Directory (Removed)
+Contained duplicate migration files. Consolidated into the main SQL migration script. 

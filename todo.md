@@ -82,6 +82,7 @@ This document outlines the development priorities for The Duck, focusing on crit
 -   [x] **Infrastructure Cleanup** 📝 MEDIUM PRIORITY - **COMPLETED**
     -   [x] Remove duplicate `/api/user-preferences` route (keep `/api/user/preferences`) ✅
     -   [x] Secure or remove `/api/performance-test` route for production ✅
+    -   [x] Remove redundant files (database/migration.sql, unused SVGs, drizzle directory) ✅
     -   [ ] Remove debug console.log statements from production code
     -   [ ] Add React Error Boundaries for component crash handling
     -   [ ] Add global error.tsx for unhandled errors
@@ -146,6 +147,7 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **Development Infrastructure**: Automated quality validation workflow
 - **Configuration Management**: Centralized constants and user preferences
 - **Error Handling**: Comprehensive toast-based user feedback system
+- **Codebase Cleanup**: Removed all redundant files and obsolete dependencies
 
 ### 🚨 **CRITICAL ISSUES (Fix Immediately)**
 - **State Race Conditions**: Message handling has dual update paths causing inconsistency
@@ -177,13 +179,11 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **Security**: ✅ No client-side database access
 - **Architecture**: ✅ Modular hook-based design
 - **Error Handling**: ✅ Comprehensive toast notifications
-- **Documentation**: 🔄 Currently updating
+- **Documentation**: ✅ Up to date
 
 ### 🔧 **Technical Debt**
 - State race conditions in message handling (Critical) - dual update paths in lines 161-166 and 177-184
 - Memory leak potential in lifecycle hooks (High) - missing AbortController cleanup
 - Performance optimization opportunities (Medium) - 11 dependencies in handleSendMessage
-- Duplicate API routes need consolidation (Medium) - /api/user-preferences
-- Performance test route security concern (Medium) - exposes system info without auth
 - Missing React Error Boundaries (Low) - no component-level error catching
 - Console statements in production code (Low) - 17 files with console logs

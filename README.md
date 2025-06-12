@@ -2,7 +2,7 @@
 
 A modern, secure, and performant LLM chat interface with authentication, personalized experiences, and modular architecture.
 
-![The Duck Logo](public/duck-favicon.svg)
+![The Duck Logo](public/images/logos/theduckchatfull.png)
 
 **🌐 Live Demo**: [https://theduck.chat](https://theduck.chat)
 
@@ -54,6 +54,7 @@ The chat interface is built using focused, reusable React hooks:
 - **`useMessageHandling`**: Message sending, streaming, error handling  
 - **`useChatSettings`**: Configuration, model preferences, settings
 - **`useChatLifecycle`**: Chat ending, inactivity handling, cleanup
+- **`useLearningPreferences`**: AI personalization and preference learning
 
 ### **Centralized Configuration**
 All constants, defaults, and configuration values are managed in `/src/lib/config.ts`:
@@ -71,17 +72,13 @@ All constants, defaults, and configuration values are managed in `/src/lib/confi
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/your-username/the-duck.git
+git clone https://github.com/MichaelAyles/the-duck.git
 cd the-duck
 npm install
 ```
 
 ### 2. Environment Setup
-Create a `.env.local` file by copying the example:
-```bash
-cp .env.example .env.local
-```
-Then, edit `.env.local` with your credentials:
+Create a `.env.local` file with your credentials:
 -   `OPENROUTER_API_KEY`: Your key from [OpenRouter](https://openrouter.ai/keys).
 -   `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL.
 -   `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key.
@@ -91,7 +88,8 @@ Then, edit `.env.local` with your credentials:
 You must run the migration script to set up your database tables and security policies.
 1.  Go to your Supabase project dashboard.
 2.  Navigate to the **SQL Editor**.
-3.  Open `supabase_migration.sql` from this repository, copy its contents, and run it in the editor.
+3.  Copy the contents of the migration script (available in the repository) and run it in the editor.
+4.  Enable authentication providers in your Supabase dashboard (Google and/or GitHub OAuth).
 
 ### 4. Run Development Server
 ```bash
@@ -99,8 +97,6 @@ You must run the migration script to set up your database tables and security po
 npm run dev
 ```
 Open [http://localhost:12000](http://localhost:12000) to see The Duck in action!
-
-## 🏗️ Architecture
 
 ## 🛠️ Tech Stack
 
@@ -238,6 +234,19 @@ All commits must pass:
 - ✅ Lint validation (zero warnings)
 - ✅ Type checking (strict TypeScript)
 - ✅ Error fixing (no broken code)
+
+## 🔒 Security & Privacy
+
+### **Data Protection**
+- All user data is isolated using Row-Level Security (RLS)
+- Authentication required for all data operations
+- No tracking or analytics beyond basic error logging
+- Your conversations stay private and secure
+
+### **Open Source Transparency**
+- Complete source code available for review
+- Security-focused architecture documented
+- Regular updates and community contributions welcome
 
 ## 📝 License
 
