@@ -107,7 +107,10 @@ Generate commit messages using this format:
 - **style**: Code formatting, lint fixes
 - **chore**: Maintenance tasks, dependency updates
 
-**CRITICAL**: Never include self-citations or references to Claude Code in commit messages.
+**CRITICAL**: Never include self-citations or references to Claude Code in commit messages. Do not include:
+- 🤖 Generated with [Claude Code](https://claude.ai/code)
+- Co-Authored-By: Claude <noreply@anthropic.com>
+- Any mention of AI, Claude, or automated generation
 
 **Example Messages:**
 - `feat: Add file upload API with Supabase storage integration`
