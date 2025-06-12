@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -49,7 +49,7 @@ interface ChatHistorySidebarProps {
   refreshTrigger?: number; // Added to trigger refresh when sessions change
 }
 
-export function ChatHistorySidebar({
+export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
   currentSessionId,
   onSessionSelect,
   onNewChat,
@@ -194,8 +194,8 @@ export function ChatHistorySidebar({
     }
   };
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
+  // Format date for display - memoized for performance
+  const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -209,7 +209,16 @@ export function ChatHistorySidebar({
     if (diffDays < 7) return `${diffDays}d ago`;
     
     return date.toLocaleDateString();
-  };
+  }, []);
+
+  // Memoize filtered sessions for performance
+  const filteredSessions = useMemo(() => {
+    if (!searchQuery) return sessions;
+    return sessions.filter(session => 
+      session.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      session.preview.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [sessions, searchQuery]);
 
   if (!user) {
     return null;
@@ -217,23 +226,23 @@ export function ChatHistorySidebar({
 
   return (
     <div className={cn(
-      "flex flex-col h-full bg-background border-r border-border transition-all duration-300",
+      "flex flex-col bg-background/95 backdrop-blur-md border-r border-border/50 transition-all duration-300 shadow-lg",
       isCollapsed ? "w-12" : "w-80",
       className
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div className="flex items-center justify-between p-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-transparent">
         {!isCollapsed && (
           <>
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Chat History</span>
+              <span className="font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Chat History</span>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={onNewChat}
-              className="duck-shadow hover:duck-glow"
+              className="bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary shadow-sm hover:shadow-md transition-all duration-300 rounded-lg"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -246,7 +255,7 @@ export function ChatHistorySidebar({
             size="sm"
             onClick={onToggleCollapse}
             className={cn(
-              "duck-shadow hover:duck-glow",
+              "bg-secondary/30 hover:bg-secondary/50 shadow-sm hover:shadow-md transition-all duration-300 rounded-lg",
               isCollapsed && "w-full"
             )}
           >
@@ -265,10 +274,10 @@ export function ChatHistorySidebar({
                 placeholder="Search conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 duck-shadow focus:duck-glow"
+                className="pl-10 bg-background/50 border-border/30 shadow-sm focus:shadow-md focus:ring-primary/20 transition-all duration-300 rounded-lg"
               />
               {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
               )}
             </div>
           </div>
@@ -279,7 +288,7 @@ export function ChatHistorySidebar({
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
-            ) : sessions.length === 0 ? (
+            ) : filteredSessions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">
@@ -298,14 +307,14 @@ export function ChatHistorySidebar({
               </div>
             ) : (
               <div className="space-y-1 pb-4">
-                {sessions.map((session) => (
+                {filteredSessions.map((session) => (
                   <div
                     key={session.id}
                     className={cn(
-                      "group relative rounded-lg p-3 cursor-pointer transition-all duration-200 border",
+                      "group relative rounded-xl p-3 cursor-pointer transition-all duration-300 border backdrop-blur-sm",
                       session.id === currentSessionId
-                        ? "bg-primary/10 border-primary/20 duck-glow"
-                        : "border-transparent hover:bg-muted/50 hover:border-border duck-shadow"
+                        ? "bg-gradient-to-r from-primary/15 to-primary/10 border-primary/30 shadow-md ring-1 ring-primary/20"
+                        : "border-transparent hover:bg-gradient-to-r hover:from-secondary/30 hover:to-secondary/20 hover:border-border/30 hover:shadow-sm"
                     )}
                     onClick={() => onSessionSelect(session.id)}
                   >
@@ -384,4 +393,4 @@ export function ChatHistorySidebar({
       )}
     </div>
   );
-} 
+}); 

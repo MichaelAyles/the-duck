@@ -69,26 +69,45 @@ export function ChatLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <ChatHistorySidebar
-        currentSessionId={currentSessionId || undefined}
-        onSessionSelect={handleSessionSelect}
-        onNewChat={handleNewChat}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={handleToggleSidebar}
-        refreshTrigger={refreshTrigger}
-      />
-      
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+    <div className="flex flex-col h-screen bg-background">
+      {/* Header - Fixed at top */}
+      <div className="flex-none">
         <ChatInterface
-          key={currentSessionId || 'new'} // Force re-render when session changes
+          key={currentSessionId || 'new'}
           sessionId={currentSessionId}
           initialMessages={messages}
           isLoading={isLoading}
           onSessionUpdate={handleSessionUpdate}
+          renderHeaderOnly={true}
         />
+      </div>
+      
+      {/* Body - Sidebar and Chat Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar - Fixed position, positioned under header */}
+        <div className="flex-none">
+          <ChatHistorySidebar
+            currentSessionId={currentSessionId || undefined}
+            onSessionSelect={handleSessionSelect}
+            onNewChat={handleNewChat}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={handleToggleSidebar}
+            refreshTrigger={refreshTrigger}
+            className="h-full"
+          />
+        </div>
+        
+        {/* Main Chat Area - Scrollable content */}
+        <div className="flex-1 flex flex-col">
+          <ChatInterface
+            key={currentSessionId || 'new'}
+            sessionId={currentSessionId}
+            initialMessages={messages}
+            isLoading={isLoading}
+            onSessionUpdate={handleSessionUpdate}
+            renderBodyOnly={true}
+          />
+        </div>
       </div>
     </div>
   );

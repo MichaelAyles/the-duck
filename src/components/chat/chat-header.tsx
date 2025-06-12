@@ -78,18 +78,22 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
   };
 
   return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 duck-shadow">
-      <div className="flex items-center justify-between px-4 py-3">
+    <header className="border-b border-border/30 bg-gradient-to-r from-background/95 via-background/98 to-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-xl relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/3 via-transparent to-secondary/3 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+      
+      <div className="relative flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
             <DuckLogo variant="full" size="lg" className="transition-all duration-300 hover:scale-110" />
           </div>
           
-          <div className="hidden md:flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground font-medium">Active Model:</span>
+          <div className="hidden md:flex items-center gap-3">
+            <div className="flex items-center gap-3 bg-secondary/30 backdrop-blur-sm rounded-xl px-4 py-2 border border-border/20">
+              <span className="text-sm text-muted-foreground font-medium">Model:</span>
               <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })}>
-                <SelectTrigger className="w-64 duck-shadow hover:duck-glow transition-all duration-300">
+                <SelectTrigger className="w-64 bg-background/50 border-border/30 shadow-sm hover:shadow-md transition-all duration-300 rounded-lg">
                   <SelectValue className="truncate font-medium">
                     {curatedModels.find(m => m.id === settings.model)?.name || 
                      allModels.find(m => m.id === settings.model)?.name || 
@@ -179,7 +183,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-3 bg-secondary/50 rounded-lg px-3 py-1.5">
+          <div className="hidden sm:flex items-center gap-3 bg-secondary/40 backdrop-blur-sm rounded-xl px-4 py-2 border border-border/20">
             <Label htmlFor="storage-toggle" className="text-sm font-medium">
               Storage
             </Label>
@@ -195,7 +199,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
               variant="outline"
               size="sm"
               onClick={onEndChat}
-              className="hidden sm:flex duck-shadow hover:duck-glow transition-all duration-300"
+              className="hidden sm:flex bg-background/50 border-border/30 shadow-sm hover:shadow-md hover:bg-background/80 transition-all duration-300 rounded-lg"
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               End Chat
@@ -204,7 +208,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
 
           <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="duck-shadow hover:duck-glow transition-all duration-300">
+              <Button variant="ghost" size="sm" className="bg-background/30 hover:bg-background/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 rounded-lg">
                 <Settings className="h-4 w-4" />
               </Button>
             </DialogTrigger>
