@@ -88,7 +88,7 @@ export function LearningPreferencesTab() {
   });
 
   // Filter preferences based on category and search
-  const filteredPreferences = preferences.filter(pref => {
+  const filteredPreferences = (preferences || []).filter(pref => {
     const matchesCategory = selectedCategory === "all" || pref.category === selectedCategory;
     const matchesSearch = !searchTerm || 
       pref.preference_key.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -167,7 +167,7 @@ export function LearningPreferencesTab() {
               <Brain className="h-4 w-4 text-primary" />
               <div>
                 <p className="text-sm font-medium">Total</p>
-                <p className="text-2xl font-bold">{summary.total_preferences}</p>
+                <p className="text-2xl font-bold">{summary?.total_preferences || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -179,7 +179,7 @@ export function LearningPreferencesTab() {
               <TrendingUp className="h-4 w-4 text-green-600" />
               <div>
                 <p className="text-sm font-medium">Strong Likes</p>
-                <p className="text-2xl font-bold text-green-600">{summary.strong_likes}</p>
+                <p className="text-2xl font-bold text-green-600">{summary?.strong_likes || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -191,7 +191,7 @@ export function LearningPreferencesTab() {
               <TrendingDown className="h-4 w-4 text-red-600" />
               <div>
                 <p className="text-sm font-medium">Strong Dislikes</p>
-                <p className="text-2xl font-bold text-red-600">{summary.strong_dislikes}</p>
+                <p className="text-2xl font-bold text-red-600">{summary?.strong_dislikes || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -203,7 +203,7 @@ export function LearningPreferencesTab() {
               <BarChart3 className="h-4 w-4 text-blue-600" />
               <div>
                 <p className="text-sm font-medium">Categories</p>
-                <p className="text-2xl font-bold">{summary.categories.length}</p>
+                <p className="text-2xl font-bold">{summary?.categories?.length || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -230,7 +230,7 @@ export function LearningPreferencesTab() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {summary.categories.map(category => (
+              {(summary?.categories || []).map(category => (
                 <SelectItem key={category} value={category}>
                   {category.charAt(0).toUpperCase() + category.slice(1)}
                 </SelectItem>
@@ -425,7 +425,7 @@ export function LearningPreferencesTab() {
       </div>
 
       {/* Learning Tips */}
-      {summary.total_preferences < 10 && (
+      {(summary?.total_preferences || 0) < 10 && (
         <Card className="bg-muted/50">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">

@@ -55,6 +55,21 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        
+        // If table doesn't exist yet, fail silently with empty state
+        if (response.status === 500 && (errorData.error?.includes('relation') || errorData.error?.includes('table'))) {
+          console.warn('Learning preferences table not yet deployed, using empty state')
+          setPreferences([])
+          setSummary({
+            total_preferences: 0,
+            strong_likes: 0,
+            strong_dislikes: 0,
+            categories: [],
+            recent_changes: 0
+          })
+          return
+        }
+        
         throw new Error(errorData.error || 'Failed to load learning preferences')
       }
 
@@ -87,6 +102,12 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
+        
+        // Provide helpful error message for schema deployment issues
+        if (errorData.code === 'SCHEMA_NOT_DEPLOYED') {
+          throw new Error('Learning preferences system needs to be deployed. Please contact an administrator.')
+        }
+        
         throw new Error(errorData.error || 'Failed to add learning preference')
       }
 

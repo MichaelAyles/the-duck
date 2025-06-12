@@ -119,10 +119,15 @@ export function useMessageHandling({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: newMessages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-          })),
+          messages: newMessages
+            .filter(msg => msg.content.trim()) // Filter out empty messages
+            .filter(msg => msg.id !== "welcome-message") // Filter out welcome message
+            .filter(msg => msg.metadata?.model !== "system") // Filter out system messages
+            .slice(0, -1) // Remove the empty assistant message we just added
+            .map(msg => ({
+              role: msg.role,
+              content: msg.content,
+            })),
           model: settings.model,
           stream: true,
           tone: settings.tone,
@@ -167,24 +172,31 @@ export function useMessageHandling({
                 return;
               }
 
+              if (!data) continue; // Skip empty data lines
+
               try {
                 const parsed = JSON.parse(data);
                 if (parsed.error) {
                   throw new Error(parsed.error);
                 }
                 
-                if (parsed.content) {
+                if (parsed.content && typeof parsed.content === 'string') {
                   setMessages(prev => {
                     const updated = [...prev];
-                    const lastMessage = updated[updated.length - 1];
+                    const lastMessageIndex = updated.length - 1;
+                    const lastMessage = updated[lastMessageIndex];
                     if (lastMessage && lastMessage.role === 'assistant') {
-                      lastMessage.content += parsed.content;
+                      // Create a new message object instead of mutating
+                      updated[lastMessageIndex] = {
+                        ...lastMessage,
+                        content: lastMessage.content + parsed.content
+                      };
                     }
                     return updated;
                   });
                 }
-              } catch {
-                // Skip invalid JSON lines
+              } catch (parseError) {
+                console.warn('Failed to parse streaming data:', data, parseError);
                 continue;
               }
             }

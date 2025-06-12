@@ -59,6 +59,22 @@ export async function GET(request: NextRequest) {
 
     if (prefError) {
       console.error('Failed to fetch learning preferences:', prefError)
+      
+      // If table doesn't exist yet, return empty state
+      if (prefError.message?.includes('relation') || prefError.message?.includes('does not exist')) {
+        console.warn('Learning preferences table not yet deployed, returning empty state')
+        return NextResponse.json({
+          preferences: [],
+          summary: {
+            total_preferences: 0,
+            strong_likes: 0,
+            strong_dislikes: 0,
+            categories: [],
+            recent_changes: 0
+          }
+        })
+      }
+      
       return NextResponse.json(
         { error: 'Failed to fetch learning preferences' },
         { status: 500 }
@@ -71,10 +87,16 @@ export async function GET(request: NextRequest) {
 
     if (summaryError) {
       console.error('Failed to fetch learning summary:', summaryError)
-      return NextResponse.json(
-        { error: 'Failed to fetch learning summary' },
-        { status: 500 }
-      )
+      
+      // If function doesn't exist yet, use default summary
+      if (summaryError.message?.includes('function') || summaryError.message?.includes('does not exist')) {
+        console.warn('Learning summary function not yet deployed, using default summary')
+      } else {
+        return NextResponse.json(
+          { error: 'Failed to fetch learning summary' },
+          { status: 500 }
+        )
+      }
     }
 
     const summary = summaryData?.[0] || {
@@ -165,8 +187,23 @@ export async function POST(request: NextRequest) {
         )
       }
       
+      // Check if it's a missing table/function error
+      if (upsertError.message?.includes('relation') || upsertError.message?.includes('does not exist') || upsertError.message?.includes('function')) {
+        return NextResponse.json(
+          { 
+            error: 'Learning preferences system not yet deployed',
+            details: 'The database schema needs to be deployed. Please run the learning preferences migration.',
+            code: 'SCHEMA_NOT_DEPLOYED'
+          },
+          { status: 503 }
+        )
+      }
+      
       return NextResponse.json(
-        { error: 'Failed to save learning preference' },
+        { 
+          error: 'Failed to save learning preference',
+          details: upsertError.message
+        },
         { status: 500 }
       )
     }
