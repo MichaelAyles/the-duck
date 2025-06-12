@@ -126,7 +126,6 @@ async function createUserPreferencesWithDynamicDefaults(): Promise<UserPreferenc
       
       if (top5Models.length > 0) {
         dynamicStarredModels = top5Models
-        console.log('✨ Using dynamic top 5 models for new user:', top5Models)
       }
     } catch (modelError) {
       console.warn('Failed to get dynamic models, using defaults:', modelError)

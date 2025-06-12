@@ -65,8 +65,7 @@ export function useMessageHandling({
         });
 
         if (response.ok) {
-          const data = await response.json();
-          console.log('Generated/updated title:', data.title);
+          await response.json();
           // The title will be updated in the database automatically
           // and the sidebar will refresh to show the new title
         } else {
@@ -141,7 +140,6 @@ export function useMessageHandling({
                 sessionId
               }),
             });
-            console.log('🧠 Learning preferences updated from full conversation context');
           } catch (error) {
             console.warn('Failed to extract learning preferences:', error);
           }

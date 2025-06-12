@@ -358,8 +358,10 @@ export const SecurityAudit = {
       ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
     };
     
-    // Log for analytics and cost tracking
-    console.log('📊 API Usage:', JSON.stringify(logEntry));
+    // Log for analytics and cost tracking (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📊 API Usage:', JSON.stringify(logEntry));
+    }
   }
 };
 

@@ -48,11 +48,10 @@ export function useChatSession({
   }), []);
 
   // Load messages for an existing session
-  const loadSessionMessages = useCallback(async (sessionId: string) => {
+  const loadSessionMessages = useCallback(async () => {
     try {
       if (!userId || !chatServiceRef.current) return;
       
-      console.log('Loading session messages for:', sessionId);
       
       // Load messages using ChatService
       const loadedMessages = await chatServiceRef.current.loadChatSession();
@@ -65,11 +64,9 @@ export function useChatSession({
         }));
         
         setMessages(formattedMessages);
-        console.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
       } else {
         // If no messages found, show welcome message
         setMessages([welcomeMessage]);
-        console.log('No messages found, showing welcome message');
       }
     } catch (error) {
       console.error('Error loading session messages:', error);
@@ -96,7 +93,6 @@ export function useChatSession({
 
   // Handle session changes - this effect runs when the sessionId prop changes
   useEffect(() => {
-    console.log('SessionId changed to:', initialSessionId);
     if (initialSessionId && initialSessionId !== sessionId) {
       // Session changed, update our state and load new messages
       setSessionId(initialSessionId);
@@ -104,7 +100,7 @@ export function useChatSession({
       // Create new ChatService for the new session
       if (userId) {
         chatServiceRef.current = new ChatService(initialSessionId, userId);
-        loadSessionMessages(initialSessionId);
+        loadSessionMessages();
       }
     }
   }, [initialSessionId, sessionId, userId, loadSessionMessages]);
@@ -127,7 +123,7 @@ export function useChatSession({
     if (userId) {
       if (initialSessionId && !initialMessages?.length) {
         // Load existing session messages if not already provided
-        loadSessionMessages(initialSessionId);
+        loadSessionMessages();
       } else if (!initialSessionId) {
         // New session - clear messages to trigger welcome message
         setMessages([]);

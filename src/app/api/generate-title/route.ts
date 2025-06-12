@@ -144,7 +144,6 @@ Respond with ONLY the title, nothing else.`
     await sessionResponse.json()
     // Session exists, we can proceed with title generation
 
-    console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle}`)
 
     // Update the session with the new title
     const updateResponse = await fetch(new URL(`/api/sessions/${sessionId}`, req.url).toString(), {

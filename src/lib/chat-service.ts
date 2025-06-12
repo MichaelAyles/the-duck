@@ -66,7 +66,6 @@ export class ChatService {
     try {
       // Don't save if no user is authenticated
       if (!this.userId) {
-        console.log('Skipping chat session save - no user authenticated')
         return
       }
 
@@ -102,11 +101,9 @@ export class ChatService {
   public async loadChatSession(): Promise<Message[]> {
     try {
       if (!this.userId) {
-        console.log('No user ID available for loading session')
         return []
       }
 
-      console.log(`Loading session ${this.sessionId} for user ${this.userId}`)
       
       const response = await fetch(`/api/sessions/${this.sessionId}`, {
         method: 'GET',
@@ -117,7 +114,6 @@ export class ChatService {
 
       if (!response.ok) {
         if (response.status === 404) {
-          console.log(`Session ${this.sessionId} not found`)
           return []
         }
         throw new Error('Failed to load chat session')
@@ -127,11 +123,9 @@ export class ChatService {
       const session = data.session
       
       if (session && Array.isArray(session.messages)) {
-        console.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
         return session.messages as Message[]
       }
       
-      console.log(`No messages found for session ${this.sessionId}`)
       return []
     } catch (error) {
       console.warn('Failed to load chat session:', error)

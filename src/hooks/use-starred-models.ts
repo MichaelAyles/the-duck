@@ -46,7 +46,6 @@ export function useStarredModels(): UseStarredModelsReturn {
       setActiveModelState(data.activeModel || data.primaryModel || DEFAULT_ACTIVE_MODELS[0])
       
       if (data.message) {
-        console.log('Starred models loaded:', data.message)
       }
     } catch (err) {
       console.error('Error loading starred models:', err)
