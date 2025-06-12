@@ -113,10 +113,9 @@ export function useMessageHandling({
         generateTitleIfNeeded(newMessages, sessionId);
         
         // Extract learning preferences when user expresses explicit preferences
-        const userMessage = newMessages.find(msg => msg.role === 'user' && msg.content === content.trim());
         const hasPreferenceKeywords = /\b(like|love|enjoy|prefer|hate|dislike|don't like|interested in|fascinated by|passionate about)\b/i.test(content);
         
-        if (userMessage && hasPreferenceKeywords) {
+        if (hasPreferenceKeywords) {
           try {
             await fetch('/api/summarize', {
               method: 'POST',
