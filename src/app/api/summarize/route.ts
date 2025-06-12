@@ -193,6 +193,7 @@ Assign weights based on:
           if (error) {
             console.error('Failed to save chat summary to database:', error)
           } else {
+            console.log(`✅ Saved chat summary for session: ${sessionId}`)
           }
 
           // Save learning preferences if they exist
@@ -213,12 +214,14 @@ Assign weights based on:
                 if (prefError) {
                   console.error(`Failed to save learning preference: ${pref.preference_key}`, prefError)
                 } else {
+                  console.log(`✅ Saved learning preference: ${pref.category}/${pref.preference_key} (weight: ${pref.weight})`)
                 }
               } catch (prefSaveError) {
                 console.error('Error saving individual learning preference:', prefSaveError)
               }
             }
             
+            console.log(`✅ Processed ${summary.learningPreferences.length} learning preferences from chat summary`)
           }
         } catch (dbError) {
           console.error('Error saving summary to database:', dbError)

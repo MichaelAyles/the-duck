@@ -106,6 +106,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     }
 
     if (!data) {
+      console.log('No user preferences found, creating defaults for user:', userId)
       return await createUserPreferencesWithDynamicDefaults(userId)
     }
 
@@ -136,10 +137,12 @@ export async function createUserPreferencesWithDynamicDefaults(userId: string): 
       const { data: allModels } = await response.json()
       if (Array.isArray(allModels) && allModels.length > 0) {
         const top5Models = getTop5Models(allModels)
+        console.log('Selected top 5 models:', top5Models)
         
         if (top5Models.length > 0) {
           dynamicDefaults.starredModels = top5Models
           dynamicDefaults.primaryModel = top5Models[0]
+          console.log('✨ Using dynamic top 5 models for new user:', top5Models)
         }
       }
     }
@@ -187,6 +190,7 @@ export async function createUserPreferences(
       return preferences // Return the preferences without saving
     }
 
+    console.log('Created user preferences for user:', userId)
     return data.preferences as UserPreferencesData
   } catch (error) {
     console.error('Error creating user preferences:', error)

@@ -83,7 +83,7 @@ This document outlines the development priorities for The Duck, focusing on crit
     -   [x] Remove duplicate `/api/user-preferences` route (keep `/api/user/preferences`)
     -   [x] Secure `/api/performance-test` route with authentication
     -   [x] Remove redundant files (database/migration.sql, unused SVGs, drizzle directory)
-    -   [x] Remove debug console.log statements from production code ✅
+    -   [ ] Remove debug console.log statements from production code
     -   [x] Add React Error Boundaries for component crash handling
     -   [x] Add global error.tsx for unhandled errors
 

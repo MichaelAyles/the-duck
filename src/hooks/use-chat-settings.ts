@@ -28,6 +28,7 @@ export function useChatSettings(): UseChatSettingsReturn {
   // Update model setting when active model is loaded
   useEffect(() => {
     if (activeModel && activeModel !== settings.model) {
+      console.log('Updating model setting to active model:', activeModel);
       setSettings(prev => ({ ...prev, model: activeModel }));
     }
   }, [activeModel, settings.model]);
@@ -40,6 +41,7 @@ export function useChatSettings(): UseChatSettingsReturn {
       try {
         // Check if the new model is starred, and if so, set it as active
         if (isStarred?.(newSettings.model)) {
+          console.log('Setting new active model:', newSettings.model);
           await setActive?.(newSettings.model);
           
           toast({

@@ -47,6 +47,7 @@ export async function getAuthenticatedUser(request: NextRequest) {
     }
     
     if (!session) {
+      console.log('No session found')
       return null
     }
     
@@ -59,9 +60,11 @@ export async function getAuthenticatedUser(request: NextRequest) {
     }
 
     if (!user) {
+      console.log('No user found despite having session')
       return null
     }
 
+    console.log('Successfully authenticated user:', user.id, user.email)
     return user
   } catch (error) {
     console.error('Error getting authenticated user:', error)

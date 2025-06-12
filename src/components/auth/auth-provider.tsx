@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!isConfigured) {
       // If using mock client, set loading to false immediately
       setDebugInfo('Supabase not configured - running without auth');
+      console.log('Auth: Supabase not configured - proceeding without authentication');
       setLoading(false);
       return;
     }
@@ -43,10 +44,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const getInitialSession = async () => {
       try {
         setDebugInfo('Checking for existing session...');
+        console.log('Auth: Checking for existing session...');
         
         // Check if supabase client exists and has auth methods
         if (supabase && 'getSession' in supabase.auth) {
+          console.log('Auth: Supabase client available, getting session');
           const { data: { session } } = await supabase.auth.getSession();
+          console.log('Auth: Session retrieved:', session ? 'authenticated' : 'no session');
           setSession(session);
           setUser(session?.user ?? null);
           setDebugInfo(session ? 'User authenticated' : 'No active session');
