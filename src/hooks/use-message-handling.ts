@@ -111,6 +111,28 @@ export function useMessageHandling({
       // Generate title after a few messages if we have a session and user
       if (sessionId && userId) {
         generateTitleIfNeeded(newMessages, sessionId);
+        
+        // Extract learning preferences when user expresses explicit preferences
+        const userMessage = newMessages.find(msg => msg.role === 'user' && msg.content === content.trim());
+        const hasPreferenceKeywords = /\b(like|love|enjoy|prefer|hate|dislike|don't like|interested in|fascinated by|passionate about)\b/i.test(content);
+        
+        if (userMessage && hasPreferenceKeywords) {
+          try {
+            await fetch('/api/summarize', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messages: newMessages.slice(-6), // Last 6 messages for context
+                sessionId
+              }),
+            });
+            console.log('🧠 Learning preferences updated from explicit preference statement');
+          } catch (error) {
+            console.warn('Failed to extract learning preferences:', error);
+          }
+        }
       }
 
       const response = await fetch(API_ENDPOINTS.CHAT, {
