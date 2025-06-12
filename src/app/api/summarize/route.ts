@@ -112,9 +112,17 @@ Look for:
 - Tone preferences: formal, casual, encouraging
 - Complexity levels they're comfortable with
 
-PRIORITIZE CONTENT OVER STYLE. If user says "I like goats", create:
-{"category": "topic", "preference_key": "goats", "weight": 7}
-NOT {"category": "approach", "preference_key": "direct_questions", "weight": 5}
+PRIORITIZE CONTENT OVER STYLE AND EXTRACT ALL PREFERENCES MENTIONED.
+
+Examples:
+- If user says "I like goats": {"category": "topic", "preference_key": "goats", "weight": 7}
+- If user says "I love coffee but hate tea": 
+  [{"category": "topic", "preference_key": "coffee", "weight": 8},
+   {"category": "topic", "preference_key": "tea", "weight": -8}]
+- If user says "I like cake" then "I like sheep": Extract BOTH preferences
+
+EXTRACT UP TO 10 DIFFERENT PREFERENCES from the entire conversation.
+Do NOT limit to recent messages - scan the FULL conversation for all stated preferences.
 
 Assign weights based on:
 - Explicit statements: "I love/hate X", "I prefer X", "I don't like X" = ±7 to ±10

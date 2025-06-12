@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { ChatService } from '@/lib/chat-service';
 import { Message } from '@/types/chat';
 import { ChatSettings } from '@/components/chat/chat-interface';
@@ -35,6 +35,7 @@ export function useMessageHandling({
 }: UseMessageHandlingProps): UseMessageHandlingReturn {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const lastSummarizeTime = useRef<number>(0);
 
   // Generate title after a few messages
   const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string) => {
@@ -114,8 +115,11 @@ export function useMessageHandling({
         
         // Extract learning preferences when user expresses explicit preferences
         const hasPreferenceKeywords = /\b(like|love|enjoy|prefer|hate|dislike|don't like|interested in|fascinated by|passionate about)\b/i.test(content);
+        const now = Date.now();
         
-        if (hasPreferenceKeywords) {
+        // Throttle summarization to once every 30 seconds to allow accumulation of preferences
+        if (hasPreferenceKeywords && (now - lastSummarizeTime.current) > 30000) {
+          lastSummarizeTime.current = now;
           try {
             await fetch('/api/summarize', {
               method: 'POST',
@@ -123,11 +127,11 @@ export function useMessageHandling({
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                messages: newMessages.slice(-6), // Last 6 messages for context
+                messages: newMessages.slice(0, -1), // All messages except empty assistant message
                 sessionId
               }),
             });
-            console.log('🧠 Learning preferences updated from explicit preference statement');
+            console.log('🧠 Learning preferences updated from full conversation context');
           } catch (error) {
             console.warn('Failed to extract learning preferences:', error);
           }
