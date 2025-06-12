@@ -15,6 +15,7 @@ import { ChatSettings } from "./chat-interface";
 import { useModels } from "@/hooks/use-models";
 import { DuckLogo } from "@/components/duck-logo";
 import { UserMenu } from "@/components/auth/user-menu";
+import { LearningPreferencesTab } from "./learning-preferences-tab";
 
 interface ChatHeaderProps {
   settings: ChatSettings;
@@ -213,8 +214,9 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
               </DialogHeader>
               
               <Tabs defaultValue="models" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="models">Models</TabsTrigger>
+                  <TabsTrigger value="learning">Learning</TabsTrigger>
                   <TabsTrigger value="behavior">Behavior</TabsTrigger>
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                 </TabsList>
@@ -400,6 +402,10 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       </div>
                     )}
                   </div>
+                </TabsContent>
+                
+                <TabsContent value="learning" className="space-y-4">
+                  <LearningPreferencesTab />
                 </TabsContent>
                 
                 <TabsContent value="behavior" className="space-y-4">

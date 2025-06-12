@@ -27,7 +27,8 @@ function createFallbackSummary(messages: Message[]) {
           activeResponseLength: 0.5
         }
       }
-    }
+    },
+    learningPreferences: []
   }
 }
 
@@ -69,6 +70,7 @@ export async function POST(req: Request) {
 1. A concise summary of the main points discussed
 2. Key topics covered
 3. Analysis of the user's writing style and preferences
+4. Specific learning preferences with weights from -10 (strong dislike) to +10 (strong like)
 
 Format your response as a JSON object with the following structure:
 {
@@ -86,8 +88,36 @@ Format your response as a JSON object with the following structure:
         "activeResponseLength": 0.5 // 0 = short, 1 = long
       }
     }
-  }
-}`
+  },
+  "learningPreferences": [
+    {
+      "category": "topic|style|format|approach|subject|tone|complexity|examples|explanation",
+      "preference_key": "specific preference identifier",
+      "preference_value": "optional description",
+      "weight": 5, // -10 to +10 based on user's apparent preference
+      "confidence": 0.8 // 0.0 to 1.0 confidence in this assessment
+    }
+  ]
+}
+
+Extract specific learning preferences from the conversation. Look for:
+- Topics the user shows interest in or avoids
+- Styles of explanation they prefer (technical vs simple, detailed vs concise)
+- Formats they like (code examples, step-by-step, analogies)
+- Approaches they respond well to (direct answers, explorative discussion)
+- Subjects they're knowledgeable about or want to learn
+- Tone preferences (formal, casual, encouraging)
+- Complexity levels they're comfortable with
+- Types of examples they find helpful
+
+Assign weights based on:
+- Explicit statements: "I love/hate", "I prefer", "I don't like" = ±7 to ±10
+- Strong engagement: detailed follow-ups, enthusiasm = +5 to +7
+- Mild preference: positive responses, asking for more = +2 to +5
+- Neutral: no clear indication = 0
+- Mild avoidance: topic changes, brief responses = -2 to -5
+- Clear disinterest: explicit confusion, frustration = -5 to -7
+- Strong rejection: "I don't want", "please stop" = -7 to -10`
           },
           ...messages.map((msg: Message) => ({
             role: msg.role,
@@ -150,6 +180,34 @@ Format your response as a JSON object with the following structure:
             console.error('Failed to save chat summary to database:', error)
           } else {
             console.log(`✅ Saved chat summary for session: ${sessionId}`)
+          }
+
+          // Save learning preferences if they exist
+          if (summary.learningPreferences && Array.isArray(summary.learningPreferences)) {
+            for (const pref of summary.learningPreferences) {
+              try {
+                // Use the upsert function to add/update learning preferences
+                const { error: prefError } = await supabase
+                  .rpc('upsert_learning_preference', {
+                    target_user_id: userId,
+                    pref_category: pref.category,
+                    pref_key: pref.preference_key,
+                    pref_value: pref.preference_value || null,
+                    pref_weight: Math.max(-10, Math.min(10, Math.round(pref.weight || 0))), // Ensure valid range
+                    pref_source: 'chat_summary'
+                  })
+
+                if (prefError) {
+                  console.error(`Failed to save learning preference: ${pref.preference_key}`, prefError)
+                } else {
+                  console.log(`✅ Saved learning preference: ${pref.category}/${pref.preference_key} (weight: ${pref.weight})`)
+                }
+              } catch (prefSaveError) {
+                console.error('Error saving individual learning preference:', prefSaveError)
+              }
+            }
+            
+            console.log(`✅ Processed ${summary.learningPreferences.length} learning preferences from chat summary`)
           }
         } catch (dbError) {
           console.error('Error saving summary to database:', dbError)
