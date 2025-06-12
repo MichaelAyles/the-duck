@@ -34,34 +34,21 @@ A modern, secure, and performant LLM chat interface with authentication, persona
 -   **Toast Notifications**: User-friendly error and success messages
 -   **Centered Logo**: Properly aligned branding elements
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture Philosophy
 
-### **Secure Server-Side Architecture**
-The Duck uses a secure, server-side architecture with proper authentication boundaries:
+This project is built with a strong, opinionated architectural philosophy that prioritizes **simplicity, type-safety, and developer experience**.
 
-```
-Client (React) 
-    ↓ (HTTP Requests)
-API Routes (/api/*)
-    ↓ (Authenticated Queries)  
-Supabase Database
-```
+1.  **Type-Safety End-to-End**: The primary goal is to eliminate entire classes of runtime errors. We use TypeScript everywhere. Supabase provides auto-generated types from our database schema, ensuring that the data shape is consistent from the database query all the way to the React component that renders it.
 
-### **Modular Hook Architecture**
-The chat interface is built using focused, reusable React hooks:
+2.  **Server-Centric Logic**: We leverage the Next.js App Router to its full potential. Business logic, data fetching, and mutations are handled on the server via **API Routes** and **Server Actions**. The client is responsible for presenting the UI and sending requests, not for complex data orchestration.
 
-- **`useChatSession`**: Session management, message loading, lifecycle
-- **`useMessageHandling`**: Message sending, streaming, error handling  
-- **`useChatSettings`**: Configuration, model preferences, settings
-- **`useChatLifecycle`**: Chat ending, inactivity handling, cleanup
-- **`useLearningPreferences`**: AI personalization and preference learning
+3.  **Thin, Composable Components**: React components are kept as "dumb" as possible. They receive data and functions via props. The "smarts" are encapsulated in custom **React Hooks** (`/src/hooks`). This makes components highly reusable and easy to reason about. The `ChatLayout` component acts as the orchestrator, managing state and passing it down to its children.
 
-### **Centralized Configuration**
-All constants, defaults, and configuration values are managed in `/src/lib/config.ts`:
-- API endpoints and timeouts
-- Default models and settings
-- Welcome messages and UI text
-- Performance thresholds
+4.  **Simplicity First State Management**: We intentionally avoid complex global state management libraries. State is managed locally with React's built-in hooks (`useState`, `useCallback`). This avoids unnecessary overhead and keeps the data flow predictable: state is owned by the highest-level component that needs it and passed down.
+
+5.  **Managed Backend (BaaS)**: We use **Supabase** for our database, authentication, and file storage. This choice aligns with the "keep it simple" ethos. It provides a robust, scalable, and secure backend without the overhead of managing our own database infrastructure, allowing us to focus on building features.
+
+This approach results in a codebase that is not only performant and secure but also a pleasure to work on.
 
 ## 🚀 Quick Start
 
