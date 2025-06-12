@@ -119,15 +119,24 @@ export function useMessageHandling({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: newMessages
-            .filter(msg => msg.content.trim()) // Filter out empty messages
-            .filter(msg => msg.id !== "welcome-message") // Filter out welcome message
-            .filter(msg => msg.metadata?.model !== "system") // Filter out system messages
-            .slice(0, -1) // Remove the empty assistant message we just added
-            .map(msg => ({
-              role: msg.role,
-              content: msg.content,
-            })),
+          messages: (() => {
+            const filteredMessages = newMessages
+              .slice(0, -1) // Remove the empty assistant message we just added
+              .filter(msg => msg.content.trim()) // Filter out empty messages
+              .filter(msg => msg.id !== "welcome-message") // Filter out welcome message
+              .filter(msg => msg.metadata?.model !== "system") // Filter out system messages
+              .map(msg => ({
+                role: msg.role,
+                content: msg.content,
+              }));
+            
+            // Safety check: ensure we have at least one message
+            if (filteredMessages.length === 0) {
+              throw new Error('No valid messages to send');
+            }
+            
+            return filteredMessages;
+          })(),
           model: settings.model,
           stream: true,
           tone: settings.tone,

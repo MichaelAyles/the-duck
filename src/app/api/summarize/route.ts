@@ -100,24 +100,30 @@ Format your response as a JSON object with the following structure:
   ]
 }
 
-Extract specific learning preferences from the conversation. Look for:
-- Topics the user shows interest in or avoids
-- Styles of explanation they prefer (technical vs simple, detailed vs concise)
-- Formats they like (code examples, step-by-step, analogies)
-- Approaches they respond well to (direct answers, explorative discussion)
-- Subjects they're knowledgeable about or want to learn
-- Tone preferences (formal, casual, encouraging)
+Extract specific learning preferences from the conversation. FOCUS ON ACTUAL CONTENT AND TOPICS, not just conversational patterns.
+
+Look for:
+- SPECIFIC TOPICS mentioned: animals, technology, food, sports, etc.
+- Subject matter the user discusses: science, history, programming, etc.
+- Concrete interests expressed: "I like goats", "I love programming", "I hate math"
+- Explanation styles preferred: technical vs simple, detailed vs concise
+- Response formats liked: code examples, step-by-step guides, analogies
+- Communication approaches: direct answers vs explorative discussion
+- Tone preferences: formal, casual, encouraging
 - Complexity levels they're comfortable with
-- Types of examples they find helpful
+
+PRIORITIZE CONTENT OVER STYLE. If user says "I like goats", create:
+{"category": "topic", "preference_key": "goats", "weight": 7}
+NOT {"category": "approach", "preference_key": "direct_questions", "weight": 5}
 
 Assign weights based on:
-- Explicit statements: "I love/hate", "I prefer", "I don't like" = ±7 to ±10
-- Strong engagement: detailed follow-ups, enthusiasm = +5 to +7
-- Mild preference: positive responses, asking for more = +2 to +5
+- Explicit statements: "I love/hate X", "I prefer X", "I don't like X" = ±7 to ±10
+- Strong engagement with topics: detailed follow-ups, enthusiasm about subject = +5 to +7
+- Mild interest: positive responses, asking for more about topic = +2 to +5
 - Neutral: no clear indication = 0
-- Mild avoidance: topic changes, brief responses = -2 to -5
-- Clear disinterest: explicit confusion, frustration = -5 to -7
-- Strong rejection: "I don't want", "please stop" = -7 to -10`
+- Topic avoidance: changing subject, brief responses = -2 to -5
+- Clear disinterest in topic: explicit confusion, frustration = -5 to -7
+- Strong rejection of topic: "I don't want to discuss X" = -7 to -10`
           },
           ...messages.map((msg: Message) => ({
             role: msg.role,
