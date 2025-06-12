@@ -60,24 +60,31 @@ This document outlines the development priorities for The Duck, focusing on crit
 **Goal**: Address critical issues discovered in code review that need immediate attention.
 
 -   [ ] **Fix State Race Conditions** 🚨 CRITICAL
-    -   [ ] Resolve dual message update paths in `useMessageHandling`
+    -   [ ] Resolve dual message update paths in `useMessageHandling` (lines 161-166 and 177-184)
+    -   [ ] Replace setTimeout pattern with proper state synchronization
     -   [ ] Consolidate state management to prevent inconsistent updates
     -   [ ] Add proper state synchronization between hooks
 
 -   [ ] **Memory Leak Prevention** ⚠️ HIGH PRIORITY
     -   [ ] Add cleanup functions to all useEffect hooks with timers
+    -   [ ] Fix missing AbortController cleanup in `use-chat.ts`
+    -   [ ] Add cleanup handlers for active streams on component unmount
     -   [ ] Fix inactivity handler cleanup in `useChatLifecycle`
     -   [ ] Implement proper subscription management
 
 -   [ ] **Performance Optimization** ⚠️ HIGH PRIORITY
+    -   [ ] Reduce `handleSendMessage` dependencies (currently 11) using refs for stable values
     -   [ ] Fix unnecessary re-renders in `createWelcomeMessage`
+    -   [ ] Consolidate multiple useEffect hooks in `use-chat-session.ts`
     -   [ ] Implement proper memoization for expensive operations
     -   [ ] Add React.memo optimizations where needed
 
--   [ ] **Type Safety Improvements** 📝 MEDIUM PRIORITY
-    -   [ ] Unify message type definitions across the application
-    -   [ ] Add proper discriminated unions for different message types
-    -   [ ] Implement strict TypeScript configuration
+-   [ ] **Infrastructure Cleanup** 📝 MEDIUM PRIORITY
+    -   [ ] Remove duplicate `/api/user-preferences` route (keep `/api/user/preferences`)
+    -   [ ] Secure or remove `/api/performance-test` route for production
+    -   [ ] Remove debug console.log statements from production code
+    -   [ ] Add React Error Boundaries for component crash handling
+    -   [ ] Add global error.tsx for unhandled errors
 
 ## 🎯 P2: Feature Implementation
 
@@ -118,6 +125,18 @@ This document outlines the development priorities for The Duck, focusing on crit
     -   [ ] Implement hook render count tracking
     -   [ ] Add performance metrics collection
     -   [ ] Create development performance dashboard
+
+-   [ ] **Testing Infrastructure**
+    -   [ ] Set up Jest and React Testing Library
+    -   [ ] Add basic test coverage for critical paths
+    -   [ ] Implement E2E tests for authentication flows
+    -   [ ] Add API route testing
+
+-   [ ] **Developer Experience**
+    -   [ ] Add API documentation (OpenAPI/Swagger)
+    -   [ ] Create structured error types for better error handling
+    -   [ ] Add development mode performance warnings
+    -   [ ] Implement correlation IDs for error tracking
 
 ## 📊 Current Project Status
 
@@ -161,7 +180,10 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **Documentation**: 🔄 Currently updating
 
 ### 🔧 **Technical Debt**
-- State race conditions in message handling (Critical)
-- Memory leak potential in lifecycle hooks (High)
-- Performance optimization opportunities (Medium)
-- Type system unification needed (Medium)
+- State race conditions in message handling (Critical) - dual update paths in lines 161-166 and 177-184
+- Memory leak potential in lifecycle hooks (High) - missing AbortController cleanup
+- Performance optimization opportunities (Medium) - 11 dependencies in handleSendMessage
+- Duplicate API routes need consolidation (Medium) - /api/user-preferences
+- Performance test route security concern (Medium) - exposes system info without auth
+- Missing React Error Boundaries (Low) - no component-level error catching
+- Console statements in production code (Low) - 17 files with console logs

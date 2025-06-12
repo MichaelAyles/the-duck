@@ -5,6 +5,7 @@ import { ChatHeader } from "./chat-header";
 import { ChatMessages } from "./chat-messages";
 import { ChatInput } from "./chat-input";
 import { StorageIndicator } from "./storage-indicator";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useChatSession } from "@/hooks/use-chat-session";
@@ -69,46 +70,52 @@ export const ChatInterface = React.memo(({
   });
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <ChatHeader
-        settings={settings}
-        onSettingsChange={handleSettingsChange}
-        onEndChat={handleEndChat}
-        messageCount={messages.length - 1} // Exclude welcome message
-      />
-      
-      <div
-        className={cn(
-          "flex-1 transition-all duration-300 relative",
-          settings.storageEnabled
-            ? "bg-transparent"
-            : "bg-muted/20"
-        )}
-      >
-        {/* Decorative duck waves pattern */}
-        <div className="absolute inset-0 opacity-5 pointer-events-none">
-          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary/20 to-transparent"></div>
-          <div className="absolute bottom-8 left-0 right-0 h-2 bg-primary/10 rounded-full"></div>
-          <div className="absolute bottom-16 left-8 right-8 h-1 bg-primary/15 rounded-full"></div>
-        </div>
+    <ErrorBoundary>
+      <div className="flex flex-col h-screen bg-gradient-to-br from-background via-background to-primary/5">
+        <ChatHeader
+          settings={settings}
+          onSettingsChange={handleSettingsChange}
+          onEndChat={handleEndChat}
+          messageCount={messages.length - 1} // Exclude welcome message
+        />
         
-        <ChatMessages
-          messages={messages}
-          isLoading={isLoading}
+        <ErrorBoundary>
+          <div
+            className={cn(
+              "flex-1 transition-all duration-300 relative",
+              settings.storageEnabled
+                ? "bg-transparent"
+                : "bg-muted/20"
+            )}
+          >
+            {/* Decorative duck waves pattern */}
+            <div className="absolute inset-0 opacity-5 pointer-events-none">
+              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary/20 to-transparent"></div>
+              <div className="absolute bottom-8 left-0 right-0 h-2 bg-primary/10 rounded-full"></div>
+              <div className="absolute bottom-16 left-8 right-8 h-1 bg-primary/15 rounded-full"></div>
+            </div>
+            
+            <ChatMessages
+              messages={messages}
+              isLoading={isLoading}
+            />
+          </div>
+        </ErrorBoundary>
+        
+        <ErrorBoundary>
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            disabled={isLoading}
+            storageEnabled={settings.storageEnabled}
+          />
+        </ErrorBoundary>
+        
+        <StorageIndicator
+          isVisible={isProcessingStorage}
+          message="🦆 Processing chat summary and storing preferences..."
         />
       </div>
-      
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        disabled={isLoading}
-        storageEnabled={settings.storageEnabled}
-      />
-      
-      <StorageIndicator
-        isVisible={isProcessingStorage}
-        message="🦆 Processing chat summary and storing preferences..."
-      />
-    </div>
+    </ErrorBoundary>
   );
 });
 

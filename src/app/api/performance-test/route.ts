@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 /**
  * 🚀 Performance Test API Route
  * 
  * Tests various performance aspects of The Duck application
  * including API response times, memory usage, and system health
+ * 
+ * SECURITY: Requires authentication and only available in development
  */
 
 interface PerformanceTestResult {
@@ -16,6 +19,24 @@ interface PerformanceTestResult {
 }
 
 export async function GET() {
+  // Only allow in development environment
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Performance testing is not available in production' },
+      { status: 404 }
+    );
+  }
+
+  // Verify user authentication
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
   const startTime = performance.now();
   const results: PerformanceTestResult[] = [];
 
@@ -364,6 +385,25 @@ interface StressTestRequest {
 
 // POST endpoint for stress testing
 export async function POST(request: NextRequest) {
+  // Only allow in development environment
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Performance testing is not available in production' },
+      { status: 404 }
+    );
+  }
+
+  // Verify user authentication
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    );
+  }
+
   try {
     const { testType, iterations = 10, concurrency = 1 }: StressTestRequest = await request.json();
 
