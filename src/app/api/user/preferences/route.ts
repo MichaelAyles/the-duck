@@ -352,6 +352,13 @@ export async function POST(request: NextRequest) {
         updatedPrefs.primaryModel = modelId
         break
 
+      case 'resetModels':
+        // Reset to default model preferences
+        const defaultPrefs = await createUserPreferencesWithDynamicDefaults()
+        updatedPrefs.starredModels = [...defaultPrefs.starredModels]
+        updatedPrefs.primaryModel = defaultPrefs.primaryModel
+        break
+
       default:
         return NextResponse.json(
           { error: `Unknown action: ${action}` },

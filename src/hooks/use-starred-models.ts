@@ -8,6 +8,7 @@ export interface UseStarredModelsReturn {
   isActive: (modelId: string) => boolean
   toggleStar: (modelId: string) => Promise<void>
   setActive: (modelId: string) => Promise<void>
+  resetToDefaults: () => Promise<void>
   loading: boolean
   error: string | null
 }
@@ -168,6 +169,53 @@ export function useStarredModels(): UseStarredModelsReturn {
     return activeModel === modelId
   }, [activeModel])
 
+  const resetToDefaults = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Optimistic update
+      setStarredModels([...DEFAULT_ACTIVE_MODELS])
+      setActiveModelState(DEFAULT_ACTIVE_MODELS[0])
+
+      // Persist to backend
+      const response = await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'resetModels'
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.details || errorData.error || 'Failed to reset model preferences')
+      }
+
+      const data = await response.json()
+      
+      // Check if the response contains an error (even with 200 status)
+      if (data.error) {
+        throw new Error(data.details || data.error)
+      }
+      
+      // Update with actual response from server
+      const preferences = data.preferences
+      setStarredModels(preferences.starredModels || [...DEFAULT_ACTIVE_MODELS])
+      setActiveModelState(preferences.primaryModel || DEFAULT_ACTIVE_MODELS[0])
+    } catch (err) {
+      console.error('Error resetting model preferences:', err)
+      setError(err instanceof Error ? err.message : 'Unknown error')
+      
+      // Revert optimistic update on error
+      await loadStarredModels()
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   return {
     starredModels,
     activeModel,
@@ -175,6 +223,7 @@ export function useStarredModels(): UseStarredModelsReturn {
     isActive,
     toggleStar,
     setActive,
+    resetToDefaults,
     loading,
     error
   }

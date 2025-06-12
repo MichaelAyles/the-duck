@@ -7,8 +7,9 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2 } from "lucide-react";
+import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2, RotateCcw } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ChatSettings } from "./chat-interface";
 import { useModels } from "@/hooks/use-models";
@@ -33,6 +34,7 @@ const TONE_OPTIONS = [
 
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { 
     curatedModels, 
@@ -45,6 +47,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
     isActive,
     toggleStar, 
     setActive,
+    resetToDefaults,
     fetchAllModels 
   } = useModels();
   
@@ -62,6 +65,15 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
 
   const getCurrentToneLabel = () => {
     return TONE_OPTIONS.find(option => option.value === settings.tone)?.label || "Match User's Style";
+  };
+
+  const handleResetModels = async () => {
+    try {
+      await resetToDefaults?.();
+      setIsResetDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to reset model preferences:', error);
+    }
   };
 
   return (
@@ -294,14 +306,26 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label>Favorite Models</Label>
-                      <button
-                        type="button"
-                        onClick={() => !isLoading && fetchAllModels?.()}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        disabled={isLoading}
-                      >
-                        {allModels.length > 0 ? `${allModels.length} models` : 'Load all models'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsResetDialogOpen(true)}
+                          disabled={isLoading}
+                          className="text-xs"
+                        >
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                          Reset to Defaults
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => !isLoading && fetchAllModels?.()}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          disabled={isLoading}
+                        >
+                          {allModels.length > 0 ? `${allModels.length} models` : 'Load all models'}
+                        </button>
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Click the stars to manage your favorite models. Your curated top 5 models include Google Gemini 2.5, DeepSeek v3, Claude Sonnet 4, and GPT-4o Mini.
@@ -450,6 +474,45 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
           <UserMenu />
         </div>
       </div>
+      
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Model Preferences?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reset your favorite models and active model back to the default curated selection:
+              <br /><br />
+              • Google Gemini 2.5 Flash (Primary)
+              <br />
+              • Google Gemini 2.5 Pro
+              <br />
+              • DeepSeek v3
+              <br />
+              • Claude Sonnet 4
+              <br />
+              • GPT-4o Mini
+              <br /><br />
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetModels} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Resetting...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset to Defaults
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 }

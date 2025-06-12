@@ -22,6 +22,7 @@ export function useModels() {
     isActive, 
     toggleStar, 
     setActive, 
+    resetToDefaults,
     loading: starredLoading 
   } = useStarredModels()
 
@@ -113,5 +114,6 @@ export function useModels() {
     isActive,
     toggleStar,
     setActive,
+    resetToDefaults,
   }
 }
