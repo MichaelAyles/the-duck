@@ -55,37 +55,47 @@ This document outlines the development priorities for The Duck, focusing on crit
     -   [x] Implemented graceful fallbacks and helpful error descriptions
     -   [x] Added proper error boundaries and recovery mechanisms
 
-## 🚨 P1.5: Critical Bug Fixes - **URGENT**
+## ✅ P1.5: Critical Bug Fixes - **COMPLETED**
 
 **Goal**: Address critical issues discovered in code review that need immediate attention.
 
--   [ ] **Fix State Race Conditions** 🚨 CRITICAL
-    -   [ ] Resolve dual message update paths in `useMessageHandling` (lines 161-166 and 177-184)
-    -   [ ] Replace setTimeout pattern with proper state synchronization
-    -   [ ] Consolidate state management to prevent inconsistent updates
-    -   [ ] Add proper state synchronization between hooks
+-   [x] **Fix State Race Conditions** ✅ COMPLETED (commit 20e983e)
+    -   [x] Resolve dual message update paths in `useMessageHandling`
+    -   [x] Replace setTimeout pattern with proper state synchronization
+    -   [x] Consolidate state management to prevent inconsistent updates
+    -   [x] Add proper state synchronization between hooks
 
--   [ ] **Memory Leak Prevention** ⚠️ HIGH PRIORITY
-    -   [ ] Add cleanup functions to all useEffect hooks with timers
-    -   [ ] Fix missing AbortController cleanup in `use-chat.ts`
-    -   [ ] Add cleanup handlers for active streams on component unmount
-    -   [ ] Fix inactivity handler cleanup in `useChatLifecycle`
-    -   [ ] Implement proper subscription management
+-   [x] **Memory Leak Prevention** ✅ COMPLETED (commit 20e983e)
+    -   [x] Add cleanup functions to all useEffect hooks with timers
+    -   [x] Fix missing AbortController cleanup in `use-chat.ts`
+    -   [x] Add cleanup handlers for active streams on component unmount
+    -   [x] Fix inactivity handler cleanup in `useChatLifecycle`
+    -   [x] Implement proper subscription management
 
--   [ ] **Performance Optimization** ⚠️ HIGH PRIORITY
-    -   [ ] Reduce `handleSendMessage` dependencies (currently 11) using refs for stable values
-    -   [ ] Fix unnecessary re-renders in `createWelcomeMessage`
-    -   [ ] Consolidate multiple useEffect hooks in `use-chat-session.ts`
-    -   [ ] Implement proper memoization for expensive operations
-    -   [ ] Add React.memo optimizations where needed
+-   [x] **Performance Optimization** ✅ COMPLETED (commit 20e983e)
+    -   [x] Reduce `handleSendMessage` dependencies using refs for stable values
+    -   [x] Fix unnecessary re-renders in `createWelcomeMessage`
+    -   [x] Consolidate multiple useEffect hooks in `use-chat-session.ts`
+    -   [x] Implement proper memoization for expensive operations
+    -   [x] Add React.memo optimizations where needed
 
--   [x] **Infrastructure Cleanup** 📝 MEDIUM PRIORITY - **COMPLETED**
-    -   [x] Remove duplicate `/api/user-preferences` route (keep `/api/user/preferences`) ✅
-    -   [x] Secure or remove `/api/performance-test` route for production ✅
-    -   [x] Remove redundant files (database/migration.sql, unused SVGs, drizzle directory) ✅
+-   [x] **Infrastructure Cleanup** ✅ COMPLETED (commits 2112b9c, 05d1a57)
+    -   [x] Remove duplicate `/api/user-preferences` route (keep `/api/user/preferences`)
+    -   [x] Secure `/api/performance-test` route with authentication
+    -   [x] Remove redundant files (database/migration.sql, unused SVGs, drizzle directory)
     -   [ ] Remove debug console.log statements from production code
-    -   [ ] Add React Error Boundaries for component crash handling
-    -   [ ] Add global error.tsx for unhandled errors
+    -   [x] Add React Error Boundaries for component crash handling
+    -   [x] Add global error.tsx for unhandled errors
+
+## ✅ P1.75: Learning Preferences System - **COMPLETED**
+
+**Goal**: Implement AI personalization through learning preferences.
+
+-   [x] **Learning Preferences Infrastructure** ✅ COMPLETED (commits a17986f, 342e883)
+    -   [x] Create database schema for user learning preferences
+    -   [x] Implement real-time preference extraction from conversations
+    -   [x] Build comprehensive UI for viewing and managing preferences
+    -   [x] Integrate preferences into chat response generation
 
 ## 🎯 P2: Feature Implementation
 
@@ -95,6 +105,7 @@ This document outlines the development priorities for The Duck, focusing on crit
     -   [x] Complete user settings persistence and management system
     -   [x] Dynamic model defaults based on OpenRouter rankings
     -   [x] Cross-device settings synchronization
+    -   [x] Add reset model preferences functionality
 
 -   [ ] **Implement File Uploads**
     -   [ ] Configure Supabase Storage bucket for file uploads
@@ -144,24 +155,29 @@ This document outlines the development priorities for The Duck, focusing on crit
 ### ✅ **COMPLETED (Major Milestones)**
 - **P0 Security Refactor**: Eliminated all critical security vulnerabilities
 - **P1 Code Quality**: Complete modular hook-based architecture refactor
+- **P1.5 Critical Bug Fixes**: Resolved all state, memory, and performance issues
+- **P1.75 Learning Preferences**: AI personalization system implemented
 - **Development Infrastructure**: Automated quality validation workflow
 - **Configuration Management**: Centralized constants and user preferences
 - **Error Handling**: Comprehensive toast-based user feedback system
 - **Codebase Cleanup**: Removed all redundant files and obsolete dependencies
 
-### 🚨 **CRITICAL ISSUES (Fix Immediately)**
-- **State Race Conditions**: Message handling has dual update paths causing inconsistency
-- **Memory Leaks**: Missing cleanup functions in useEffect hooks
-- **Performance Issues**: Unnecessary re-renders and object recreation
+### ✅ **RESOLVED CRITICAL ISSUES**
+- **State Race Conditions**: Fixed in commit 20e983e
+- **Memory Leaks**: Resolved with proper cleanup functions
+- **Performance Issues**: Optimized with memoization and refs
 
-### 🔄 **IN PROGRESS**
-- **Code Review**: Comprehensive analysis completed, implementing fixes
-- **Documentation Updates**: Updating all docs to reflect new architecture
+### ✅ **RECENTLY COMPLETED**
+- **P1.5 Critical Bug Fixes**: All state, memory, and performance issues resolved
+- **P1.75 Learning Preferences**: Complete AI personalization system implemented
+- **Infrastructure Cleanup**: Removed all redundant files and secured routes
+- **Documentation Updates**: All docs updated to reflect current architecture
 
 ### 🎯 **NEXT PRIORITIES**
-1. **Fix P1.5 Critical Bugs** (state races, memory leaks, performance)
+1. **Remove Console Statements** (remaining infrastructure cleanup)
 2. **Implement File Uploads** (P2 feature)
-3. **Add Full-Text Search** (P3 UX enhancement)
+3. **Enhance Memory Mode** (P2 feature)
+4. **Add Full-Text Search** (P3 UX enhancement)
 
 ### 🏗️ **Current Architecture Status**
 - ✅ **Secure**: Server-side API architecture with proper authentication
@@ -169,8 +185,8 @@ This document outlines the development priorities for The Duck, focusing on crit
 - ✅ **Type-Safe**: Comprehensive TypeScript coverage with proper interfaces
 - ✅ **Error-Resilient**: User-friendly error handling with graceful fallbacks
 - ✅ **Production-Ready**: Zero build errors, zero lint warnings
-- ⚠️ **Performance**: Some optimization needed for React re-renders
-- 🚨 **State Management**: Critical race conditions need immediate fixing
+- ✅ **Performance**: Optimized with proper memoization and refs
+- ✅ **State Management**: Race conditions resolved with proper synchronization
 
 ### 📈 **Quality Metrics**
 - **Build Status**: ✅ Passing (0 errors)
@@ -180,10 +196,7 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **Architecture**: ✅ Modular hook-based design
 - **Error Handling**: ✅ Comprehensive toast notifications
 - **Documentation**: ✅ Up to date
+- **Learning System**: ✅ AI personalization implemented
 
 ### 🔧 **Technical Debt**
-- State race conditions in message handling (Critical) - dual update paths in lines 161-166 and 177-184
-- Memory leak potential in lifecycle hooks (High) - missing AbortController cleanup
-- Performance optimization opportunities (Medium) - 11 dependencies in handleSendMessage
-- Missing React Error Boundaries (Low) - no component-level error catching
-- Console statements in production code (Low) - 17 files with console logs
+- Console statements in production code (Low) - needs cleanup in remaining files
