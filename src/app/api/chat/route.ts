@@ -9,6 +9,8 @@ import {
   SecurityAudit,
   SECURITY_CONFIG
 } from '@/lib/security'
+import { createClient } from '@/lib/supabase/server'
+import { getUserLearningPreferences, createPersonalizedSystemPrompt } from '@/lib/learning-preferences'
 
 // Helper function to convert text to duck speak
 function convertToDuckSpeak(text: string): string {
@@ -37,10 +39,22 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
   try {
     const { messages, model, stream = true, options = {}, tone = "match-user" } = validatedData;
 
-    // Create system prompt to establish The Duck's identity
-    const systemPrompt = tone === "duck" 
-      ? "You are The Duck, a friendly AI assistant. You must respond only with 'quack' repeated in various patterns. Express different emotions and meanings through variations in your quacking - use 'Quack!' for excitement, 'quack quack' for agreement, 'Quack?' for questions, etc."
-      : "You are The Duck, a helpful AI assistant. You are friendly, knowledgeable, and direct in your responses. Answer questions clearly and helpfully without excessive duck-themed language or metaphors. Focus on being genuinely useful rather than overly playful.";
+    // Get authenticated user and their learning preferences
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    let learningPreferences: import('@/lib/learning-preferences').LearningPreference[] = []
+    if (user) {
+      try {
+        learningPreferences = await getUserLearningPreferences(user.id)
+      } catch (error) {
+        console.warn('Failed to fetch learning preferences:', error)
+        // Continue without preferences rather than fail the chat
+      }
+    }
+
+    // Create personalized system prompt that incorporates user preferences
+    const systemPrompt = createPersonalizedSystemPrompt(learningPreferences, tone);
 
     // Sanitize messages content and ensure proper format
     const sanitizedMessages = [
