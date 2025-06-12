@@ -79,9 +79,9 @@ This document outlines the development priorities for The Duck, focusing on crit
     -   [ ] Implement proper memoization for expensive operations
     -   [ ] Add React.memo optimizations where needed
 
--   [ ] **Infrastructure Cleanup** 📝 MEDIUM PRIORITY
-    -   [ ] Remove duplicate `/api/user-preferences` route (keep `/api/user/preferences`)
-    -   [ ] Secure or remove `/api/performance-test` route for production
+-   [x] **Infrastructure Cleanup** 📝 MEDIUM PRIORITY - **COMPLETED**
+    -   [x] Remove duplicate `/api/user-preferences` route (keep `/api/user/preferences`) ✅
+    -   [x] Secure or remove `/api/performance-test` route for production ✅
     -   [ ] Remove debug console.log statements from production code
     -   [ ] Add React Error Boundaries for component crash handling
     -   [ ] Add global error.tsx for unhandled errors

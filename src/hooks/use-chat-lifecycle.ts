@@ -94,11 +94,13 @@ export function useChatLifecycle({
 
   // Setup inactivity handler when component mounts and when messages change
   useEffect(() => {
+    const chatService = chatServiceRef.current;
     setupInactivityHandler();
     
     // Cleanup function to prevent memory leaks
     return () => {
-      chatServiceRef.current?.clearInactivityTimer();
+      // Use the captured value from effect scope
+      chatService?.clearInactivityTimer();
     };
   }, [setupInactivityHandler, chatServiceRef]);
 
