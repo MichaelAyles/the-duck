@@ -225,22 +225,23 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                 <Settings className="h-4 w-4" />
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>Preferences</DialogTitle>
               </DialogHeader>
               
-              <Tabs defaultValue="models" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+              <Tabs defaultValue="models" className="w-full flex-1 flex flex-col min-h-0">
+                <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
                   <TabsTrigger value="models">Models</TabsTrigger>
                   <TabsTrigger value="learning">Learning</TabsTrigger>
                   <TabsTrigger value="behavior">Behavior</TabsTrigger>
                   <TabsTrigger value="appearance">Appearance</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="models" className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Selected Model</Label>
+                <TabsContent value="models" className="flex-1 overflow-y-auto">
+                  <div className="space-y-4 p-1">
+                    <div className="space-y-2">
+                      <Label>Selected Model</Label>
                     <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })}>
                       <SelectTrigger>
                         <SelectValue className="truncate">
@@ -419,13 +420,15 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       </div>
                     )}
                   </div>
+                  </div>
                 </TabsContent>
                 
-                <TabsContent value="learning" className="space-y-4">
+                <TabsContent value="learning" className="flex-1 overflow-y-auto p-1">
                   <LearningPreferencesTab />
                 </TabsContent>
                 
-                <TabsContent value="behavior" className="space-y-4">
+                <TabsContent value="behavior" className="flex-1 overflow-y-auto">
+                  <div className="space-y-4 p-1">
                   <div className="space-y-2">
                     <Label>Response Tone: {getCurrentToneLabel()}</Label>
                     <Slider
@@ -457,9 +460,11 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       onCheckedChange={(checked) => onSettingsChange({ storageEnabled: checked })}
                     />
                   </div>
+                  </div>
                 </TabsContent>
                 
-                <TabsContent value="appearance" className="space-y-4">
+                <TabsContent value="appearance" className="flex-1 overflow-y-auto">
+                  <div className="space-y-4 p-1">
                   <div className="space-y-2">
                     <Label>Theme</Label>
                     <div className="flex gap-2">
@@ -488,6 +493,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                         System
                       </Button>
                     </div>
+                  </div>
                   </div>
                 </TabsContent>
               </Tabs>
