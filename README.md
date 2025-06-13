@@ -32,7 +32,8 @@ A modern, secure, and performant LLM chat interface with authentication, persona
 -   **Duck-Themed Design**: Water-themed UI with smooth animations
 -   **Dark/Light Mode**: User-selectable themes
 -   **Toast Notifications**: User-friendly error and success messages
--   **Centered Logo**: Properly aligned branding elements
+-   **Static Sidebar**: Fixed navigation with independent scrolling
+-   **Responsive Layout**: Optimized for desktop and mobile experiences
 
 ## 🏗️ Architecture Philosophy
 
@@ -67,7 +68,7 @@ This approach results in a codebase that is not only performant and secure but a
 ## 🚀 Quick Start
 
 ### Prerequisites
--   Node.js 18+
+-   Node.js 20+ (LTS recommended)
 -   A Supabase account (for database and authentication)
 -   An OpenRouter API key
 
@@ -122,8 +123,9 @@ Open [http://localhost:12000](http://localhost:12000) to see The Duck in action!
 ### **Development & Deployment**
 -   **Build System**: Next.js with TypeScript strict mode
 -   **Code Quality**: ESLint, Prettier, automated workflows
+-   **CI/CD**: GitHub Actions for automated quality checks
 -   **Testing**: Type checking, build validation, lint enforcement
--   **Deployment**: Vercel with automatic deployments
+-   **Deployment**: Vercel with automatic deployments from GitHub
 -   **Monitoring**: Built-in error tracking and performance metrics
 
 ## 📁 Project Structure
@@ -248,8 +250,14 @@ The application follows a **Security-First** design philosophy:
 ## 📊 Development Workflow
 
 ### **Quality Assurance**
-The Duck includes comprehensive automated quality checks:
+The Duck includes comprehensive automated quality checks both locally and via CI/CD:
 
+**GitHub Actions CI/CD:**
+- Automatically runs on every push and pull request
+- Validates build, lint, and type checking
+- Requires passing checks before merging
+
+**Local Development:**
 ```bash
 # Complete workflow validation
 npm run workflow

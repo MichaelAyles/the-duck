@@ -118,6 +118,26 @@ This document outlines the development priorities for The Duck, focusing on crit
     -   [ ] Implement memory injection into model prompts
     -   [ ] Add user controls for memory preferences
 
+## ✅ P2.5: UI/UX Improvements - **COMPLETED**
+
+**Goal**: Improve the layout and user experience based on user feedback.
+
+-   [x] **Redesign Layout with Static Sidebar** ✅ COMPLETED (June 13, 2025)
+    -   [x] Repositioned sidebar to be static underneath title bar
+    -   [x] Fixed scroll behavior to work independently for chat and sidebar
+    -   [x] Resolved flexbox overflow issues with proper min-h-0 constraints
+
+-   [x] **GitHub Actions CI/CD Pipeline** ✅ COMPLETED (June 13, 2025)
+    -   [x] Created automated quality checks (build, lint, type-check)
+    -   [x] Configured with repository secrets for environment variables
+    -   [x] Runs automatically on push and pull requests
+    -   [x] Integrated with existing Vercel deployment
+
+-   [x] **Claude Code Configuration** ✅ COMPLETED (June 13, 2025)
+    -   [x] Updated CLAUDE.md to require permission before commits
+    -   [x] Disabled co-authored-by messages via settings.json
+    -   [x] Improved automated workflow documentation
+
 ## 🎯 P3: Quality of Life & Polish
 
 **Goal**: Enhance the user experience with UI/UX improvements.
@@ -168,10 +188,11 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **Performance Issues**: Optimized with memoization and refs
 
 ### ✅ **RECENTLY COMPLETED**
+- **P2.5 UI/UX Improvements**: Static sidebar layout, improved scrolling, CI/CD pipeline (June 13, 2025)
+- **GitHub Actions Integration**: Automated quality checks on every push/PR
+- **Claude Code Configuration**: Updated workflow requirements and settings
 - **P1.5 Critical Bug Fixes**: All state, memory, and performance issues resolved
 - **P1.75 Learning Preferences**: Complete AI personalization system implemented
-- **Infrastructure Cleanup**: Removed all redundant files and secured routes
-- **Documentation Updates**: All docs updated to reflect current architecture
 
 ### 🎯 **NEXT PRIORITIES**
 1. **Remove Console Statements** (remaining infrastructure cleanup)
@@ -241,13 +262,13 @@ This section contains forward-looking recommendations from a professional code r
 
 ### 🏗️ **Architecture Review Findings (December 2024)**
 
-#### **High Priority - Critical Issues**
--   [ ] **Fix Race Conditions in useMessageHandling**
+#### **✅ High Priority - Critical Issues - COMPLETED**
+-   [x] **Fix Race Conditions in useMessageHandling** ✅ COMPLETED (commit 20e983e)
     -   Multiple state updates without proper synchronization
     -   Title generation timing issues with setTimeout patterns
     -   Need to implement proper state update sequencing
 
--   [ ] **Add Missing Cleanup Functions**
+-   [x] **Add Missing Cleanup Functions** ✅ COMPLETED (commit 20e983e)
     -   Several useEffect hooks lack proper cleanup
     -   Risk of memory leaks with timers and subscriptions
     -   Focus on hooks with setTimeout, setInterval, or event listeners
