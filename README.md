@@ -50,6 +50,20 @@ This project is built with a strong, opinionated architectural philosophy that p
 
 This approach results in a codebase that is not only performant and secure but also a pleasure to work on.
 
+### 📊 Architecture Review Score: 7.5/10
+
+**Strengths:**
+- **Security: 9/10** - Excellent boundary enforcement with server-side API architecture
+- **Maintainability: 7/10** - Clean modular hook pattern with good separation of concerns
+- **Type Safety: 9/10** - Comprehensive TypeScript usage throughout
+- **Error Handling: 8/10** - User-friendly toast notifications with graceful degradation
+
+**Areas for Enhancement:**
+- **Performance: 6/10** - Missing some key optimizations (virtualization, proper memoization)
+- **Scalability: 7/10** - In-memory rate limiter needs Redis-based solution for production
+- **State Management: 6/10** - Distributed state across hooks creates synchronization challenges
+- **Testing: 0/10** - No test coverage currently exists
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -191,6 +205,45 @@ The Duck is production-ready and can be safely deployed to Vercel with its secur
 - Check Supabase analytics for database performance
 - Verify authentication flows work correctly
 - Test all major features in production environment
+
+## 🏗️ Architecture Details
+
+### **Modular Hook-Based Design**
+The application implements a clean separation of concerns through focused React hooks:
+
+- **`useChatSession`**: Manages session lifecycle, message loading, and welcome messages
+- **`useMessageHandling`**: Handles message sending, streaming responses, and error states
+- **`useChatSettings`**: Manages user preferences, model selection, and configuration
+- **`useChatLifecycle`**: Controls chat ending, inactivity handling, and cleanup operations
+
+### **Security Architecture**
+The application follows a **Security-First** design philosophy:
+
+1. **API Boundary Enforcement**: All database operations go through authenticated API routes
+2. **Defense in Depth**: Multiple security layers including auth checks, rate limiting, and input validation
+3. **Zero Trust Model**: Every API endpoint independently validates authentication
+4. **Row-Level Security**: Additional database-level protection for user data isolation
+
+### **Performance Optimizations**
+- **Streaming Responses**: Server-Sent Events for real-time AI responses
+- **Proper Memoization**: React.memo and useCallback to prevent unnecessary re-renders
+- **Centralized Configuration**: Reduces bundle size and improves maintainability
+- **Optimistic UI Updates**: Planned for future releases to improve perceived performance
+
+### **Known Limitations & Future Improvements**
+
+**Current Limitations:**
+- State synchronization challenges with distributed hook architecture
+- In-memory rate limiter not suitable for serverless deployments
+- No automated test coverage
+- Some performance optimizations missing (virtualization, pagination)
+
+**Planned Improvements:**
+- Implement centralized state management (Zustand/Jotai)
+- Add Redis-based rate limiting for production scalability
+- Build comprehensive test suite (unit, integration, E2E)
+- Add virtualization for message lists and pagination for chat history
+- Implement performance monitoring and optimization tracking
 
 ## 📊 Development Workflow
 

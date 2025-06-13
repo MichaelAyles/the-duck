@@ -238,3 +238,60 @@ This section contains forward-looking recommendations from a professional code r
 
 ### 🔧 **Technical Debt**
 - Console statements in production code (Low) - needs cleanup in remaining files
+
+### 🏗️ **Architecture Review Findings (December 2024)**
+
+#### **High Priority - Critical Issues**
+-   [ ] **Fix Race Conditions in useMessageHandling**
+    -   Multiple state updates without proper synchronization
+    -   Title generation timing issues with setTimeout patterns
+    -   Need to implement proper state update sequencing
+
+-   [ ] **Add Missing Cleanup Functions**
+    -   Several useEffect hooks lack proper cleanup
+    -   Risk of memory leaks with timers and subscriptions
+    -   Focus on hooks with setTimeout, setInterval, or event listeners
+
+-   [ ] **Replace In-Memory Rate Limiter**
+    -   Current implementation won't work in serverless/edge environments
+    -   Implement Redis-based rate limiting for production scalability
+    -   Consider using Upstash Redis for Vercel deployment
+
+-   [ ] **Fix Data Loss Risk**
+    -   Chat continues even when session saving fails
+    -   Implement proper error handling to stop chat on save failure
+    -   Add retry logic for critical operations
+
+#### **Medium Priority - Architecture Improvements**
+-   [ ] **Implement Centralized State Management**
+    -   Current distributed state across hooks causes sync issues
+    -   Consider Zustand or Jotai for lightweight state management
+    -   Focus on shared state like messages, session, and settings
+
+-   [ ] **Extract Magic Numbers to Config**
+    -   Hardcoded timeouts (30000ms) and other values scattered in code
+    -   Move all constants to centralized config.ts
+    -   Make timeouts environment-configurable
+
+-   [ ] **Refactor ChatInterface Component**
+    -   Three rendering modes (auth/unauth/header-only) create complexity
+    -   Split into separate components for each mode
+    -   Improve maintainability and reduce cognitive load
+
+-   [ ] **Implement Comprehensive Test Suite**
+    -   No tests currently exist (critical for production)
+    -   Start with unit tests for hooks and utilities
+    -   Add integration tests for API routes
+    -   Implement E2E tests for critical user flows
+
+#### **Low Priority - Code Quality**
+-   [ ] **Remove Console.log Statements**
+    -   Extensive logging in production code
+    -   Replace with proper logging service if needed
+    -   Keep only essential error logging
+
+-   [ ] **Add Performance Monitoring**
+    -   No visibility into performance bottlenecks
+    -   Implement React DevTools Profiler integration
+    -   Add custom performance marks for key operations
+    -   Consider integrating with monitoring service (Sentry, etc.)
