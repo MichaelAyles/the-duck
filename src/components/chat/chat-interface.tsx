@@ -27,6 +27,7 @@ interface ChatInterfaceProps {
   onSessionUpdate?: (sessionId: string, newMessages: Message[]) => void;
   renderHeaderOnly?: boolean;
   renderBodyOnly?: boolean;
+  renderInputOnly?: boolean;
 }
 
 export const ChatInterface = React.memo(({ 
@@ -35,7 +36,8 @@ export const ChatInterface = React.memo(({
   isLoading: _isPageLoading,
   onSessionUpdate,
   renderHeaderOnly = false,
-  renderBodyOnly = false
+  renderBodyOnly = false,
+  renderInputOnly = false
 }: ChatInterfaceProps = {}) => {
   const { user } = useAuth();
   
@@ -85,7 +87,27 @@ export const ChatInterface = React.memo(({
     );
   }
 
-  // Render only body (messages + input)
+  // Render only input section
+  if (renderInputOnly) {
+    return (
+      <ErrorBoundary>
+        <div className="flex-none">
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            disabled={isLoading}
+            storageEnabled={settings.storageEnabled}
+          />
+        </div>
+        
+        <StorageIndicator
+          isVisible={isProcessingStorage}
+          message="🦆 Processing chat summary and storing preferences..."
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  // Render only body (messages only, no input)
   if (renderBodyOnly) {
     return (
       <ErrorBoundary>
@@ -112,21 +134,6 @@ export const ChatInterface = React.memo(({
               />
             </div>
           </ErrorBoundary>
-          
-          <ErrorBoundary>
-            <div className="flex-none">
-              <ChatInput
-                onSendMessage={handleSendMessage}
-                disabled={isLoading}
-                storageEnabled={settings.storageEnabled}
-              />
-            </div>
-          </ErrorBoundary>
-          
-          <StorageIndicator
-            isVisible={isProcessingStorage}
-            message="🦆 Processing chat summary and storing preferences..."
-          />
         </div>
       </ErrorBoundary>
     );

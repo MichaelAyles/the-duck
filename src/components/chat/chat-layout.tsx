@@ -69,35 +69,35 @@ export function ChatLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar - Fixed position on the left */}
+    <div className="flex flex-col h-screen bg-background">
+      {/* Header - Fixed at top spanning full width */}
       <div className="flex-none">
-        <ChatHistorySidebar
-          currentSessionId={currentSessionId || undefined}
-          onSessionSelect={handleSessionSelect}
-          onNewChat={handleNewChat}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={handleToggleSidebar}
-          refreshTrigger={refreshTrigger}
-          className="h-full"
+        <ChatInterface
+          key={currentSessionId || 'new'}
+          sessionId={currentSessionId}
+          initialMessages={messages}
+          isLoading={isLoading}
+          onSessionUpdate={handleSessionUpdate}
+          renderHeaderOnly={true}
         />
       </div>
       
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header - Fixed at top */}
+      {/* Middle Section - Sidebar and Chat Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar - Fixed width, between header and footer */}
         <div className="flex-none">
-          <ChatInterface
-            key={currentSessionId || 'new'}
-            sessionId={currentSessionId}
-            initialMessages={messages}
-            isLoading={isLoading}
-            onSessionUpdate={handleSessionUpdate}
-            renderHeaderOnly={true}
+          <ChatHistorySidebar
+            currentSessionId={currentSessionId || undefined}
+            onSessionSelect={handleSessionSelect}
+            onNewChat={handleNewChat}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={handleToggleSidebar}
+            refreshTrigger={refreshTrigger}
+            className="h-full"
           />
         </div>
         
-        {/* Chat Area - Scrollable content */}
+        {/* Chat Messages Area - Scrollable content */}
         <div className="flex-1 flex flex-col min-h-0">
           <ChatInterface
             key={currentSessionId || 'new'}
@@ -108,6 +108,18 @@ export function ChatLayout() {
             renderBodyOnly={true}
           />
         </div>
+      </div>
+      
+      {/* Footer - Fixed at bottom spanning full width */}
+      <div className="flex-none">
+        <ChatInterface
+          key={currentSessionId || 'new'}
+          sessionId={currentSessionId}
+          initialMessages={messages}
+          isLoading={isLoading}
+          onSessionUpdate={handleSessionUpdate}
+          renderInputOnly={true}
+        />
       </div>
     </div>
   );
