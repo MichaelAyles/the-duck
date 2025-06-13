@@ -25,18 +25,28 @@ export function ChatLayout() {
     setMessages([]); // Clear previous messages
 
     try {
+      console.log(`🔄 Loading session: ${sessionId}`);
       const response = await fetch(`/api/load-session?sessionId=${sessionId}`);
       if (!response.ok) {
         throw new Error("Failed to load session");
       }
       const data = await response.json();
-      setMessages(data.session?.messages || []);
+      const messages = data.session?.messages || [];
+      const title = data.session?.title || 'Untitled Chat';
+      
+      console.log(`✅ Loaded session ${sessionId}:`, {
+        title,
+        messageCount: messages.length,
+        hasMessages: messages.length > 0
+      });
+      
+      setMessages(messages);
       toast({
         title: "Chat Loaded",
-        description: `Successfully loaded session: ${data.session?.title?.slice(0, 30)}...`,
+        description: `Successfully loaded session: ${title.slice(0, 30)}...`,
       });
     } catch (error) {
-      console.error("Error loading session:", error);
+      console.error("❌ Error loading session:", error);
       toast({
         title: "Error",
         description: "Could not load the selected chat session.",

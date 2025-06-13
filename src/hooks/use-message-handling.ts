@@ -66,11 +66,15 @@ export function useMessageHandling({
 
         if (response.ok) {
           const data = await response.json();
-          console.log('Generated/updated title:', data.title);
-          // The title will be updated in the database automatically
-          // and the sidebar will refresh to show the new title
+          console.log(`✅ Generated/updated title for session ${sessionId}:`, data.title);
+          if (data.updated) {
+            console.log('✅ Title successfully updated in database');
+          } else {
+            console.warn('⚠️ Title generation succeeded but database update failed');
+          }
         } else {
-          console.error('Failed to generate title:', response.status, response.statusText);
+          const errorText = await response.text();
+          console.error(`❌ Failed to generate title for session ${sessionId}:`, response.status, response.statusText, errorText);
         }
       } catch (error) {
         console.error('Error generating title:', error);
@@ -109,6 +113,12 @@ export function useMessageHandling({
       if (settings.storageEnabled && userId) {
         try {
           await chatServiceRef.current?.saveChatSession(newMessages, settings.model);
+          console.log(`✅ Successfully saved chat session with ${newMessages.length} messages`);
+          
+          // Generate title after successful save to avoid race conditions
+          if (sessionId) {
+            generateTitleIfNeeded(newMessages, sessionId);
+          }
         } catch (error) {
           console.error('Error saving chat session:', error);
           toast({
@@ -119,11 +129,8 @@ export function useMessageHandling({
         }
       }
 
-      // Generate title after a few messages if we have a session and user and storage is enabled
+      // Extract learning preferences when user expresses explicit preferences (only if storage enabled)
       if (sessionId && userId && settings.storageEnabled) {
-        generateTitleIfNeeded(newMessages, sessionId);
-        
-        // Extract learning preferences when user expresses explicit preferences
         const hasPreferenceKeywords = /\b(like|love|enjoy|prefer|hate|dislike|don't like|interested in|fascinated by|passionate about)\b/i.test(content);
         const now = Date.now();
         
@@ -206,11 +213,20 @@ export function useMessageHandling({
               if (data === '[DONE]') {
                 setIsLoading(false);
                 
-                // Generate title when response is complete
-                if (sessionId && userId) {
+                // Save final session and generate title when response is complete
+                if (sessionId && userId && settings.storageEnabled) {
                   setMessages(currentMessages => {
-                    // Trigger title generation with the completed conversation
-                    setTimeout(() => generateTitleIfNeeded(currentMessages, sessionId), 100);
+                    // Save the completed conversation
+                    setTimeout(async () => {
+                      try {
+                        await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
+                        console.log(`✅ Final save: chat session with ${currentMessages.length} messages`);
+                        // Generate title after final save
+                        generateTitleIfNeeded(currentMessages, sessionId);
+                      } catch (error) {
+                        console.error('Error saving final chat session:', error);
+                      }
+                    }, 100);
                     return currentMessages;
                   });
                 }
