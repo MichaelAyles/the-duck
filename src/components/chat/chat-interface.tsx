@@ -89,11 +89,11 @@ export const ChatInterface = React.memo(({
   if (renderBodyOnly) {
     return (
       <ErrorBoundary>
-        <div className="flex flex-col h-full bg-gradient-to-br from-background via-background to-primary/5">
+        <div className="flex flex-col h-full bg-gradient-to-br from-background via-background to-primary/5 min-h-0">
           <ErrorBoundary>
             <div
               className={cn(
-                "flex-1 transition-all duration-300 relative",
+                "flex-1 transition-all duration-300 relative min-h-0 flex flex-col",
                 settings.storageEnabled
                   ? "bg-transparent"
                   : "bg-muted/20"
@@ -114,11 +114,13 @@ export const ChatInterface = React.memo(({
           </ErrorBoundary>
           
           <ErrorBoundary>
-            <ChatInput
-              onSendMessage={handleSendMessage}
-              disabled={isLoading}
-              storageEnabled={settings.storageEnabled}
-            />
+            <div className="flex-none">
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                disabled={isLoading}
+                storageEnabled={settings.storageEnabled}
+              />
+            </div>
           </ErrorBoundary>
           
           <StorageIndicator

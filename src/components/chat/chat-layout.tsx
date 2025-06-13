@@ -84,7 +84,7 @@ export function ChatLayout() {
       </div>
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header - Fixed at top */}
         <div className="flex-none">
           <ChatInterface
@@ -98,7 +98,7 @@ export function ChatLayout() {
         </div>
         
         {/* Chat Area - Scrollable content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0">
           <ChatInterface
             key={currentSessionId || 'new'}
             sessionId={currentSessionId}

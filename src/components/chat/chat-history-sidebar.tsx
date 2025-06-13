@@ -226,7 +226,7 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
 
   return (
     <div className={cn(
-      "flex flex-col bg-background/95 backdrop-blur-md border-r border-border/50 transition-all duration-300 shadow-lg overflow-hidden",
+      "flex flex-col bg-background/95 backdrop-blur-md border-r border-border/50 transition-all duration-300 shadow-lg h-full",
       isCollapsed ? "w-12" : "w-80",
       className
     )}>
@@ -283,7 +283,7 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
           </div>
 
           {/* Sessions List */}
-          <ScrollArea className="flex-1 px-2">
+          <ScrollArea className="flex-1 px-2 min-h-0">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
