@@ -32,7 +32,7 @@ export const CHAT_CONFIG = {
   TITLE_GENERATION_TRIGGER_COUNT: 2,
   
   // Welcome message content
-  WELCOME_MESSAGE: "🦆 Hello! I'm The Duck, your friendly AI assistant. Ready to dive into some quack-tastic conversations? Whether you need help with questions, creative projects, or just want to chat, I'm here to make waves! What can I help you with today?",
+  WELCOME_MESSAGE: "🦆 How can I help you?",
   
   // Inactivity timeout (in minutes)
   INACTIVITY_TIMEOUT_MINUTES: 30,
