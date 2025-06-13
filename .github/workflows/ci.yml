@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run build
+      run: npm run build
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    
+    - name: Run linting
+      run: npm run lint
+    
+    - name: Run type checking
+      run: npm run type-check
+    
+    # Optional: Run the complete workflow command if you have it
+    # - name: Run complete workflow
+    #   run: npm run workflow
+
+  # Optional: Add test job when you have tests
+  # test:
+  #   name: Tests
+  #   runs-on: ubuntu-latest
+  #   
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   
+  #   - name: Setup Node.js
+  #     uses: actions/setup-node@v4
+  #     with:
+  #       node-version: '20'
+  #       cache: 'npm'
+  #   
+  #   - name: Install dependencies
+  #     run: npm ci
+  #   
+  #   - name: Run tests
+  #     run: npm test
