@@ -6,6 +6,7 @@ import { ChatInterface } from "./chat-interface";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export function ChatLayout() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -159,16 +160,25 @@ export function ChatLayout() {
         </div>
       </div>
       
-      {/* Footer - Fixed at bottom spanning full width */}
-      <div className="flex-none">
-        <ChatInterface
-          key={currentSessionId || 'new'}
-          sessionId={currentSessionId}
-          initialMessages={messages}
-          isLoading={isLoading}
-          onSessionUpdate={handleSessionUpdate}
-          renderInputOnly={true}
-        />
+      {/* Footer - Fixed at bottom aligned with chat area */}
+      <div className="flex flex-none">
+        {/* Spacer for sidebar on desktop */}
+        <div className={cn(
+          "flex-none hidden lg:block transition-all duration-300",
+          isSidebarCollapsed ? "w-12" : "w-80"
+        )} />
+        
+        {/* Input aligned with chat content */}
+        <div className="flex-1">
+          <ChatInterface
+            key={currentSessionId || 'new'}
+            sessionId={currentSessionId}
+            initialMessages={messages}
+            isLoading={isLoading}
+            onSessionUpdate={handleSessionUpdate}
+            renderInputOnly={true}
+          />
+        </div>
       </div>
     </div>
   );
