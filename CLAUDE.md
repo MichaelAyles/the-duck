@@ -92,6 +92,9 @@ npm run type-check     # Verify TypeScript types are correct
 - Update any relevant documentation files if APIs or architecture changed
 
 ### 3. **Commit & Deploy**
+**IMPORTANT**: Always ask the user for permission before committing changes. Wait for explicit approval before proceeding with git commands.
+
+Once approved by the user:
 ```bash
 git add -A                           # Stage all changes
 git commit -m "[generated message]"  # Commit with descriptive message

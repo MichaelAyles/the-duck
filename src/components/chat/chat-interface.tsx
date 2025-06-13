@@ -93,7 +93,7 @@ export const ChatInterface = React.memo(({
           <ErrorBoundary>
             <div
               className={cn(
-                "flex-1 transition-all duration-300 relative overflow-hidden",
+                "flex-1 transition-all duration-300 relative",
                 settings.storageEnabled
                   ? "bg-transparent"
                   : "bg-muted/20"

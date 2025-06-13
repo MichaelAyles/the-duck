@@ -226,7 +226,7 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
 
   return (
     <div className={cn(
-      "flex flex-col bg-background/95 backdrop-blur-md border-r border-border/50 transition-all duration-300 shadow-lg",
+      "flex flex-col bg-background/95 backdrop-blur-md border-r border-border/50 transition-all duration-300 shadow-lg overflow-hidden",
       isCollapsed ? "w-12" : "w-80",
       className
     )}>
