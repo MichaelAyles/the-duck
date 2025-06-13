@@ -44,7 +44,8 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled }: C
 
   return (
     <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 duck-shadow">
-      <div className="max-w-4xl mx-auto p-4">
+      <div className="w-full flex justify-center p-4">
+        <div className="max-w-4xl w-full">
         <form onSubmit={handleSubmit} className="flex gap-3">
           <div className="flex-1 relative">
             <Textarea
@@ -95,6 +96,7 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled }: C
               🔒 Private mode - Conversation not stored
             </span>
           )}
+        </div>
         </div>
       </div>
     </div>

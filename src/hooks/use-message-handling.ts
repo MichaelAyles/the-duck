@@ -119,8 +119,8 @@ export function useMessageHandling({
         }
       }
 
-      // Generate title after a few messages if we have a session and user
-      if (sessionId && userId) {
+      // Generate title after a few messages if we have a session and user and storage is enabled
+      if (sessionId && userId && settings.storageEnabled) {
         generateTitleIfNeeded(newMessages, sessionId);
         
         // Extract learning preferences when user expresses explicit preferences
