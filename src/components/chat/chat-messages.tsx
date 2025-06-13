@@ -49,10 +49,18 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
                 "max-w-[80%] p-4 transition-all duration-300 duck-shadow",
                 message.role === "user"
                   ? "duck-gradient text-primary-foreground ml-12 hover:duck-glow"
-                  : "bg-card hover:bg-card/80"
+                  : "bg-card hover:bg-card/80",
+                message.role === "assistant" && !message.content && isLoading && "animate-pulse"
               )}
             >
-              <MessageContent content={message.content} />
+              {message.role === "assistant" && !message.content && isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">🦆 Thinking quack-tastically...</span>
+                </div>
+              ) : (
+                <MessageContent content={message.content} />
+              )}
               
               {message.metadata && (
                 <div className="mt-2 pt-2 border-t border-border/50">
@@ -80,23 +88,6 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
             )}
           </div>
         ))}
-        
-        {isLoading && (
-          <div className="flex gap-3 justify-start">
-            <Avatar className="h-9 w-9 mt-1 duck-shadow animate-pulse">
-              <AvatarFallback className="duck-gradient border-2 border-background">
-                <DuckLogo size="sm" />
-              </AvatarFallback>
-            </Avatar>
-            
-            <Card className="max-w-[80%] p-4 bg-card duck-shadow animate-pulse">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">🦆 Thinking quack-tastically...</span>
-              </div>
-            </Card>
-          </div>
-        )}
         
         <div ref={messagesEndRef} />
       </div>
