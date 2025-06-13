@@ -116,10 +116,21 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
   }, [searchQuery, fetchChatHistory]);
 
   // Generate title for a session
-  const generateTitle = async (sessionId: string, messages: Array<{ role: string; content: string }>) => {
+  const generateTitle = async (sessionId: string) => {
     setIsGeneratingTitle(sessionId);
     
     try {
+      // First fetch the session to get its messages
+      const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
+      
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to fetch session');
+      }
+      
+      const sessionData = await sessionResponse.json();
+      const messages = sessionData.session?.messages || [];
+      
+      // Now generate the title with the actual messages
       const response = await fetch('/api/generate-title', {
         method: 'POST',
         headers: {
@@ -361,9 +372,7 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
                           <DropdownMenuItem 
                             onClick={(e) => {
                               e.stopPropagation();
-                              // This would need access to the actual messages
-                              // For now, we'll show a placeholder
-                              generateTitle(session.id, []);
+                              generateTitle(session.id);
                             }}
                             disabled={isGeneratingTitle === session.id}
                           >
