@@ -111,6 +111,43 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
+    // Check if this is a delete all request
+    const body = await req.json().catch(() => ({}))
+    const deleteAll = body.deleteAll === true
+
+    if (deleteAll) {
+      // Delete all chat sessions for this user
+      const { error: deleteError } = await supabase
+        .from('chat_sessions')
+        .delete()
+        .eq('user_id', user.id)
+
+      if (deleteError) {
+        console.error('Failed to delete all chat sessions:', deleteError)
+        return NextResponse.json(
+          { error: 'Failed to delete chat history' },
+          { status: 500 }
+        )
+      }
+
+      // Also delete all summaries (cascading delete should handle this, but just in case)
+      const { error: summaryError } = await supabase
+        .from('chat_summaries')
+        .delete()
+        .eq('user_id', user.id)
+
+      if (summaryError) {
+        console.error('Failed to delete chat summaries:', summaryError)
+        // Don't fail the request if summaries can't be deleted
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'All chat history deleted successfully'
+      })
+    }
+
+    // Handle single session deletion
     const { searchParams } = new URL(req.url)
     const sessionId = searchParams.get('sessionId')
 

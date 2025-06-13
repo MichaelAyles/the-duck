@@ -9,13 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2, RotateCcw, Menu } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2, RotateCcw, Menu, Trash2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ChatSettings } from "./chat-interface";
 import { useModels } from "@/hooks/use-models";
 import { DuckLogo } from "@/components/duck-logo";
 import { UserMenu } from "@/components/auth/user-menu";
 import { LearningPreferencesTab } from "./learning-preferences-tab";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatHeaderProps {
   settings: ChatSettings;
@@ -37,7 +39,12 @@ const TONE_OPTIONS = [
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount, onToggleMobileSidebar }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isResetKnowledgeOpen, setIsResetKnowledgeOpen] = useState(false);
+  const [isDeleteHistoryOpen, setIsDeleteHistoryOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
   const { 
     curatedModels, 
     allModels, 
@@ -75,6 +82,69 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
       setIsResetDialogOpen(false);
     } catch (error) {
       console.error('Failed to reset model preferences:', error);
+    }
+  };
+
+  const handleResetKnowledge = async () => {
+    setIsResetting(true);
+    try {
+      const response = await fetch('/api/learning-preferences', {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to reset knowledge');
+      }
+
+      toast({
+        title: "Knowledge Reset",
+        description: "All learned preferences have been cleared.",
+      });
+      setIsResetKnowledgeOpen(false);
+    } catch (error) {
+      console.error('Failed to reset knowledge:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reset knowledge. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleDeleteAllHistory = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/chat-history', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ deleteAll: true }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete chat history');
+      }
+
+      toast({
+        title: "History Deleted",
+        description: "All chat conversations have been permanently deleted.",
+      });
+      setIsDeleteHistoryOpen(false);
+      
+      // Trigger a new chat since all history is gone
+      onEndChat();
+    } catch (error) {
+      console.error('Failed to delete chat history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete chat history. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -235,7 +305,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                   <TabsTrigger value="models">Models</TabsTrigger>
                   <TabsTrigger value="learning">Learning</TabsTrigger>
                   <TabsTrigger value="behavior">Behavior</TabsTrigger>
-                  <TabsTrigger value="appearance">Appearance</TabsTrigger>
+                  <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="models" className="flex-1 overflow-y-auto">
@@ -463,37 +533,86 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="appearance" className="flex-1 overflow-y-auto">
-                  <div className="space-y-4 p-1">
-                  <div className="space-y-2">
-                    <Label>Theme</Label>
-                    <div className="flex gap-2">
-                      <Button
-                        variant={theme === "light" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setTheme("light")}
-                      >
-                        <Sun className="h-4 w-4 mr-2" />
-                        Light
-                      </Button>
-                      <Button
-                        variant={theme === "dark" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setTheme("dark")}
-                      >
-                        <Moon className="h-4 w-4 mr-2" />
-                        Dark
-                      </Button>
-                      <Button
-                        variant={theme === "system" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setTheme("system")}
-                      >
-                        <Monitor className="h-4 w-4 mr-2" />
-                        System
-                      </Button>
+                <TabsContent value="settings" className="flex-1 overflow-y-auto">
+                  <div className="space-y-6 p-1">
+                    <div className="space-y-2">
+                      <Label>Theme</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          variant={theme === "light" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setTheme("light")}
+                        >
+                          <Sun className="h-4 w-4 mr-2" />
+                          Light
+                        </Button>
+                        <Button
+                          variant={theme === "dark" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setTheme("dark")}
+                        >
+                          <Moon className="h-4 w-4 mr-2" />
+                          Dark
+                        </Button>
+                        <Button
+                          variant={theme === "system" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setTheme("system")}
+                        >
+                          <Monitor className="h-4 w-4 mr-2" />
+                          System
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                    
+                    <Separator />
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-medium">Data Management</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Manage your personal data and preferences
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Reset Knowledge</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Clear all learned preferences and reset to defaults
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsResetKnowledgeOpen(true)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Reset
+                          </Button>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Delete All Chat History</Label>
+                            <p className="text-sm text-muted-foreground">
+                              Permanently delete all your chat conversations
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsDeleteHistoryOpen(true)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -536,6 +655,90 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                 <>
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Reset to Defaults
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Reset Knowledge Confirmation Dialog */}
+      <AlertDialog open={isResetKnowledgeOpen} onOpenChange={setIsResetKnowledgeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset All Knowledge?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all learned preferences and reset your personalization to defaults.
+              <br /><br />
+              This includes:
+              <br />
+              • All learning preferences
+              <br />
+              • Chat summaries and patterns
+              <br />
+              • Personalization data
+              <br /><br />
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleResetKnowledge} 
+              disabled={isResetting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isResetting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Resetting...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Reset Knowledge
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Delete All History Confirmation Dialog */}
+      <AlertDialog open={isDeleteHistoryOpen} onOpenChange={setIsDeleteHistoryOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Chat History?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete ALL your chat conversations. 
+              <br /><br />
+              You will lose:
+              <br />
+              • All chat messages
+              <br />
+              • All conversation history
+              <br />
+              • All session data
+              <br /><br />
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteAllHistory} 
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete All History
                 </>
               )}
             </AlertDialogAction>

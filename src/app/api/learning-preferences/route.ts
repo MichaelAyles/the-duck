@@ -365,10 +365,42 @@ export async function DELETE(request: NextRequest) {
       })
     }
 
-    return NextResponse.json(
-      { error: 'Must provide either id or category+preference_key' },
-      { status: 400 }
-    )
+    // Delete all preferences (reset knowledge)
+    const { error: deleteError } = await supabase
+      .from('user_learning_preferences')
+      .delete()
+      .eq('user_id', user.id)
+
+    if (deleteError) {
+      console.error('Failed to delete all learning preferences:', deleteError)
+      
+      // If table doesn't exist yet, return success
+      if (deleteError.message?.includes('relation') || deleteError.message?.includes('does not exist')) {
+        return NextResponse.json({ 
+          message: 'No preferences to delete' 
+        })
+      }
+      
+      return NextResponse.json(
+        { error: 'Failed to delete learning preferences' },
+        { status: 500 }
+      )
+    }
+
+    // Also delete all chat summaries
+    const { error: summaryError } = await supabase
+      .from('chat_summaries')
+      .delete()
+      .eq('user_id', user.id)
+
+    if (summaryError) {
+      console.error('Failed to delete chat summaries:', summaryError)
+      // Don't fail the request if summaries can't be deleted
+    }
+
+    return NextResponse.json({ 
+      message: 'All learning preferences and summaries deleted successfully' 
+    })
   } catch (error) {
     console.error('Error in DELETE /api/learning-preferences:', error)
     return NextResponse.json(
