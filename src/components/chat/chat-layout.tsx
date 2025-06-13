@@ -12,6 +12,7 @@ export function ChatLayout() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -63,13 +64,50 @@ export function ChatLayout() {
     setIsSidebarCollapsed(prev => !prev);
   }, []);
 
+  const handleToggleMobileSidebar = useCallback(() => {
+    setIsMobileSidebarOpen(prev => !prev);
+  }, []);
+
+  const handleMobileSessionSelect = useCallback(async (sessionId: string) => {
+    setIsMobileSidebarOpen(false); // Close mobile sidebar after selection
+    await handleSessionSelect(sessionId);
+  }, [handleSessionSelect]);
+
+  const handleMobileNewChat = useCallback(() => {
+    setIsMobileSidebarOpen(false); // Close mobile sidebar after new chat
+    handleNewChat();
+  }, [handleNewChat]);
+
   // If no user, show chat interface without sidebar
   if (!user) {
     return <ChatInterface />;
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background relative">
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+          {/* Mobile Sidebar */}
+          <div className="fixed inset-y-0 left-0 z-50 w-80 lg:hidden">
+            <ChatHistorySidebar
+              currentSessionId={currentSessionId || undefined}
+              onSessionSelect={handleMobileSessionSelect}
+              onNewChat={handleMobileNewChat}
+              isCollapsed={false}
+              onToggleCollapse={handleToggleMobileSidebar}
+              refreshTrigger={refreshTrigger}
+              className="h-full"
+            />
+          </div>
+        </>
+      )}
+
       {/* Header - Fixed at top spanning full width */}
       <div className="flex-none">
         <ChatInterface
@@ -79,13 +117,14 @@ export function ChatLayout() {
           isLoading={isLoading}
           onSessionUpdate={handleSessionUpdate}
           renderHeaderOnly={true}
+          onToggleMobileSidebar={handleToggleMobileSidebar}
         />
       </div>
       
       {/* Middle Section - Sidebar and Chat Area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar - Fixed width, between header and footer */}
-        <div className="flex-none">
+        {/* Sidebar - Fixed width, between header and footer, hidden on mobile */}
+        <div className="flex-none hidden lg:block">
           <ChatHistorySidebar
             currentSessionId={currentSessionId || undefined}
             onSessionSelect={handleSessionSelect}

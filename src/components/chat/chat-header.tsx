@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2, RotateCcw } from "lucide-react";
+import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2, RotateCcw, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ChatSettings } from "./chat-interface";
 import { useModels } from "@/hooks/use-models";
@@ -22,6 +22,7 @@ interface ChatHeaderProps {
   onSettingsChange: (settings: Partial<ChatSettings>) => void;
   onEndChat: () => void;
   messageCount: number;
+  onToggleMobileSidebar?: () => void;
 }
 
 const TONE_OPTIONS = [
@@ -33,7 +34,7 @@ const TONE_OPTIONS = [
   { value: "duck", label: "🦆 Duck Mode", description: "Quack quack quack quack quack!" },
 ];
 
-export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount }: ChatHeaderProps) {
+export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount, onToggleMobileSidebar }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const { theme, setTheme } = useTheme();
@@ -85,6 +86,18 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
       
       <div className="relative flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-4">
+          {/* Mobile Menu Button */}
+          {onToggleMobileSidebar && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleMobileSidebar}
+              className="lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          )}
+          
           <div className="flex items-center gap-3">
             <DuckLogo variant="full" size="lg" className="transition-all duration-300 hover:scale-110" />
           </div>

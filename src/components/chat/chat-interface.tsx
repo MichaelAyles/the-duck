@@ -28,6 +28,7 @@ interface ChatInterfaceProps {
   renderHeaderOnly?: boolean;
   renderBodyOnly?: boolean;
   renderInputOnly?: boolean;
+  onToggleMobileSidebar?: () => void;
 }
 
 export const ChatInterface = React.memo(({ 
@@ -37,7 +38,8 @@ export const ChatInterface = React.memo(({
   onSessionUpdate,
   renderHeaderOnly = false,
   renderBodyOnly = false,
-  renderInputOnly = false
+  renderInputOnly = false,
+  onToggleMobileSidebar
 }: ChatInterfaceProps = {}) => {
   const { user } = useAuth();
   
@@ -83,6 +85,7 @@ export const ChatInterface = React.memo(({
         onSettingsChange={handleSettingsChange}
         onEndChat={handleEndChat}
         messageCount={messages.length - 1}
+        onToggleMobileSidebar={onToggleMobileSidebar}
       />
     );
   }
@@ -148,6 +151,7 @@ export const ChatInterface = React.memo(({
           onSettingsChange={handleSettingsChange}
           onEndChat={handleEndChat}
           messageCount={messages.length - 1}
+          onToggleMobileSidebar={onToggleMobileSidebar}
         />
         
         <ErrorBoundary>
