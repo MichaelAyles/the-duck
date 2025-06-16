@@ -17,6 +17,7 @@ import { useModels } from "@/hooks/use-models";
 import { DuckLogo } from "@/components/duck-logo";
 import { UserMenu } from "@/components/auth/user-menu";
 import { LearningPreferencesTab } from "./learning-preferences-tab";
+import { UsageSummary } from "@/components/settings/usage-summary";
 import { useToast } from "@/hooks/use-toast";
 
 interface ChatHeaderProps {
@@ -301,10 +302,11 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
               </DialogHeader>
               
               <Tabs defaultValue="models" className="w-full flex-1 flex flex-col min-h-0">
-                <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+                <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
                   <TabsTrigger value="models">Models</TabsTrigger>
                   <TabsTrigger value="learning">Learning</TabsTrigger>
                   <TabsTrigger value="behavior">Behavior</TabsTrigger>
+                  <TabsTrigger value="usage">Usage</TabsTrigger>
                   <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
                 
@@ -531,6 +533,10 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                     />
                   </div>
                   </div>
+                </TabsContent>
+                
+                <TabsContent value="usage" className="flex-1 overflow-y-auto p-1">
+                  <UsageSummary />
                 </TabsContent>
                 
                 <TabsContent value="settings" className="flex-1 overflow-y-auto">

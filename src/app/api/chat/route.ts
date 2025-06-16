@@ -34,14 +34,87 @@ interface ChatRequestData {
   tone?: string;
 }
 
+// Helper function to track usage in database
+async function trackUsage(
+  userId: string, 
+  sessionId: string | undefined,
+  model: string, 
+  promptTokens: number, 
+  completionTokens: number,
+  modelPricing: { prompt: number; completion: number }
+) {
+  const supabase = await createClient()
+  
+  const promptCost = (promptTokens / 1_000_000) * modelPricing.prompt
+  const completionCost = (completionTokens / 1_000_000) * modelPricing.completion
+  const totalCost = promptCost + completionCost
+  
+  // Record the usage
+  await supabase.from('user_usage').insert({
+    user_id: userId,
+    session_id: sessionId || null,
+    model,
+    prompt_tokens: promptTokens,
+    completion_tokens: completionTokens,
+    total_tokens: promptTokens + completionTokens,
+    prompt_cost: promptCost,
+    completion_cost: completionCost,
+    total_cost: totalCost
+  })
+  
+  // Update user credits - use regular update since RPC might not be available
+  try {
+    const { data: credits } = await supabase
+      .from('user_credits')
+      .select('credits_used')
+      .eq('user_id', userId)
+      .single()
+    
+    if (credits) {
+      await supabase
+        .from('user_credits')
+        .update({ credits_used: credits.credits_used + totalCost })
+        .eq('user_id', userId)
+    }
+  } catch (error) {
+    console.error('Failed to update user credits:', error)
+    // Don't fail the request if credit update fails
+  }
+}
+
 // Core handler function
 async function handleChatRequest(request: NextRequest, validatedData: ChatRequestData): Promise<NextResponse> {
   try {
-    const { messages, model, stream = true, options = {}, tone = "match-user" } = validatedData;
+    const { messages, model, stream = true, options = {}, tone = "match-user", sessionId } = validatedData;
 
     // Get authenticated user and their learning preferences
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    
+    // Check credit limits if user is authenticated
+    if (user) {
+      // Get user credits
+      const { data: credits } = await supabase
+        .from('user_credits')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+      
+      if (credits) {
+        const remainingCredits = credits.credit_limit - credits.credits_used
+        if (remainingCredits <= 0) {
+          return NextResponse.json(
+            { error: 'Credit limit exceeded. Please update your credit limit in settings.' },
+            { status: 402 } // Payment Required
+          )
+        }
+        
+        // Warn if running low on credits (less than 10% remaining)
+        if (remainingCredits < credits.credit_limit * 0.1) {
+          console.warn(`User ${user.id} running low on credits: $${remainingCredits.toFixed(2)} remaining`)
+        }
+      }
+    }
     
     let learningPreferences: import('@/lib/learning-preferences').LearningPreference[] = []
     if (user) {
@@ -83,16 +156,41 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            let tokenCount = 0;
+            let completionTokens = 0;
+            
             for await (const chunk of client.streamChat(sanitizedMessages, model, options)) {
               const processedChunk = tone === "duck" ? convertToDuckSpeak(chunk) : chunk;
               const data = `data: ${JSON.stringify({ content: processedChunk })}\n\n`
               controller.enqueue(encoder.encode(data))
-              tokenCount += chunk.length; // Approximate token count
+              
+              // Count tokens for usage tracking
+              completionTokens += Math.ceil(chunk.length / 4); // Rough token approximation
+            }
+            
+            // Estimate prompt tokens (rough approximation: 1 token ≈ 4 characters)
+            const promptText = sanitizedMessages.map(m => m.content).join(' ');
+            const promptTokens = Math.ceil(promptText.length / 4);
+            
+            // Track usage if user is authenticated
+            if (user && user.id) {
+              try {
+                // Get model pricing from OpenRouter
+                const models = await client.getModels();
+                const currentModel = models.find(m => m.id === model);
+                const modelPricing = {
+                  prompt: currentModel?.pricing?.prompt || 0.0001,
+                  completion: currentModel?.pricing?.completion || 0.0002
+                };
+                
+                await trackUsage(user.id, sessionId, model, promptTokens, completionTokens, modelPricing);
+              } catch (error) {
+                console.error('Failed to track usage:', error);
+                // Don't fail the request if usage tracking fails
+              }
             }
             
             // Log API usage for monitoring
-            SecurityAudit.logApiUsage('/api/chat', model, tokenCount, request);
+            SecurityAudit.logApiUsage('/api/chat', model, promptTokens + completionTokens, request);
             
             // Send completion signal
             controller.enqueue(encoder.encode('data: [DONE]\n\n'))
@@ -119,6 +217,29 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
       // Return non-streaming response
       const response = await client.chat(sanitizedMessages, model, options)
       const processedResponse = tone === "duck" ? convertToDuckSpeak(response) : response;
+      
+      // Track usage if user is authenticated
+      if (user && user.id) {
+        try {
+          // Estimate tokens
+          const promptText = sanitizedMessages.map(m => m.content).join(' ');
+          const promptTokens = Math.ceil(promptText.length / 4);
+          const completionTokens = Math.ceil(response.length / 4);
+          
+          // Get model pricing
+          const models = await client.getModels();
+          const currentModel = models.find(m => m.id === model);
+          const modelPricing = {
+            prompt: currentModel?.pricing?.prompt || 0.0001,
+            completion: currentModel?.pricing?.completion || 0.0002
+          };
+          
+          await trackUsage(user.id, sessionId, model, promptTokens, completionTokens, modelPricing);
+        } catch (error) {
+          console.error('Failed to track usage:', error);
+          // Don't fail the request if usage tracking fails
+        }
+      }
       
       // Log API usage for monitoring
       SecurityAudit.logApiUsage('/api/chat', model, response.length, request);
