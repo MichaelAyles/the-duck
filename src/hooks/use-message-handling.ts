@@ -20,7 +20,7 @@ interface UseMessageHandlingProps {
 interface UseMessageHandlingReturn {
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  handleSendMessage: (content: string) => Promise<void>;
+  handleSendMessage: (content: string) => void;
   generateTitleIfNeeded: (messages: Message[], sessionId: string) => Promise<string | null>;
 }
 
@@ -87,7 +87,7 @@ export function useMessageHandling({
     return null; // No title generated
   }, []);
 
-  const handleSendMessage = useCallback(async (content: string) => {
+  const handleSendMessage = useCallback((content: string) => {
     if (!content.trim() || isLoading) return;
 
     const userMessage: Message = {
@@ -111,13 +111,16 @@ export function useMessageHandling({
     // Use ref to get the most current messages and avoid stale closures
     const currentMessages = messagesRef.current;
     
-    // Step 1: Remove welcome message and add user message + thinking message immediately
+    // IMMEDIATELY update UI - no awaits, no blocking
     const filteredMessages = currentMessages.filter(msg => msg.id !== "welcome-message");
     const newMessages = [...filteredMessages, userMessage, thinkingMessage];
     
-    // Immediately show user message and thinking message
+    // Show messages instantly
     setMessages(newMessages);
     setIsLoading(true);
+
+    // Fire and forget: run all background operations asynchronously
+    (async () => {
 
     try {
       // Save chat session if storage is enabled and user is authenticated
@@ -349,8 +352,9 @@ export function useMessageHandling({
         ];
       });
     }
+    })(); // Close the async IIFE
 
-    setIsLoading(false);
+    // Note: we don't setIsLoading(false) here because the streaming will handle that
   }, [
     isLoading,
     settings,
