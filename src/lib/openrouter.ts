@@ -1,5 +1,6 @@
 import { OpenRouterModel, ChatMessage } from '@/types/chat'
 import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
+import { cache, cacheKeys, CACHE_TTL } from '@/lib/redis'
 
 interface OpenRouterModelResponse {
   id: string;
@@ -58,6 +59,16 @@ export class OpenRouterClient {
     }
 
     try {
+      // Check cache first
+      const cacheKey = cacheKeys.modelCatalog()
+      const cachedModels = await cache.get<OpenRouterModel[]>(cacheKey)
+      
+      if (cachedModels) {
+        console.log('Returning cached OpenRouter models')
+        return cachedModels
+      }
+
+      // Fetch from OpenRouter API if not in cache
       const response = await fetch(`${this.baseUrl}/models`, {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
@@ -70,7 +81,7 @@ export class OpenRouterClient {
       }
 
       const data = await response.json()
-      return data.data.map((model: OpenRouterModelResponse) => ({
+      const models = data.data.map((model: OpenRouterModelResponse) => ({
         id: model.id,
         name: model.name || model.id,
         description: model.description || '',
@@ -79,6 +90,12 @@ export class OpenRouterClient {
         architecture: model.architecture,
         top_provider: model.top_provider,
       }))
+
+      // Cache the models with 1 hour TTL
+      await cache.set(cacheKey, models, CACHE_TTL.MODEL_CATALOG)
+      console.log('Cached OpenRouter models')
+
+      return models
     } catch (error) {
       console.error('Error fetching OpenRouter models:', error)
       throw error

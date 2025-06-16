@@ -36,6 +36,7 @@ All constants and configuration managed in `/src/lib/config.ts`:
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui components
 - **Backend**: Next.js API routes with App Router
 - **Database**: Supabase (PostgreSQL with Row-Level Security)
+- **Caching & Rate Limiting**: Upstash Redis (serverless Redis)
 - **Authentication**: Supabase Auth (Google/GitHub OAuth)
 - **AI Integration**: OpenRouter API for multi-model LLM support
 - **Real-time**: Server-Sent Events for streaming chat responses
@@ -151,7 +152,9 @@ After pushing, mention to the user that:
 - **Auth Service** (`lib/auth.ts`): Manages Supabase authentication
 - **Chat Service** (`lib/chat-service.ts`): Business logic for chat operations
 - **Configuration** (`lib/config.ts`): Centralized constants and defaults
-- **Database Operations** (`lib/db/server-operations.ts`): Server-side authenticated operations
+- **Database Operations** (`lib/db/server-operations.ts`): Server-side authenticated operations with Redis caching
+- **Redis Service** (`lib/redis.ts`): Distributed rate limiting and caching layer
+- **Security Service** (`lib/security.ts`): Rate limiting, input validation, and security middleware
 
 ### Authentication Flow
 1. User signs in via Supabase Auth (Google/GitHub OAuth)
@@ -173,6 +176,38 @@ After pushing, mention to the user that:
 - **user_preferences**: User settings (starred models, theme, preferences)
 - All tables use Row-Level Security (RLS) for data isolation
 - All access goes through authenticated server-side API routes
+
+### Redis Architecture
+The application uses Upstash Redis for distributed caching and rate limiting:
+
+#### **Caching Strategy**
+- **User Preferences**: 30-minute TTL, invalidated on updates
+- **Model Catalog**: 1-hour TTL for expensive OpenRouter API calls
+- **Session Data**: 10-minute TTL for active chat sessions
+- **Cache Keys**: Namespaced pattern (e.g., `user:{id}:preferences`, `models:catalog`)
+
+#### **Rate Limiting**
+- **Distributed Rate Limiting**: Works across all serverless instances
+- **Sliding Window Algorithm**: Smooth rate limit distribution
+- **Per-Endpoint Limits**: Different limits for chat, models, and general API calls
+- **Graceful Degradation**: Falls back to allowing requests if Redis is unavailable
+
+#### **Implementation Details**
+```typescript
+// Rate limiting example
+const rateLimiter = createRateLimiter({
+  requests: 100,
+  window: '15m',
+  prefix: 'rl:/api/chat'
+});
+
+// Caching example
+const cached = await cache.get(cacheKeys.userPreferences(userId));
+if (!cached) {
+  const data = await fetchFromDatabase();
+  await cache.set(cacheKey, data, CACHE_TTL.USER_PREFERENCES);
+}
+```
 
 ## Hook Development Patterns
 
@@ -230,10 +265,12 @@ export const ChatInterface = () => {
 
 ## Environment Variables
 
-Required environment variables (see `.env.local.example`):
+Required environment variables (see `.env.example`):
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
 - `OPENROUTER_API_KEY` - OpenRouter API key for LLM access
+- `UPSTASH_REDIS_REST_URL` - Upstash Redis REST URL for caching and rate limiting
+- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis authentication token
 
 ## Testing
 
@@ -244,10 +281,13 @@ Currently no automated tests. When implementing:
 
 ## Performance Optimizations
 
-- Streaming responses reduce time-to-first-byte
-- Chat summaries reduce payload size for long conversations
-- Debounced model search prevents excessive API calls
-- Optimistic UI updates for better perceived performance
+- **Redis Caching**: User preferences and model catalog cached for fast access
+- **Distributed Rate Limiting**: Redis-based rate limiting works across all instances
+- **Streaming Responses**: Reduce time-to-first-byte with SSE
+- **Chat Summaries**: Reduce payload size for long conversations
+- **Debounced Search**: Prevents excessive API calls during model search
+- **Optimistic UI Updates**: Better perceived performance
+- **Cache-Aside Pattern**: Strategic caching with automatic invalidation
 
 ## Common Tasks
 
@@ -285,7 +325,7 @@ The Duck demonstrates a modern, security-focused architecture with strong founda
 #### **High Priority**
 1. **Race Conditions**: Multiple state updates without proper synchronization in `useMessageHandling`
 2. **Memory Leaks**: Missing cleanup functions in several useEffect hooks
-3. **Scalability Issues**: In-memory rate limiter won't work in serverless environments
+3. ~~**Scalability Issues**: In-memory rate limiter won't work in serverless environments~~ ✅ **FIXED**: Implemented Redis-based rate limiting
 4. **Data Loss Risk**: Chat continues even when session saving fails
 
 #### **Medium Priority**
@@ -299,7 +339,7 @@ The Duck demonstrates a modern, security-focused architecture with strong founda
 #### **Immediate Actions**
 1. **Fix Race Conditions**: Implement proper state update sequencing in message handling
 2. **Add Cleanup Functions**: Ensure all useEffect hooks properly clean up timers and subscriptions
-3. **Implement Redis Rate Limiting**: Replace in-memory solution for production scalability
+3. ~~**Implement Redis Rate Limiting**: Replace in-memory solution for production scalability~~ ✅ **COMPLETED**
 4. **Handle Save Failures**: Stop chat operations if session saving fails
 
 #### **Architecture Improvements**

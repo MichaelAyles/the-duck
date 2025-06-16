@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { createRateLimiter } from './redis';
 
 // 🛡️ Security Configuration
 export const SECURITY_CONFIG = {
@@ -77,66 +78,9 @@ export class ApiKeySecurity {
   }
 }
 
-// 🚦 Rate Limiting
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-}
-
-class InMemoryRateLimiter {
-  private store = new Map<string, RateLimitEntry>();
-  
-  isRateLimited(
-    identifier: string, 
-    maxRequests: number, 
-    windowMs: number = SECURITY_CONFIG.RATE_LIMIT.WINDOW_MS
-  ): boolean {
-    const now = Date.now();
-    const key = identifier;
-    const entry = this.store.get(key);
-    
-    // Clean up expired entries
-    if (entry && now > entry.resetTime) {
-      this.store.delete(key);
-    }
-    
-    const currentEntry = this.store.get(key);
-    
-    if (!currentEntry) {
-      // First request in window
-      this.store.set(key, {
-        count: 1,
-        resetTime: now + windowMs
-      });
-      return false;
-    }
-    
-    if (currentEntry.count >= maxRequests) {
-      return true;
-    }
-    
-    // Increment count
-    currentEntry.count++;
-    this.store.set(key, currentEntry);
-    return false;
-  }
-  
-  getRemainingRequests(
-    identifier: string,
-    maxRequests: number
-  ): number {
-    const entry = this.store.get(identifier);
-    if (!entry) return maxRequests;
-    return Math.max(0, maxRequests - entry.count);
-  }
-  
-  getResetTime(identifier: string): number | null {
-    const entry = this.store.get(identifier);
-    return entry?.resetTime || null;
-  }
-}
-
-export const rateLimiter = new InMemoryRateLimiter();
+// 🚦 Rate Limiting - Now using Redis for distributed rate limiting
+// The old InMemoryRateLimiter has been replaced with Redis-based rate limiting
+// to work properly in serverless environments like Vercel
 
 // 🔍 Input Validation & Sanitization
 export const InputValidation = {
@@ -237,49 +181,63 @@ export function withRateLimit(
   maxRequests: number,
   windowMs: number = SECURITY_CONFIG.RATE_LIMIT.WINDOW_MS
 ) {
+  // Convert windowMs to Duration format for Upstash (e.g., "15m" for 15 minutes)
+  const windowDuration = windowMs >= 60000 
+    ? `${Math.ceil(windowMs / 60000)}m` as const
+    : `${Math.ceil(windowMs / 1000)}s` as const;
+  
   return (handler: (req: NextRequest) => Promise<NextResponse>) => {
     return async (req: NextRequest): Promise<NextResponse> => {
-      // Get client identifier (IP address)
-      const clientId = req.headers.get('x-forwarded-for')?.split(',')[0] || 
-        req.headers.get('x-real-ip') || 
-        req.headers.get('cf-connecting-ip') ||
-        'unknown';
-      
-      // Check rate limit
-      if (rateLimiter.isRateLimited(clientId, maxRequests, windowMs)) {
-        const resetTime = rateLimiter.getResetTime(clientId);
+      try {
+        // Get client identifier (IP address)
+        const clientId = req.headers.get('x-forwarded-for')?.split(',')[0] || 
+          req.headers.get('x-real-ip') || 
+          req.headers.get('cf-connecting-ip') ||
+          'unknown';
         
-        return NextResponse.json(
-          { 
-            error: 'Rate limit exceeded',
-            message: 'Too many requests. Please try again later.',
-            resetTime: resetTime ? new Date(resetTime).toISOString() : null
-          },
-          { 
-            status: 429,
-            headers: {
-              'Retry-After': Math.ceil(windowMs / 1000).toString(),
-              'X-RateLimit-Limit': maxRequests.toString(),
-              'X-RateLimit-Remaining': '0',
-              'X-RateLimit-Reset': resetTime ? Math.ceil(resetTime / 1000).toString() : '',
-              ...SECURITY_CONFIG.SECURITY_HEADERS
+        // Create rate limiter for this endpoint
+        const rateLimiter = createRateLimiter({
+          requests: maxRequests,
+          window: windowDuration,
+          prefix: `rl:${req.nextUrl.pathname}`,
+        });
+        
+        // Check rate limit
+        const { success, limit, reset, remaining } = await rateLimiter.limit(clientId);
+        
+        if (!success) {
+          return NextResponse.json(
+            { 
+              error: 'Rate limit exceeded',
+              message: 'Too many requests. Please try again later.',
+              resetTime: new Date(reset).toISOString()
+            },
+            { 
+              status: 429,
+              headers: {
+                'Retry-After': Math.ceil((reset - Date.now()) / 1000).toString(),
+                'X-RateLimit-Limit': limit.toString(),
+                'X-RateLimit-Remaining': remaining.toString(),
+                'X-RateLimit-Reset': Math.ceil(reset / 1000).toString(),
+                ...SECURITY_CONFIG.SECURITY_HEADERS
+              }
             }
-          }
-        );
+          );
+        }
+        
+        // Add rate limit headers to successful responses
+        const response = await handler(req);
+        
+        response.headers.set('X-RateLimit-Limit', limit.toString());
+        response.headers.set('X-RateLimit-Remaining', remaining.toString());
+        response.headers.set('X-RateLimit-Reset', Math.ceil(reset / 1000).toString());
+        
+        return response;
+      } catch (error) {
+        console.error('Rate limiting error:', error);
+        // If Redis is unavailable, allow the request but log the error
+        return handler(req);
       }
-      
-      // Add rate limit headers to successful responses
-      const response = await handler(req);
-      const remaining = rateLimiter.getRemainingRequests(clientId, maxRequests);
-      const resetTime = rateLimiter.getResetTime(clientId);
-      
-      response.headers.set('X-RateLimit-Limit', maxRequests.toString());
-      response.headers.set('X-RateLimit-Remaining', remaining.toString());
-      if (resetTime) {
-        response.headers.set('X-RateLimit-Reset', Math.ceil(resetTime / 1000).toString());
-      }
-      
-      return response;
     };
   };
 }

@@ -16,6 +16,8 @@ A modern, secure, and performant LLM chat interface with authentication, persona
 
 ### 🚀 **Performance & Experience**
 -   **Real-time Streaming**: Server-Sent Events for live AI responses
+-   **Redis Caching**: Lightning-fast response times with distributed caching
+-   **Distributed Rate Limiting**: Production-ready rate limiting across all instances
 -   **Modular Hook Architecture**: Clean, maintainable React components
 -   **Type-Safe**: Complete TypeScript coverage with proper interfaces
 -   **Error Resilience**: Comprehensive error handling with user-friendly messages
@@ -60,8 +62,8 @@ This approach results in a codebase that is not only performant and secure but a
 - **Error Handling: 8/10** - User-friendly toast notifications with graceful degradation
 
 **Areas for Enhancement:**
-- **Performance: 6/10** - Missing some key optimizations (virtualization, proper memoization)
-- **Scalability: 7/10** - In-memory rate limiter needs Redis-based solution for production
+- **Performance: 7/10** - Redis caching implemented, but missing virtualization for long lists
+- **Scalability: 9/10** - Redis-based rate limiting now supports serverless deployment
 - **State Management: 6/10** - Distributed state across hooks creates synchronization challenges
 - **Testing: 0/10** - No test coverage currently exists
 
@@ -71,6 +73,7 @@ This approach results in a codebase that is not only performant and secure but a
 -   Node.js 20+ (LTS recommended)
 -   A Supabase account (for database and authentication)
 -   An OpenRouter API key
+-   An Upstash Redis account (free tier available)
 
 ### 1. Clone & Install
 ```bash
@@ -85,15 +88,23 @@ Create a `.env.local` file with your credentials:
 -   `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL.
 -   `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key.
 -   `NEXT_PUBLIC_APP_URL`: The deployment URL of your app (e.g., `http://localhost:12000` for local development or your Vercel URL).
+-   `UPSTASH_REDIS_REST_URL`: Your Upstash Redis REST URL from [Upstash Console](https://console.upstash.com).
+-   `UPSTASH_REDIS_REST_TOKEN`: Your Upstash Redis REST token.
 
-### 3. Supabase Setup
+### 3. Redis Setup (Upstash)
+1.  Create a free account at [Upstash](https://upstash.com).
+2.  Create a new Redis database (free tier includes 10,000 commands/day).
+3.  Copy the REST URL and token from your Upstash console.
+4.  Add them to your `.env.local` file.
+
+### 4. Supabase Setup
 You must run the migration script to set up your database tables and security policies.
 1.  Go to your Supabase project dashboard.
 2.  Navigate to the **SQL Editor**.
 3.  Copy the contents of the migration script (available in the repository) and run it in the editor.
 4.  Enable authentication providers in your Supabase dashboard (Google and/or GitHub OAuth).
 
-### 4. Run Development Server
+### 5. Run Development Server
 ```bash
 # Start the development server
 npm run dev
@@ -112,6 +123,7 @@ Open [http://localhost:12000](http://localhost:12000) to see The Duck in action!
 ### **Backend & Database**
 -   **API Routes**: Next.js server-side API with authentication
 -   **Database**: Supabase PostgreSQL with Row-Level Security
+-   **Caching & Rate Limiting**: Upstash Redis (serverless Redis)
 -   **Authentication**: Supabase Auth (Google/GitHub OAuth)
 -   **Real-time**: Server-Sent Events for streaming responses
 
@@ -154,6 +166,8 @@ src/
 │   ├── config.ts          # Centralized configuration
 │   ├── auth.ts            # Authentication utilities
 │   ├── chat-service.ts    # Chat business logic
+│   ├── redis.ts           # Redis client and caching utilities
+│   ├── security.ts        # Rate limiting and security middleware
 │   ├── supabase/          # Database client configuration
 │   └── db/                # Server-side database operations
 └── types/                 # TypeScript type definitions

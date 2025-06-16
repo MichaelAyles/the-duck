@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { cache, cacheKeys, CACHE_TTL } from '@/lib/redis';
 
 /**
  * 🗄️ Server-side Database Operations
@@ -76,10 +77,17 @@ export const DEFAULT_USER_PREFERENCES: UserPreferencesData = {
 };
 
 /**
- * Get user preferences using server-side client with proper authentication context
+ * Get user preferences using server-side client with proper authentication context and Redis caching
  */
 export async function getUserPreferences(userId: string): Promise<UserPreferencesData> {
   try {
+    // Try to get from cache first
+    const cacheKey = cacheKeys.userPreferences(userId);
+    const cached = await cache.get<UserPreferencesData>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const supabase = await createClient()
     
     // First check if user is properly authenticated
@@ -110,7 +118,12 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
       return await createUserPreferencesWithDynamicDefaults(userId)
     }
 
-    return data.preferences as UserPreferencesData
+    const preferences = data.preferences as UserPreferencesData;
+    
+    // Cache the preferences
+    await cache.set(cacheKey, preferences, CACHE_TTL.USER_PREFERENCES);
+    
+    return preferences;
   } catch (error) {
     console.error('Error getting user preferences:', error)
     // Return defaults instead of throwing to prevent app crashes
@@ -199,7 +212,7 @@ export async function createUserPreferences(
 }
 
 /**
- * Update user preferences using server-side client
+ * Update user preferences using server-side client and invalidate cache
  */
 export async function updateUserPreferences(
   userId: string, 
@@ -231,7 +244,16 @@ export async function updateUserPreferences(
       return updated
     }
 
-    return data.preferences as UserPreferencesData
+    const newPreferences = data.preferences as UserPreferencesData;
+    
+    // Invalidate the cache
+    const cacheKey = cacheKeys.userPreferences(userId);
+    await cache.delete(cacheKey);
+    
+    // Set the new value in cache
+    await cache.set(cacheKey, newPreferences, CACHE_TTL.USER_PREFERENCES);
+
+    return newPreferences;
   } catch (error) {
     console.error('Error updating user preferences:', error)
     throw error
