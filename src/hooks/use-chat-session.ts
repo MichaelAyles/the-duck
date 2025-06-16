@@ -142,10 +142,21 @@ export function useChatSession({
     };
   }, [initialSessionId, userId, loadSessionMessages, initialMessages?.length]);
 
-  // Add welcome message when messages are empty
+  // Add welcome message when messages are empty and not loading
+  // This prevents interference with optimistic updates during message sending
   useEffect(() => {
     if (messages.length === 0) {
-      setMessages([welcomeMessage]);
+      // Use a longer delay and double-check conditions to avoid race conditions
+      const timer = setTimeout(() => {
+        setMessages(current => {
+          // Only add welcome message if still empty and we have a stable state
+          if (current.length === 0) {
+            return [welcomeMessage];
+          }
+          return current;
+        });
+      }, 200); // Increased delay to avoid interference with optimistic updates
+      return () => clearTimeout(timer);
     }
   }, [messages.length, welcomeMessage]);
 

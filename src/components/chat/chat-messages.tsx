@@ -34,10 +34,11 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
     const hadWelcomeMessage = prevMessages.some(msg => msg.id === "welcome-message");
     const hasUserMessage = messages.some(msg => msg.role === "user");
     
-    // If we had a welcome message and now have user messages, trigger fade
-    if (hadWelcomeMessage && hasUserMessage && hasWelcomeMessage) {
+    // If we have both welcome message and user message, trigger fade
+    if (hasWelcomeMessage && hasUserMessage) {
       setFadingWelcome(true);
-      // Remove welcome message after animation
+      
+      // Reset fade state after animation
       setTimeout(() => {
         setFadingWelcome(false);
       }, 300);
@@ -59,7 +60,7 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
               className={cn(
                 "flex gap-3 transition-all duration-300",
                 message.role === "user" ? "justify-end" : "justify-start",
-                shouldFade && "opacity-0 -translate-y-2"
+                shouldFade && "opacity-0 -translate-y-4 scale-95"
               )}
             >
             {message.role === "assistant" && (

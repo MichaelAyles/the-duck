@@ -103,12 +103,10 @@ export function useMessageHandling({
       },
     };
 
-    // Check if this is the first user message (welcome message is present)
     const hasWelcomeMessage = messages.some(msg => msg.id === "welcome-message");
-    let newMessages: Message[];
     
     if (hasWelcomeMessage) {
-      // For first message: show user message alongside welcome message briefly, then transition
+      // For first message: add user message first, then transition out welcome message
       const messagesWithUser = [...messages, userMessage];
       setMessages(messagesWithUser);
       setIsLoading(true);
@@ -118,16 +116,17 @@ export function useMessageHandling({
         const filteredMessages = messagesWithUser.filter(msg => msg.id !== "welcome-message");
         const finalMessages = [...filteredMessages, assistantMessage];
         setMessages(finalMessages);
-      }, 150); // Brief delay for smooth transition
-      
-      // For API call, use messages without welcome message
-      newMessages = [...messages.filter(msg => msg.id !== "welcome-message"), userMessage, assistantMessage];
+      }, 100); // Brief delay for smoother transition
     } else {
-      // For subsequent messages: standard behavior
-      newMessages = [...messages, userMessage, assistantMessage];
+      // Subsequent messages: standard immediate update
+      const newMessages = [...messages, userMessage, assistantMessage];
       setMessages(newMessages);
       setIsLoading(true);
     }
+
+    // For API call purposes, always use filtered messages
+    const filteredMessages = messages.filter(msg => msg.id !== "welcome-message");
+    const newMessages = [...filteredMessages, userMessage, assistantMessage];
 
     try {
       // Save chat session if storage is enabled and user is authenticated
