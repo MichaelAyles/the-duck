@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { User, Loader2 } from "lucide-react";
@@ -16,6 +16,8 @@ interface ChatMessagesProps {
 
 export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [fadingWelcome, setFadingWelcome] = useState(false);
+  const prevMessagesRef = useRef<Message[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -25,17 +27,41 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  // Detect when welcome message should fade out
+  useEffect(() => {
+    const prevMessages = prevMessagesRef.current;
+    const hasWelcomeMessage = messages.some(msg => msg.id === "welcome-message");
+    const hadWelcomeMessage = prevMessages.some(msg => msg.id === "welcome-message");
+    const hasUserMessage = messages.some(msg => msg.role === "user");
+    
+    // If we had a welcome message and now have user messages, trigger fade
+    if (hadWelcomeMessage && hasUserMessage && hasWelcomeMessage) {
+      setFadingWelcome(true);
+      // Remove welcome message after animation
+      setTimeout(() => {
+        setFadingWelcome(false);
+      }, 300);
+    }
+    
+    prevMessagesRef.current = messages;
+  }, [messages]);
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
       <div className="max-w-4xl mx-auto space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={cn(
-              "flex gap-3",
-              message.role === "user" ? "justify-end" : "justify-start"
-            )}
-          >
+        {messages.map((message) => {
+          const isWelcomeMessage = message.id === "welcome-message";
+          const shouldFade = isWelcomeMessage && fadingWelcome;
+          
+          return (
+            <div
+              key={message.id}
+              className={cn(
+                "flex gap-3 transition-all duration-300",
+                message.role === "user" ? "justify-end" : "justify-start",
+                shouldFade && "opacity-0 -translate-y-2"
+              )}
+            >
             {message.role === "assistant" && (
               <Avatar className="h-9 w-9 mt-1 duck-shadow hover:duck-glow transition-all duration-300">
                 <AvatarFallback className="duck-gradient border-2 border-background">
@@ -86,8 +112,9 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
                 </AvatarFallback>
               </Avatar>
             )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
         
         <div ref={messagesEndRef} />
       </div>

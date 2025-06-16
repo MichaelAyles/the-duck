@@ -103,10 +103,31 @@ export function useMessageHandling({
       },
     };
 
-    const newMessages = [...messages, userMessage, assistantMessage];
-
-    setMessages(newMessages);
-    setIsLoading(true);
+    // Check if this is the first user message (welcome message is present)
+    const hasWelcomeMessage = messages.some(msg => msg.id === "welcome-message");
+    let newMessages: Message[];
+    
+    if (hasWelcomeMessage) {
+      // For first message: show user message alongside welcome message briefly, then transition
+      const messagesWithUser = [...messages, userMessage];
+      setMessages(messagesWithUser);
+      setIsLoading(true);
+      
+      // After a brief moment, remove welcome message and add assistant placeholder
+      setTimeout(() => {
+        const filteredMessages = messagesWithUser.filter(msg => msg.id !== "welcome-message");
+        const finalMessages = [...filteredMessages, assistantMessage];
+        setMessages(finalMessages);
+      }, 150); // Brief delay for smooth transition
+      
+      // For API call, use messages without welcome message
+      newMessages = [...messages.filter(msg => msg.id !== "welcome-message"), userMessage, assistantMessage];
+    } else {
+      // For subsequent messages: standard behavior
+      newMessages = [...messages, userMessage, assistantMessage];
+      setMessages(newMessages);
+      setIsLoading(true);
+    }
 
     try {
       // Save chat session if storage is enabled and user is authenticated
