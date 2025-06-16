@@ -111,22 +111,13 @@ export function useMessageHandling({
     // Use ref to get the most current messages and avoid stale closures
     const currentMessages = messagesRef.current;
     
-    // Step 1: Remove welcome message and add user message immediately
+    // Step 1: Remove welcome message and add user message + thinking message immediately
     const filteredMessages = currentMessages.filter(msg => msg.id !== "welcome-message");
-    const messagesWithUser = [...filteredMessages, userMessage];
+    const newMessages = [...filteredMessages, userMessage, thinkingMessage];
     
-    // Immediately show user message (this triggers welcome fade-out)
-    setMessages(messagesWithUser);
-    
-    // Step 2: Add thinking message after a brief delay for smooth transition
-    setTimeout(() => {
-      const messagesWithThinking = [...messagesWithUser, thinkingMessage];
-      setMessages(messagesWithThinking);
-      setIsLoading(true);
-    }, 100);
-
-    // Store messages for later processing
-    const newMessages = [...messagesWithUser, thinkingMessage];
+    // Immediately show user message and thinking message
+    setMessages(newMessages);
+    setIsLoading(true);
 
     try {
       // Save chat session if storage is enabled and user is authenticated
@@ -134,16 +125,22 @@ export function useMessageHandling({
         try {
           // For first message: generate title before saving
           let titleToUse: string | undefined;
-          const userMessages = messagesWithUser.filter(msg => msg.role === 'user');
+          const userMessages = newMessages.filter(msg => msg.role === 'user');
           
+          // Save without the thinking message first
+          const messagesToSave = [...filteredMessages, userMessage];
+          await chatServiceRef.current?.saveChatSession(messagesToSave, settings.model, titleToUse);
+          console.log(`✅ Successfully saved chat session with ${messagesToSave.length} messages`);
+          
+          // Generate title after saving for first message
           if (userMessages.length === 1) {
-            // First message - try AI, use fallback if fails
-            const generatedTitle = await generateTitleIfNeeded(messagesWithUser, sessionId);
-            titleToUse = generatedTitle || undefined; // Let saveChatSession use "New Chat" if null
+            try {
+              await generateTitleIfNeeded(messagesToSave, sessionId);
+            } catch (error) {
+              console.warn('Failed to generate title after save:', error);
+              // Don't fail the entire operation if title generation fails
+            }
           }
-          
-          await chatServiceRef.current?.saveChatSession(messagesWithUser, settings.model, titleToUse);
-          console.log(`✅ Successfully saved chat session with ${messagesWithUser.length} messages`);
         } catch (error) {
           console.error('Error saving chat session:', error);
           toast({

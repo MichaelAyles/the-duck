@@ -15,8 +15,8 @@ export const SECURITY_CONFIG = {
     WINDOW_MS: 15 * 60 * 1000, // 15 minutes
     MAX_REQUESTS: {
       CHAT: 100,      // Chat completions
-      MODELS: 20,     // Model fetching
-      API: 200,       // General API calls
+      MODELS: 100,    // Model fetching (increased for development)
+      API: 500,       // General API calls (increased for development)
     }
   },
   
