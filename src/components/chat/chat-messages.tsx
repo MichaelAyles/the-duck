@@ -79,7 +79,7 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
                 message.role === "assistant" && !message.content && isLoading && "animate-pulse"
               )}
             >
-              {message.role === "assistant" && !message.content && isLoading ? (
+              {message.role === "assistant" && (!message.content || message.metadata?.isThinking) && isLoading ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   <span className="text-sm text-muted-foreground">🦆 Thinking quack-tastically...</span>

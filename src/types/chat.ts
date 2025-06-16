@@ -7,6 +7,7 @@ export interface ChatMessage {
     model?: string
     tokens?: number
     processingTime?: number
+    isThinking?: boolean
   }
 }
 

@@ -97,27 +97,36 @@ export function useMessageHandling({
       timestamp: new Date(),
     };
 
-    const assistantMessage: Message = {
+    const thinkingMessage: Message = {
       id: crypto.randomUUID(),
       role: "assistant",
       content: "",
       timestamp: new Date(),
       metadata: {
         model: settings.model,
+        isThinking: true,
       },
     };
 
     // Use ref to get the most current messages and avoid stale closures
     const currentMessages = messagesRef.current;
     
-    // Simple approach: always filter out welcome message and add user + assistant immediately
-    // This avoids race conditions and timing issues
+    // Step 1: Remove welcome message and add user message immediately
     const filteredMessages = currentMessages.filter(msg => msg.id !== "welcome-message");
-    const newMessages = [...filteredMessages, userMessage, assistantMessage];
+    const messagesWithUser = [...filteredMessages, userMessage];
+    
+    // Immediately show user message (this triggers welcome fade-out)
+    setMessages(messagesWithUser);
+    
+    // Step 2: Add thinking message after a brief delay for smooth transition
+    setTimeout(() => {
+      const messagesWithThinking = [...messagesWithUser, thinkingMessage];
+      setMessages(messagesWithThinking);
+      setIsLoading(true);
+    }, 100);
 
-    // Immediately update UI with user message (optimistic update)
-    setMessages(newMessages);
-    setIsLoading(true);
+    // Store messages for later processing
+    const newMessages = [...messagesWithUser, thinkingMessage];
 
     try {
       // Save chat session if storage is enabled and user is authenticated
@@ -125,16 +134,16 @@ export function useMessageHandling({
         try {
           // For first message: generate title before saving
           let titleToUse: string | undefined;
-          const userMessages = newMessages.filter(msg => msg.role === 'user');
+          const userMessages = messagesWithUser.filter(msg => msg.role === 'user');
           
           if (userMessages.length === 1) {
             // First message - try AI, use fallback if fails
-            const generatedTitle = await generateTitleIfNeeded(newMessages, sessionId);
+            const generatedTitle = await generateTitleIfNeeded(messagesWithUser, sessionId);
             titleToUse = generatedTitle || undefined; // Let saveChatSession use "New Chat" if null
           }
           
-          await chatServiceRef.current?.saveChatSession(newMessages, settings.model, titleToUse);
-          console.log(`✅ Successfully saved chat session with ${newMessages.length} messages`);
+          await chatServiceRef.current?.saveChatSession(messagesWithUser, settings.model, titleToUse);
+          console.log(`✅ Successfully saved chat session with ${messagesWithUser.length} messages`);
         } catch (error) {
           console.error('Error saving chat session:', error);
           toast({
@@ -285,11 +294,23 @@ export function useMessageHandling({
                     const lastMessageIndex = updated.length - 1;
                     const lastMessage = updated[lastMessageIndex];
                     if (lastMessage && lastMessage.role === 'assistant') {
-                      // Create a new message object instead of mutating
-                      updated[lastMessageIndex] = {
-                        ...lastMessage,
-                        content: lastMessage.content + parsed.content
-                      };
+                      // If this is the first content chunk and we have a thinking message, replace it
+                      if (lastMessage.metadata?.isThinking && !lastMessage.content) {
+                        updated[lastMessageIndex] = {
+                          ...lastMessage,
+                          content: parsed.content,
+                          metadata: {
+                            ...lastMessage.metadata,
+                            isThinking: false,
+                          },
+                        };
+                      } else {
+                        // Continue appending content for ongoing streams
+                        updated[lastMessageIndex] = {
+                          ...lastMessage,
+                          content: lastMessage.content + parsed.content
+                        };
+                      }
                     }
                     return updated;
                   });
