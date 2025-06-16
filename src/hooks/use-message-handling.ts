@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { ChatService } from '@/lib/chat-service';
 import { Message } from '@/types/chat';
 import { ChatSettings } from '@/components/chat/chat-interface';
@@ -88,8 +89,10 @@ export function useMessageHandling({
   }, []);
 
   const handleSendMessage = useCallback((content: string) => {
+    console.log('🚀 handleSendMessage called');
     if (!content.trim() || isLoading) return;
 
+    console.log('🚀 Creating user and thinking messages');
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -111,13 +114,17 @@ export function useMessageHandling({
     // Use ref to get the most current messages and avoid stale closures
     const currentMessages = messagesRef.current;
     
+    console.log('🚀 About to update UI with messages');
     // IMMEDIATELY update UI - no awaits, no blocking
     const filteredMessages = currentMessages.filter(msg => msg.id !== "welcome-message");
     const newMessages = [...filteredMessages, userMessage, thinkingMessage];
     
-    // Show messages instantly
-    setMessages(newMessages);
-    setIsLoading(true);
+    // Force synchronous UI update with flushSync
+    flushSync(() => {
+      setMessages(newMessages);
+      setIsLoading(true);
+    });
+    console.log('🚀 UI forcibly flushed! Messages should be visible immediately');
 
     // Fire and forget: run all background operations asynchronously
     (async () => {
