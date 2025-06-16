@@ -19,8 +19,10 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="animate-bounce">
-            <DuckLogo variant="duck" size="xl" />
+          <div className="flex justify-center">
+            <div className="animate-bounce">
+              <DuckLogo variant="duck" size="xl" />
+            </div>
           </div>
           <p className="text-muted-foreground">Loading...</p>
           {debugInfo && (

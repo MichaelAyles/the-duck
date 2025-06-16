@@ -148,6 +148,7 @@ This document outlines the development priorities for The Duck, focusing on crit
     -   [ ] Integrate search into ChatHistorySidebar
 
 -   [ ] **Improve UI/UX**
+    -   [x] Fix duck logo centering on splash screens ✅ COMPLETED
     -   [ ] Add loading skeletons for smoother page loads
     -   [ ] Refine settings management interface
     -   [ ] Add confirmation dialogs for destructive actions

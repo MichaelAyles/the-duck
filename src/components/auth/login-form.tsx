@@ -23,10 +23,10 @@ export function LoginForm() {
             <DuckLogo variant="duck" size="xl" />
           </div>
           <h1 className="text-2xl font-bold">The Duck</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-center">
             Supabase authentication is not configured in this environment.
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground text-center">
             Please set up your environment variables to enable authentication.
           </p>
         </div>
@@ -80,11 +80,13 @@ export function LoginForm() {
     <Card className="p-8 max-w-md mx-auto">
       <div className="text-center space-y-6">
         {/* Duck header */}
-        <div className="space-y-2">
-          <div className="animate-bounce flex justify-center">
-            <DuckLogo variant="full" size="xl" />
+        <div className="space-y-4">
+          <div className="flex justify-center">
+            <div className="animate-bounce">
+              <DuckLogo variant="full" size="xl" />
+            </div>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-center">
             Your AI chat companion with a splash of personality
           </p>
         </div>
