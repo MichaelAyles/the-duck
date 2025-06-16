@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChatService } from '@/lib/chat-service';
 import { Message } from '@/types/chat';
 import { ChatSettings } from '@/components/chat/chat-interface';
@@ -36,6 +36,12 @@ export function useMessageHandling({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const lastSummarizeTime = useRef<number>(0);
+  const messagesRef = useRef<Message[]>(messages);
+
+  // Keep messages ref up to date
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Generate/update title for every message exchange
   const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string) => {
@@ -103,30 +109,17 @@ export function useMessageHandling({
       },
     };
 
-    const hasWelcomeMessage = messages.some(msg => msg.id === "welcome-message");
+    // Use ref to get the most current messages and avoid stale closures
+    const currentMessages = messagesRef.current;
     
-    if (hasWelcomeMessage) {
-      // For first message: add user message first, then transition out welcome message
-      const messagesWithUser = [...messages, userMessage];
-      setMessages(messagesWithUser);
-      setIsLoading(true);
-      
-      // After a brief moment, remove welcome message and add assistant placeholder
-      setTimeout(() => {
-        const filteredMessages = messagesWithUser.filter(msg => msg.id !== "welcome-message");
-        const finalMessages = [...filteredMessages, assistantMessage];
-        setMessages(finalMessages);
-      }, 100); // Brief delay for smoother transition
-    } else {
-      // Subsequent messages: standard immediate update
-      const newMessages = [...messages, userMessage, assistantMessage];
-      setMessages(newMessages);
-      setIsLoading(true);
-    }
-
-    // For API call purposes, always use filtered messages
-    const filteredMessages = messages.filter(msg => msg.id !== "welcome-message");
+    // Simple approach: always filter out welcome message and add user + assistant immediately
+    // This avoids race conditions and timing issues
+    const filteredMessages = currentMessages.filter(msg => msg.id !== "welcome-message");
     const newMessages = [...filteredMessages, userMessage, assistantMessage];
+
+    // Immediately update UI with user message (optimistic update)
+    setMessages(newMessages);
+    setIsLoading(true);
 
     try {
       // Save chat session if storage is enabled and user is authenticated
@@ -325,7 +318,6 @@ export function useMessageHandling({
     setIsLoading(false);
   }, [
     isLoading,
-    messages,
     settings,
     userId,
     sessionId,

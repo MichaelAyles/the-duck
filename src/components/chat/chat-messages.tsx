@@ -29,11 +29,12 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
 
   // Detect when welcome message should fade out
   useEffect(() => {
+    const prevMessages = prevMessagesRef.current;
     const hasWelcomeMessage = messages.some(msg => msg.id === "welcome-message");
-    const hasUserMessage = messages.some(msg => msg.role === "user");
+    const hadWelcomeMessage = prevMessages.some(msg => msg.id === "welcome-message");
     
-    // If we have both welcome message and user message, trigger fade
-    if (hasWelcomeMessage && hasUserMessage) {
+    // If we had a welcome message but now don't, the transition just happened
+    if (hadWelcomeMessage && !hasWelcomeMessage) {
       setFadingWelcome(true);
       
       // Reset fade state after animation
