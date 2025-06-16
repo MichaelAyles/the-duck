@@ -21,7 +21,7 @@ interface UseMessageHandlingReturn {
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   handleSendMessage: (content: string) => Promise<void>;
-  generateTitleIfNeeded: (messages: Message[], sessionId: string) => Promise<void>;
+  generateTitleIfNeeded: (messages: Message[], sessionId: string) => Promise<string | null>;
 }
 
 export function useMessageHandling({
@@ -43,8 +43,8 @@ export function useMessageHandling({
     messagesRef.current = messages;
   }, [messages]);
 
-  // Generate/update title for every message exchange
-  const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string) => {
+  // Generate title with new logic: try AI, fallback to existing title on failure
+  const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string): Promise<string | null> => {
     // Filter out welcome message and empty messages
     const conversationMessages = messages.filter(msg => 
       msg.id !== "welcome-message" && 
@@ -53,11 +53,9 @@ export function useMessageHandling({
     );
     
     const userMessages = conversationMessages.filter(msg => msg.role === 'user');
-    const assistantMessages = conversationMessages.filter(msg => msg.role === 'assistant' && msg.content.trim());
     
-    // Generate title after we have at least one complete exchange (user + assistant response)
-    // or when we have multiple user messages
-    if (userMessages.length >= 1 && (assistantMessages.length >= 1 || userMessages.length >= 2)) {
+    // Only generate title if we have at least one user message
+    if (userMessages.length >= 1) {
       try {
         const response = await fetch(API_ENDPOINTS.GENERATE_TITLE, {
           method: 'POST',
@@ -65,28 +63,28 @@ export function useMessageHandling({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            messages: conversationMessages, // Use full conversation context
-            sessionId
+            messages: conversationMessages,
+            sessionId,
+            preserveExistingOnFailure: true // New flag to preserve existing title on AI failure
           }),
         });
 
         if (response.ok) {
           const data = await response.json();
           console.log(`✅ Generated/updated title for session ${sessionId}:`, data.title);
-          if (data.updated) {
-            console.log('✅ Title successfully updated in database');
-          } else {
-            console.warn('⚠️ Title generation succeeded but database update failed');
-          }
+          return data.title; // Return the new title
         } else {
           const errorText = await response.text();
           console.error(`❌ Failed to generate title for session ${sessionId}:`, response.status, response.statusText, errorText);
+          return null; // Return null to indicate failure - existing title will be preserved
         }
       } catch (error) {
         console.error('Error generating title:', error);
-        // Title generation is not critical, so we don't show toast for this error
+        return null; // Return null to indicate failure
       }
     }
+    
+    return null; // No title generated
   }, []);
 
   const handleSendMessage = useCallback(async (content: string) => {
@@ -123,15 +121,20 @@ export function useMessageHandling({
 
     try {
       // Save chat session if storage is enabled and user is authenticated
-      if (settings.storageEnabled && userId) {
+      if (settings.storageEnabled && userId && sessionId) {
         try {
-          await chatServiceRef.current?.saveChatSession(newMessages, settings.model);
-          console.log(`✅ Successfully saved chat session with ${newMessages.length} messages`);
+          // For first message: generate title before saving
+          let titleToUse: string | undefined;
+          const userMessages = newMessages.filter(msg => msg.role === 'user');
           
-          // Generate title after successful save to avoid race conditions
-          if (sessionId) {
-            generateTitleIfNeeded(newMessages, sessionId);
+          if (userMessages.length === 1) {
+            // First message - try AI, use fallback if fails
+            const generatedTitle = await generateTitleIfNeeded(newMessages, sessionId);
+            titleToUse = generatedTitle || undefined; // Let saveChatSession use "New Chat" if null
           }
+          
+          await chatServiceRef.current?.saveChatSession(newMessages, settings.model, titleToUse);
+          console.log(`✅ Successfully saved chat session with ${newMessages.length} messages`);
         } catch (error) {
           console.error('Error saving chat session:', error);
           toast({
@@ -226,16 +229,30 @@ export function useMessageHandling({
               if (data === '[DONE]') {
                 setIsLoading(false);
                 
-                // Save final session and generate title when response is complete
+                // Save final session and update title when response is complete
                 if (sessionId && userId && settings.storageEnabled) {
                   setMessages(currentMessages => {
                     // Save the completed conversation
                     setTimeout(async () => {
                       try {
-                        await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
-                        console.log(`✅ Final save: chat session with ${currentMessages.length} messages`);
-                        // Generate title after final save
-                        generateTitleIfNeeded(currentMessages, sessionId);
+                        const userMessages = currentMessages.filter(msg => msg.role === 'user');
+                        
+                        // For consecutive messages (after first): try AI, keep existing if fails
+                        if (userMessages.length > 1) {
+                          const generatedTitle = await generateTitleIfNeeded(currentMessages, sessionId);
+                          // Only save with new title if generation succeeded
+                          if (generatedTitle) {
+                            await chatServiceRef.current?.saveChatSession(currentMessages, settings.model, generatedTitle);
+                            console.log(`✅ Final save with updated title: ${generatedTitle}`);
+                          } else {
+                            await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
+                            console.log(`✅ Final save: chat session with ${currentMessages.length} messages (title preserved)`);
+                          }
+                        } else {
+                          // First message was already saved with title above
+                          await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
+                          console.log(`✅ Final save: chat session with ${currentMessages.length} messages`);
+                        }
                       } catch (error) {
                         console.error('Error saving final chat session:', error);
                       }

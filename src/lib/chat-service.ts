@@ -62,7 +62,7 @@ export class ChatService {
     }
   }
 
-  public async saveChatSession(messages: Message[], model: string) {
+  public async saveChatSession(messages: Message[], model: string, title?: string) {
     try {
       // Don't save if no user is authenticated
       if (!this.userId) {
@@ -70,7 +70,8 @@ export class ChatService {
         return
       }
 
-      const title = this.generateTitle(messages)
+      // Use provided title or default to 'New Chat' - title generation now handled by dedicated API
+      const sessionTitle = title || 'New Chat'
       
       const response = await fetch('/api/sessions', {
         method: 'POST',
@@ -79,7 +80,7 @@ export class ChatService {
         },
         body: JSON.stringify({
           id: this.sessionId,
-          title,
+          title: sessionTitle,
           messages,
           model,
         }),
@@ -219,25 +220,6 @@ export class ChatService {
     }
   }
 
-  private generateTitle(messages: Message[]): string {
-    if (messages.length === 0) {
-      return 'New Chat'
-    }
-
-    const firstUserMessage = messages.find(msg => msg.role === 'user')
-    if (!firstUserMessage) {
-      return 'New Chat'
-    }
-
-    // Extract a meaningful title from the first user message
-    const content = firstUserMessage.content.trim()
-    if (content.length <= 50) {
-      return content
-    }
-
-    // Truncate and add ellipsis
-    return content.substring(0, 47) + '...'
-  }
 
   public async getUserChatHistory(limit = 20): Promise<Array<{
     id: string

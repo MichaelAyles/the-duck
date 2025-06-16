@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const { messages, sessionId } = await req.json()
+    const { messages, sessionId, preserveExistingOnFailure = false } = await req.json()
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -141,25 +141,42 @@ Respond with ONLY the title, nothing else.`
       throw new Error('Failed to fetch session')
     }
 
-    await sessionResponse.json()
-    // Session exists, we can proceed with title generation
+    const sessionData = await sessionResponse.json()
+    const existingTitle = sessionData.session?.title || 'New Chat'
+    
+    // If AI generation fails and we should preserve existing title, use existing title
+    if (method === 'fallback' && preserveExistingOnFailure && existingTitle !== 'New Chat') {
+      generatedTitle = existingTitle
+      method = 'preserved'
+    }
 
-    console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle}`)
+    console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle} (method: ${method})`)
 
-    // Update the session with the new title
-    const updateResponse = await fetch(new URL(`/api/sessions/${sessionId}`, req.url).toString(), {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cookie': req.headers.get('cookie') || '',
-      },
-      body: JSON.stringify({
-        title: generatedTitle,
-      }),
-    })
+    // Update the session with the new title (only if it changed)
+    let updateResponse = { ok: true }; // Default to success for preserved titles
+    let shouldUpdate = true;
+    
+    if (method === 'preserved' && generatedTitle === existingTitle) {
+      // Title was preserved and unchanged, skip database update
+      shouldUpdate = false;
+      console.log('Title preserved - skipping database update');
+    }
+    
+    if (shouldUpdate) {
+      updateResponse = await fetch(new URL(`/api/sessions/${sessionId}`, req.url).toString(), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': req.headers.get('cookie') || '',
+        },
+        body: JSON.stringify({
+          title: generatedTitle,
+        }),
+      })
 
-    if (!updateResponse.ok) {
-      console.error('Failed to update session title')
+      if (!updateResponse.ok) {
+        console.error('Failed to update session title')
+      }
     }
 
     return NextResponse.json({
