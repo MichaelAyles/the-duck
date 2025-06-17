@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useStarredModels } from './use-starred-models'
 
 interface Model {
@@ -68,7 +68,7 @@ export function useModels() {
     }
   }, [hasInitialized, fetchCuratedModels])
 
-  const fetchAllModels = async () => {
+  const fetchAllModels = useCallback(async () => {
     if (allModels.length > 0) return // Already fetched
 
     try {
@@ -104,9 +104,10 @@ export function useModels() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [allModels.length, isStarred, isActive])
 
-  return {
+  // Memoize the return object to prevent infinite re-renders
+  return useMemo(() => ({
     curatedModels,
     allModels,
     isLoading: isLoading || starredLoading,
@@ -121,5 +122,20 @@ export function useModels() {
     toggleStar,
     setActive,
     resetToDefaults,
-  }
+  }), [
+    curatedModels,
+    allModels,
+    isLoading,
+    starredLoading,
+    error,
+    fetchAllModels,
+    initializeCuratedModels,
+    starredModels,
+    activeModel,
+    isStarred,
+    isActive,
+    toggleStar,
+    setActive,
+    resetToDefaults,
+  ])
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,7 +98,7 @@ export function LearningPreferencesTab() {
     return matchesCategory && matchesSearch;
   });
 
-  const handleAddPreference = async () => {
+  const handleAddPreference = useCallback(async () => {
     if (!addForm.preference_key.trim()) return;
 
     try {
@@ -121,7 +121,7 @@ export function LearningPreferencesTab() {
     } catch (error) {
       console.error("Failed to add preference:", error);
     }
-  };
+  }, [addForm, addPreference]);
 
   const handleUpdateWeight = async (preference: LearningPreference, newWeight: number) => {
     try {

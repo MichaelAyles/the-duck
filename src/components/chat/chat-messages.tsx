@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, memo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { User, Loader2 } from "lucide-react";
@@ -14,26 +14,28 @@ interface ChatMessagesProps {
   isLoading: boolean;
 }
 
-function ChatMessagesComponent({ messages, isLoading }: ChatMessagesProps) {
+export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [fadingWelcome, setFadingWelcome] = useState(false);
   const prevMessagesRef = useRef<Message[]>([]);
 
-  // Debug logging for message changes
-  console.log('🎬 ChatMessages render - messages:', messages.map(m => ({ 
+  // Debug logging for message changes (memoized to prevent object recreation)
+  const debugMessages = useMemo(() => messages.map(m => ({ 
     id: m.id, 
     role: m.role, 
     content: m.content.slice(0, 20), 
     isThinking: m.metadata?.isThinking 
-  })), 'isLoading:', isLoading);
+  })), [messages]);
+  
+  console.log('ChatMessages render - messages:', debugMessages, 'isLoading:', isLoading);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isLoading]);
+  }, [messages, isLoading, scrollToBottom]);
 
   // Detect when welcome message should fade out
   useEffect(() => {
@@ -48,27 +50,33 @@ function ChatMessagesComponent({ messages, isLoading }: ChatMessagesProps) {
     // Trigger fade when welcome message should disappear (either removed or new messages added)
     if ((hadWelcomeMessage && !hasWelcomeMessage) || 
         (hasWelcomeMessage && hasNonWelcomeMessages && !hadNonWelcomeMessages)) {
-      console.log('🎬 Triggering welcome message fade');
+      console.log('Triggering welcome message fade');
       setFadingWelcome(true);
       
       // Reset fade state after animation
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setFadingWelcome(false);
       }, 300);
+      
+      // Store timer for cleanup
+      return () => clearTimeout(timer);
     }
     
-    prevMessagesRef.current = messages;
+    // Only update ref if messages actually changed (prevent unnecessary updates)
+    if (prevMessages !== messages) {
+      prevMessagesRef.current = messages;
+    }
   }, [messages]);
 
   return (
-    <div className="h-full overflow-y-auto p-4">
-      <div className="max-w-4xl mx-auto space-y-4 pb-4">
+    <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+      <div className="max-w-4xl mx-auto space-y-4">
         {messages.map((message) => {
           const isWelcomeMessage = message.id === "welcome-message";
           const shouldFade = isWelcomeMessage && fadingWelcome;
           const shouldShowThinking = message.role === "assistant" && message.metadata?.isThinking && !message.content && isLoading;
           
-          console.log(`🎭 Rendering message ${message.id}: role=${message.role}, isWelcome=${isWelcomeMessage}, shouldFade=${shouldFade}, shouldShowThinking=${shouldShowThinking}, content="${message.content.slice(0, 20)}"`);
+          // Remove render-time logging to prevent infinite loops
           
           return (
             <div
@@ -93,13 +101,13 @@ function ChatMessagesComponent({ messages, isLoading }: ChatMessagesProps) {
                 message.role === "user"
                   ? "duck-gradient text-primary-foreground ml-12 hover:duck-glow"
                   : "bg-card hover:bg-card/80",
-                message.role === "assistant" && !message.content && isLoading && "animate-gentle-pulse"
+                message.role === "assistant" && !message.content && isLoading && "animate-pulse"
               )}
             >
               {shouldShowThinking ? (
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-[spin_1.5s_linear_infinite] text-primary" />
-                  <span className="text-sm text-muted-foreground">🦆 Thinking quack-tastically...</span>
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">Thinking quack-tastically...</span>
                 </div>
               ) : (
                 <MessageContent content={message.content} />
@@ -138,21 +146,3 @@ function ChatMessagesComponent({ messages, isLoading }: ChatMessagesProps) {
     </div>
   );
 }
-
-// Memoize the component to prevent unnecessary re-renders
-export const ChatMessages = memo(ChatMessagesComponent, (prevProps, nextProps) => {
-  // Custom comparison function
-  if (prevProps.isLoading !== nextProps.isLoading) return false;
-  if (prevProps.messages.length !== nextProps.messages.length) return false;
-  
-  // Deep compare messages only if needed
-  for (let i = 0; i < prevProps.messages.length; i++) {
-    const prev = prevProps.messages[i];
-    const next = nextProps.messages[i];
-    if (prev.id !== next.id || prev.content !== next.content || prev.role !== next.role) {
-      return false;
-    }
-  }
-  
-  return true; // Props are equal, skip re-render
-});

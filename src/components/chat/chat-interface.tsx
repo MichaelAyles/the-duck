@@ -104,7 +104,7 @@ export const ChatInterface = React.memo(({
         
         <StorageIndicator
           isVisible={isProcessingStorage}
-          message="🦆 Processing chat summary and storing preferences..."
+          message="Processing chat summary and storing preferences..."
         />
       </ErrorBoundary>
     );
@@ -187,7 +187,7 @@ export const ChatInterface = React.memo(({
         
         <StorageIndicator
           isVisible={isProcessingStorage}
-          message="🦆 Processing chat summary and storing preferences..."
+          message="Processing chat summary and storing preferences..."
         />
       </div>
     </ErrorBoundary>

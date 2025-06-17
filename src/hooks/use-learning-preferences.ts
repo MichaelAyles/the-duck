@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { LearningPreference } from '@/lib/learning-preferences'
 
 // Local interface for the response
@@ -276,7 +276,8 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
     loadPreferences()
   }, [loadPreferences])
 
-  return {
+  // Memoize the return object to prevent infinite re-renders
+  return useMemo(() => ({
     preferences,
     summary,
     loading,
@@ -293,5 +294,18 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
     getPreferencesByCategory,
     getPreferenceWeight,
     getStrongPreferences,
-  }
+  }), [
+    preferences,
+    summary,
+    loading,
+    error,
+    loadPreferences,
+    addPreference,
+    updatePreference,
+    deletePreference,
+    bulkUpdatePreferences,
+    getPreferencesByCategory,
+    getPreferenceWeight,
+    getStrongPreferences,
+  ])
 }

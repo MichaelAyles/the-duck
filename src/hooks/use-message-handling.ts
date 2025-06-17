@@ -71,11 +71,11 @@ export function useMessageHandling({
 
         if (response.ok) {
           const data = await response.json();
-          console.log(`✅ Generated/updated title for session ${sessionId}:`, data.title);
+          console.log(`Generated/updated title for session ${sessionId}:`, data.title);
           return data.title; // Return the new title
         } else {
           const errorText = await response.text();
-          console.error(`❌ Failed to generate title for session ${sessionId}:`, response.status, response.statusText, errorText);
+          console.error(`Failed to generate title for session ${sessionId}:`, response.status, response.statusText, errorText);
           return null; // Return null to indicate failure - existing title will be preserved
         }
       } catch (error) {
@@ -134,7 +134,7 @@ export function useMessageHandling({
     setMessages(newMessages);
     setIsLoading(true);
     const updateTime = performance.now() - startTime;
-    console.log(`✅ [${new Date().toISOString()}] State updated - took ${updateTime.toFixed(2)}ms`);
+    console.log(`[${new Date().toISOString()}] State updated - took ${updateTime.toFixed(2)}ms`);
 
     // Fire and forget: run all background operations asynchronously
     (async () => {
@@ -150,7 +150,7 @@ export function useMessageHandling({
           // Save without the thinking message first
           const messagesToSave = [...filteredMessages, userMessage];
           await chatServiceRef.current?.saveChatSession(messagesToSave, settings.model, titleToUse);
-          console.log(`✅ Successfully saved chat session with ${messagesToSave.length} messages`);
+          console.log(`Successfully saved chat session with ${messagesToSave.length} messages`);
           
           // Generate title after saving for first message
           if (userMessages.length === 1) {
@@ -274,15 +274,15 @@ export function useMessageHandling({
                           // Only save with new title if generation succeeded
                           if (generatedTitle) {
                             await chatServiceRef.current?.saveChatSession(currentMessages, settings.model, generatedTitle);
-                            console.log(`✅ Final save with updated title: ${generatedTitle}`);
+                            console.log(`Final save with updated title: ${generatedTitle}`);
                           } else {
                             await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
-                            console.log(`✅ Final save: chat session with ${currentMessages.length} messages (title preserved)`);
+                            console.log(`Final save: chat session with ${currentMessages.length} messages (title preserved)`);
                           }
                         } else {
                           // First message was already saved with title above
                           await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
-                          console.log(`✅ Final save: chat session with ${currentMessages.length} messages`);
+                          console.log(`Final save: chat session with ${currentMessages.length} messages`);
                         }
                       } catch (error) {
                         console.error('Error saving final chat session:', error);

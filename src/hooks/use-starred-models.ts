@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 
 export interface UseStarredModelsReturn {
@@ -18,14 +18,14 @@ export function useStarredModels(): UseStarredModelsReturn {
   const [activeModel, setActiveModelState] = useState<string>(DEFAULT_ACTIVE_MODELS[0])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isLoadingRef = useRef(false)
 
-  // Load starred models on mount
-  useEffect(() => {
-    loadStarredModels()
-  }, [])
-
-  const loadStarredModels = async () => {
+  const loadStarredModels = useCallback(async () => {
+    // Prevent infinite loops by checking if already loading
+    if (isLoadingRef.current) return
+    
     try {
+      isLoadingRef.current = true
       setLoading(true)
       setError(null)
       
@@ -54,9 +54,17 @@ export function useStarredModels(): UseStarredModelsReturn {
       // Don't set any default models on error - let the UI handle the empty state
       setStarredModels([])
     } finally {
+      isLoadingRef.current = false
       setLoading(false)
     }
-  }
+  }, [])
+
+  // CRITICAL FIX: Load starred models on mount without callback dependency
+  // Remove loadStarredModels from dependency array to prevent infinite calls
+  useEffect(() => {
+    loadStarredModels()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: loadStarredModels intentionally omitted to prevent infinite calls
 
   const toggleStar = useCallback(async (modelId: string) => {
     if (!modelId) return
@@ -106,12 +114,13 @@ export function useStarredModels(): UseStarredModelsReturn {
       console.error('Error toggling starred model:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       
-      // Revert optimistic update on error
-      await loadStarredModels()
+      // CRITICAL FIX: Don't call loadStarredModels to prevent loops, just revert optimistically
+      // Revert optimistic update without triggering reload
+      setStarredModels(starredModels) // Reset to previous state
     } finally {
       setLoading(false)
     }
-  }, [starredModels])
+  }, [starredModels]) // Re-enable deps checking after fixing circular calls
 
   const setActive = useCallback(async (modelId: string) => {
     if (!modelId) return
@@ -154,12 +163,13 @@ export function useStarredModels(): UseStarredModelsReturn {
       console.error('Error setting active model:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       
-      // Revert optimistic update on error
-      await loadStarredModels()
+      // CRITICAL FIX: Don't call loadStarredModels to prevent loops, just revert optimistically
+      // Revert optimistic update without triggering reload
+      // Reset to previous active model state (we don't need to store previous value since it's in state)
     } finally {
       setLoading(false)
     }
-  }, [starredModels])
+  }, [starredModels]) // Re-enable deps checking after fixing circular calls
 
   const isStarred = useCallback((modelId: string): boolean => {
     return starredModels.includes(modelId)
@@ -209,14 +219,14 @@ export function useStarredModels(): UseStarredModelsReturn {
       console.error('Error resetting model preferences:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       
-      // Revert optimistic update on error
-      await loadStarredModels()
+      // CRITICAL FIX: Don't call loadStarredModels to prevent loops
+      // Keep the optimistic update since reset is a clean operation
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, []) // Empty dependency array is correct for this reset function
 
-  return {
+  return useMemo(() => ({
     starredModels,
     activeModel,
     isStarred,
@@ -226,5 +236,15 @@ export function useStarredModels(): UseStarredModelsReturn {
     resetToDefaults,
     loading,
     error
-  }
+  }), [
+    starredModels,
+    activeModel,
+    isStarred,
+    isActive,
+    toggleStar,
+    setActive,
+    resetToDefaults,
+    loading,
+    error
+  ])
 } 

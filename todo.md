@@ -1,3 +1,202 @@
+# Critical Infinite Loop & Race Condition Fix Plan
+
+## ⚠️ IMMEDIATE CRITICAL ISSUE - INFINITE RENDER LOOPS
+
+**ERROR**: "Maximum update depth exceeded" causing app crashes due to React infinite render loops.
+
+**ROOT CAUSE ANALYSIS**: After comprehensive code review, identified 15+ critical issues causing infinite state updates and circular dependencies.
+
+---
+
+## Executive Summary
+The application is experiencing "Maximum update depth exceeded" errors due to multiple React anti-patterns, circular dependencies, and race conditions across the hook architecture. This analysis identifies 15+ critical issues and provides a comprehensive fix plan.
+
+## High-Level Architecture Issues
+
+### 1. **Circular Hook Dependencies** ⚠️ CRITICAL
+- **Problem**: `useChatSession` depends on `loadSessionMessages` callback which creates circular dependency chains
+- **Location**: `use-chat-session.ts:168` - `loadSessionMessages` in useEffect dependency array
+- **Impact**: Infinite re-renders as callbacks recreate on every render
+
+### 2. **Multiple State Update Loops** ⚠️ CRITICAL  
+- **Problem**: Welcome message logic creates competing state updates
+- **Location**: `use-chat-session.ts:172-187` - Welcome message effect triggers when messages.length changes
+- **Impact**: State ping-pong between empty array and welcome message
+
+### 3. **Radix UI Ref Composition Issues** ⚠️ CRITICAL
+- **Problem**: Error stack shows `@radix-ui/react-compose-refs` infinite loops
+- **Location**: Likely in `chat-header.tsx` Select components (lines 222-305)
+- **Impact**: UI component ref handling causing state cascades
+
+## File-Level Critical Issues
+
+### `use-chat-session.ts` - HIGHEST PRIORITY
+**Issues:**
+1. **Line 168**: `loadSessionMessages` in dependency array creates circular calls
+2. **Line 187**: Welcome message effect depends on `messages.length` causing loops
+3. **Line 153**: Main effect includes `sessionId` which changes during initialization
+4. **Line 134**: `crypto.randomUUID()` called in effect creates new IDs on every render
+
+**Race Conditions:**
+- Session ID initialization vs message loading
+- Welcome message insertion vs message clearing
+- Chat service creation vs session loading
+
+### `use-message-handling.ts` - HIGH PRIORITY  
+**Issues:**
+1. **Line 42-44**: Messages ref sync effect could cause loops with heavy message updates
+2. **Line 422-432**: Massive dependency array with recreated objects
+3. **Line 265-301**: Nested setMessages calls in async operations
+4. **Line 314-381**: Complex streaming logic with state updates in loops
+
+### `use-starred-models.ts` - HIGH PRIORITY
+**Issues:**
+1. **Line 64-65**: `useEffect` with `loadStarredModels` dependency creates immediate calls
+2. **Line 121, 170, 226**: Disabled exhaustive-deps warnings hide dependency issues
+3. **Line 116, 165, 221**: Error recovery calls `loadStarredModels` creating loops
+
+### `use-models.ts` - MEDIUM PRIORITY
+**Issues:**
+1. **Line 125-140**: Massive useMemo dependency array likely causing recreation
+2. **Line 46-50, 90-94**: Model mapping with function calls in render cycles
+3. **Line 60, 107**: Dependencies include functions that recreate
+
+### `chat-header.tsx` - HIGH PRIORITY (Radix UI Issues)
+**Issues:**
+1. **Line 222-305**: Complex Select component with nested conditional rendering
+2. **Line 358-432**: Duplicate Select component in settings modal
+3. **Line 54-59**: Model loading handlers called on every dropdown interaction
+4. **Line 81-94**: useMemo for model names but dependencies likely unstable
+
+### `chat-messages.tsx` - MEDIUM PRIORITY  
+**Issues:**
+1. **Line 34-36**: scrollToBottom in useEffect dependencies may cause loops
+2. **Line 39-61**: Complex welcome message fade detection logic
+3. **Line 66-134**: Map function creates objects in render cycle
+
+## Root Causes Analysis
+
+### 1. **Callback Recreation Patterns**
+- Functions not properly memoized with useCallback
+- Dependency arrays including unstable references
+- Anonymous functions in event handlers
+
+### 2. **Object Recreation in Render Cycles**
+- Array/object literals in dependency arrays
+- Computed values not memoized
+- Props destructuring creating new objects
+
+### 3. **Competing State Updates**
+- Multiple effects updating same state
+- Async operations with stale closures
+- Race conditions between initialization effects
+
+### 4. **Radix UI Integration Issues**
+- Complex ref composition with dynamic content
+- Event handlers recreating on every render
+- Conditional rendering within Select components
+
+## Comprehensive Fix Plan
+
+### Phase 1: Stop the Bleeding (Immediate)
+1. **Fix useChatSession circular dependency**
+   - Remove `loadSessionMessages` from dependency array
+   - Use useRef for session loading state
+   - Separate initialization effects
+
+2. **Fix welcome message loops**
+   - Use separate boolean state for welcome message visibility
+   - Remove welcome message logic from messages.length effect
+   - Add proper cleanup and guards
+
+3. **Stabilize chat-header Select components**
+   - Move model loading outside component
+   - Memoize all event handlers properly
+   - Simplify conditional rendering
+
+### Phase 2: Architecture Improvements (Short-term)
+1. **Refactor hook dependencies**
+   - Audit all useEffect dependency arrays
+   - Move async operations to separate effects
+   - Use refs for stable references
+
+2. **Fix Radix UI integration**
+   - Extract Select components to separate files
+   - Implement proper ref forwarding
+   - Reduce dynamic content in Select options
+
+3. **Optimize starred models hook**
+   - Cache API responses properly
+   - Debounce multiple simultaneous calls
+   - Fix error recovery infinite loops
+
+### Phase 3: Long-term Stability (Medium-term)
+1. **Implement state machine pattern**
+   - Replace complex useEffect chains with state machines
+   - Use libraries like XState for complex flows
+   - Centralize state transitions
+
+2. **Add comprehensive testing**
+   - Unit tests for all hooks
+   - Integration tests for component interactions
+   - Performance regression tests
+
+3. **Implement proper error boundaries**
+   - Hook-level error recovery
+   - Component-level isolation
+   - User-friendly error states
+
+## Immediate Action Items (Next 2 Hours)
+
+### Priority 1: useChatSession.ts
+```typescript
+// Remove loadSessionMessages from dependency array (line 168)
+// Split effects to prevent circular dependencies
+// Use refs for loading state tracking
+// Fix welcome message competing updates
+```
+
+### Priority 2: chat-header.tsx  
+```typescript
+// Extract Select components to separate files
+// Memoize all event handlers with proper dependencies
+// Remove object creation in render cycles
+// Simplify model loading logic
+```
+
+### Priority 3: use-starred-models.ts
+```typescript
+// Fix loadStarredModels infinite calling
+// Remove exhaustive-deps ignores
+// Add proper loading state management
+// Fix error recovery loops
+```
+
+## Success Metrics
+- [ ] No "Maximum update depth exceeded" errors
+- [ ] React DevTools shows stable component tree
+- [ ] No infinite API calls in Network tab
+- [ ] Smooth UI interactions without lag
+- [ ] Welcome message appears once and stays stable
+
+## Risk Assessment
+- **High Risk**: Changes to core hooks could introduce new bugs
+- **Medium Risk**: Radix UI changes might affect existing functionality  
+- **Low Risk**: Code cleanup and optimization improvements
+
+## Estimated Timeline
+- **Phase 1**: 2-4 hours (immediate fixes)
+- **Phase 2**: 1-2 days (architecture improvements)
+- **Phase 3**: 1 week (long-term stability)
+
+---
+
+**Status**: Ready for implementation
+**Next Action**: Begin Phase 1 fixes starting with useChatSession.ts
+**Reviewer**: Code review required before deploying fixes
+
+---
+
 # Project Todo List
 
 This document outlines the development priorities for The Duck, focusing on critical fixes, refactoring, and feature implementation.
@@ -207,10 +406,11 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **P1.75 Learning Preferences**: Complete AI personalization system implemented
 
 ### 🎯 **NEXT PRIORITIES**
-1. **Remove Console Statements** (remaining infrastructure cleanup)
-2. **Implement File Uploads** (P2 feature)
-3. **Enhance Memory Mode** (P2 feature)
-4. **Add Full-Text Search** (P3 UX enhancement)
+1. **URGENT: Fix Infinite Loop Crashes** (Critical Issue - see analysis above)
+2. **Remove Console Statements** (remaining infrastructure cleanup)
+3. **Implement File Uploads** (P2 feature)
+4. **Enhance Memory Mode** (P2 feature)
+5. **Add Full-Text Search** (P3 UX enhancement)
 
 ### 🏗️ **Current Architecture Status**
 - ✅ **Secure**: Server-side API architecture with proper authentication
@@ -222,6 +422,7 @@ This document outlines the development priorities for The Duck, focusing on crit
 - ✅ **State Management**: Race conditions resolved with proper synchronization
 - ✅ **Scalable**: Redis-based rate limiting and caching for serverless deployment
 - ✅ **Fast**: Distributed caching reduces database queries by 50-80%
+- ⚠️ **CRITICAL ISSUE**: Infinite render loops causing app crashes (requires immediate fix)
 
 ### 📈 **Quality Metrics**
 - **Build Status**: ✅ Passing (0 errors)
@@ -232,6 +433,7 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **Error Handling**: ✅ Comprehensive toast notifications
 - **Documentation**: ✅ Up to date
 - **Learning System**: ✅ AI personalization implemented
+- **Runtime Stability**: ⚠️ CRITICAL - Infinite loops causing crashes
 
 ### 💎 **Future Recommendations (10x Developer Code Review)**
 This section contains forward-looking recommendations from a professional code review. The project is already in a great state; these are suggestions for further refinement and to achieve a "super duper snappy" user experience.

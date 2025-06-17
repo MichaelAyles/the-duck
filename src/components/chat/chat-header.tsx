@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -34,7 +34,7 @@ const TONE_OPTIONS = [
   { value: "casual", label: "Casual", description: "Friendly and relaxed" },
   { value: "concise", label: "Concise", description: "Brief and to the point" },
   { value: "detailed", label: "Detailed", description: "Comprehensive explanations" },
-  { value: "duck", label: "🦆 Duck Mode", description: "Quack quack quack quack quack!" },
+  { value: "duck", label: "Duck Mode", description: "Quack quack quack quack quack!" },
 ];
 
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount, onToggleMobileSidebar }: ChatHeaderProps) {
@@ -50,15 +50,16 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const models = useModels();
   
-  // Handle model loading when dropdown opens
-  const handleModelDropdownOpen = async () => {
+  // CRITICAL FIX: Memoize model loading to prevent recreation
+  const handleModelDropdownOpen = useCallback(async () => {
     if (!modelsLoaded) {
       setModelsLoaded(true);
       await models.initializeCuratedModels();
     }
-  };
+  }, [modelsLoaded, models.initializeCuratedModels]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: Using specific function reference to prevent recreation
   
-  // Extract models conditionally
+  // Extract models conditionally - memoize to prevent object recreation
   const { 
     curatedModels, 
     allModels, 
@@ -77,10 +78,43 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
   // Suppress unused variable warning
   void activeModel;
 
-  const handleToneChange = (value: number[]) => {
+  // CRITICAL FIX: Memoize model name computation with stable dependencies
+  const currentModelName = useMemo(() => {
+    return curatedModels.find(m => m.id === settings.model)?.name || 
+           allModels.find(m => m.id === settings.model)?.name || 
+           settings.model;
+  }, [curatedModels, allModels, settings.model]);
+
+  // CRITICAL FIX: Stable additional models computation
+  const additionalModels = useMemo(() => {
+    return allModels.filter(model => !curatedModels.some(curated => curated.id === model.id));
+  }, [allModels, curatedModels]);
+
+  // CRITICAL FIX: Stable available models list
+  const availableModels = useMemo(() => {
+    return allModels.length > 0 ? allModels : curatedModels;
+  }, [allModels, curatedModels]);
+
+  // CRITICAL FIX: Stable model change handler
+  const handleModelChange = useCallback((value: string) => {
+    onSettingsChange({ model: value });
+  }, [onSettingsChange]);
+
+  // CRITICAL FIX: Stable reference to prevent Select re-rendering
+  const handleModelDropdownOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      handleModelDropdownOpen();
+    }
+  }, [handleModelDropdownOpen]);
+
+  const handleToneChange = useCallback((value: number[]) => {
     const toneValue = TONE_OPTIONS[value[0]]?.value || "match-user";
     onSettingsChange({ tone: toneValue });
-  };
+  }, [onSettingsChange]);
+
+  const handleStorageToggle = useCallback((checked: boolean) => {
+    onSettingsChange({ storageEnabled: checked });
+  }, [onSettingsChange]);
 
   const getToneIndex = () => {
     return TONE_OPTIONS.findIndex(option => option.value === settings.tone);
@@ -89,6 +123,86 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
   const getCurrentToneLabel = () => {
     return TONE_OPTIONS.find(option => option.value === settings.tone)?.label || "Match User's Style";
   };
+
+  // CRITICAL FIX: Memoize model options to prevent Select re-rendering
+  const modelOptions = useMemo(() => {
+    if (isLoading) {
+      return (
+        <SelectItem value="loading" disabled>
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span>Loading models...</span>
+          </div>
+        </SelectItem>
+      );
+    }
+
+    const options = [];
+
+    // Show curated models first
+    if (curatedModels.length > 0) {
+      curatedModels.forEach((model) => {
+        options.push(
+          <SelectItem key={model.id} value={model.id}>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="font-medium truncate">{model.name}</span>
+              <span className="text-xs text-muted-foreground truncate">{model.provider}</span>
+            </div>
+          </SelectItem>
+        );
+      });
+
+      if (additionalModels.length > 0) {
+        options.push(
+          <div key="divider" className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t">
+            All Models
+          </div>
+        );
+        
+        additionalModels.slice(0, 20).forEach((model) => {
+          options.push(
+            <SelectItem key={model.id} value={model.id}>
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="font-medium truncate">{model.name}</span>
+                <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
+              </div>
+            </SelectItem>
+          );
+        });
+
+        if (additionalModels.length > 20) {
+          options.push(
+            <div key="more" className="px-2 py-1 text-xs text-muted-foreground">
+              +{additionalModels.length - 20} more in settings...
+            </div>
+          );
+        }
+      }
+    } else if (allModels.length > 0) {
+      // If no curated models, show all models
+      availableModels.slice(0, 25).forEach((model) => {
+        options.push(
+          <SelectItem key={model.id} value={model.id}>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="font-medium truncate">{model.name}</span>
+              <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
+            </div>
+          </SelectItem>
+        );
+      });
+    } else {
+      // Load all models option
+      options.push(
+        <SelectItem key="load-more" value="load-more" disabled>
+          <span className="text-sm text-muted-foreground">
+            Load all models...
+          </span>
+        </SelectItem>
+      );
+    }
+
+    return options;
+  }, [isLoading, curatedModels, additionalModels, allModels, availableModels]);
 
   const handleResetModels = async () => {
     try {
@@ -189,91 +303,14 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center gap-3 bg-secondary/30 backdrop-blur-sm rounded-xl px-4 py-2 border border-border/20">
               <span className="text-sm text-muted-foreground font-medium">Model:</span>
-              <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })} onOpenChange={(open) => open && handleModelDropdownOpen()}>
+              <Select value={settings.model} onValueChange={handleModelChange} onOpenChange={handleModelDropdownOpenChange}>
                 <SelectTrigger className="w-64 bg-background/50 border-border/30 shadow-sm hover:shadow-md transition-all duration-300 rounded-lg">
                   <SelectValue className="truncate font-medium">
-                    {curatedModels.find(m => m.id === settings.model)?.name || 
-                     allModels.find(m => m.id === settings.model)?.name || 
-                     settings.model}
+                    {currentModelName}
                   </SelectValue>
                 </SelectTrigger>
               <SelectContent className="w-80">
-                {isLoading ? (
-                  <SelectItem value="loading" disabled>
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                      <span>Loading models...</span>
-                    </div>
-                  </SelectItem>
-                ) : (
-                  <>
-                    {/* Show curated models first */}
-                    {curatedModels.length > 0 && (
-                      <>
-                        {curatedModels.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            <div className="flex flex-col min-w-0 flex-1">
-                              <span className="font-medium truncate">{model.name}</span>
-                              <span className="text-xs text-muted-foreground truncate">{model.provider}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                        {allModels.length > curatedModels.length && (
-                          <>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t">
-                              All Models
-                            </div>
-                            {allModels
-                              .filter(model => !curatedModels.some(curated => curated.id === model.id))
-                              .slice(0, 20) // Limit to first 20 additional models for performance
-                              .map((model) => (
-                                <SelectItem key={model.id} value={model.id}>
-                                  <div className="flex flex-col min-w-0 flex-1">
-                                    <span className="font-medium truncate">{model.name}</span>
-                                    <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            {allModels.length > curatedModels.length + 20 && (
-                              <div className="px-2 py-1 text-xs text-muted-foreground">
-                                +{allModels.length - curatedModels.length - 20} more in settings...
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </>
-                    )}
-                    
-                    {/* If no curated models, show all models */}
-                    {curatedModels.length === 0 && allModels.length > 0 && (
-                      allModels.slice(0, 25).map((model) => (
-                        <SelectItem key={model.id} value={model.id}>
-                          <div className="flex flex-col min-w-0 flex-1">
-                            <span className="font-medium truncate">{model.name}</span>
-                            <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
-                          </div>
-                        </SelectItem>
-                      ))
-                    )}
-                    
-                    {/* Load all models button if not loaded yet */}
-                    {allModels.length === 0 && !isLoading && (
-                      <SelectItem value="load-more" disabled>
-                        <button
-                          type="button"
-                          onClick={async (e) => {
-                            e.preventDefault()
-                            await handleModelDropdownOpen()
-                            await fetchAllModels?.()
-                          }}
-                          className="w-full text-left text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          Load all models...
-                        </button>
-                      </SelectItem>
-                    )}
-                  </>
-                )}
+                {modelOptions}
               </SelectContent>
             </Select>
             </div>
@@ -288,7 +325,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
             <Switch
               id="storage-toggle"
               checked={settings.storageEnabled}
-              onCheckedChange={(checked) => onSettingsChange({ storageEnabled: checked })}
+              onCheckedChange={handleStorageToggle}
             />
           </div>
 
@@ -328,12 +365,10 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                   <div className="space-y-4 p-1">
                     <div className="space-y-2">
                       <Label>Selected Model</Label>
-                    <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })} onOpenChange={(open) => open && handleModelDropdownOpen()}>
+                    <Select value={settings.model} onValueChange={handleModelChange} onOpenChange={handleModelDropdownOpenChange}>
                       <SelectTrigger>
                         <SelectValue className="truncate">
-                          {curatedModels.find(m => m.id === settings.model)?.name || 
-                           allModels.find(m => m.id === settings.model)?.name || 
-                           settings.model}
+                          {currentModelName}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="w-96">
@@ -362,26 +397,24 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                                     </div>
                                   </SelectItem>
                                 ))}
-                                {allModels.length > curatedModels.length && (
+                                {additionalModels.length > 0 && (
                                   <>
                                     <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t">
                                       All Models (Select to add to favorites)
                                     </div>
-                                    {allModels
-                                      .filter(model => !curatedModels.some(curated => curated.id === model.id))
-                                      .map((model) => (
-                                        <SelectItem key={model.id} value={model.id}>
-                                          <div className="flex items-center justify-between w-full min-w-0">
-                                            <div className="flex flex-col min-w-0 flex-1">
-                                              <span className="truncate">{model.name}</span>
-                                              <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
-                                            </div>
-                                            {model.starred && (
-                                              <span className="text-yellow-500 ml-2 flex-shrink-0">⭐</span>
-                                            )}
+                                    {additionalModels.map((model) => (
+                                      <SelectItem key={model.id} value={model.id}>
+                                        <div className="flex items-center justify-between w-full min-w-0">
+                                          <div className="flex flex-col min-w-0 flex-1">
+                                            <span className="truncate">{model.name}</span>
+                                            <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
                                           </div>
-                                        </SelectItem>
-                                      ))}
+                                          {model.starred && (
+                                            <span className="text-yellow-500 ml-2 flex-shrink-0">⭐</span>
+                                          )}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
                                   </>
                                 )}
                               </>
@@ -389,7 +422,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                             
                             {/* If no curated models, show all models */}
                             {curatedModels.length === 0 && allModels.length > 0 && (
-                              allModels.map((model) => (
+                              availableModels.map((model) => (
                                 <SelectItem key={model.id} value={model.id}>
                                   <div className="flex items-center justify-between w-full min-w-0">
                                     <div className="flex flex-col min-w-0 flex-1">
@@ -456,8 +489,8 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                             <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
                           </ul>
                         </div>
-                      ) : (allModels.length > 0 ? allModels : curatedModels).length > 0 ? (
-                        (allModels.length > 0 ? allModels : curatedModels).map((model) => (
+                      ) : availableModels.length > 0 ? (
+                        availableModels.map((model) => (
                           <div key={model.id} className="flex items-center justify-between p-2 rounded-lg border bg-background">
                             <div className="flex flex-col min-w-0 flex-1 mr-2">
                               <div className="flex items-center gap-2 min-w-0">
@@ -535,7 +568,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       <span>Casual</span>
                       <span>Concise</span>
                       <span>Detailed</span>
-                      <span>🦆 Duck</span>
+                      <span>Duck</span>
                     </div>
                   </div>
                   
@@ -548,7 +581,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                     </div>
                     <Switch
                       checked={settings.storageEnabled}
-                      onCheckedChange={(checked) => onSettingsChange({ storageEnabled: checked })}
+                      onCheckedChange={handleStorageToggle}
                     />
                   </div>
                   </div>

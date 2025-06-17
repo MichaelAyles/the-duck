@@ -82,7 +82,7 @@ export function useChatSession({
         }));
         
         setMessages(formattedMessages);
-        console.log(`✅ Loaded ${formattedMessages.length} messages for session ${sessionId}`);
+        console.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
         lastLoadedSessionId.current = sessionId;
       } else {
         // If no messages found, show welcome message
@@ -91,7 +91,7 @@ export function useChatSession({
         lastLoadedSessionId.current = sessionId;
       }
     } catch (error) {
-      console.error('❌ Error loading session messages:', error);
+      console.error('Error loading session messages:', error);
       
       // Reset the loaded session tracking on error to allow retries
       lastLoadedSessionId.current = null;
@@ -130,12 +130,25 @@ export function useChatSession({
   }, [initialMessages, initialSessionId]);
 
   // Main session initialization and management effect
+  // CRITICAL FIX: Use ref to store generated session ID to prevent recreation
+  const generatedSessionIdRef = useRef<string | null>(null);
+  
   useEffect(() => {
-    const currentSessionId = initialSessionId || crypto.randomUUID();
+    // Generate session ID once and reuse
+    if (!generatedSessionIdRef.current && !initialSessionId) {
+      generatedSessionIdRef.current = crypto.randomUUID();
+    }
+    
+    const currentSessionId = initialSessionId || generatedSessionIdRef.current;
+    
+    // Ensure we have a valid session ID before proceeding
+    if (!currentSessionId) {
+      return; // Skip if no session ID available yet
+    }
     
     // Only update session ID if it actually changed
     if (currentSessionId !== sessionId) {
-      console.log(`🔄 Session ID changing from ${sessionId} to ${currentSessionId}`);
+      console.log(`Session ID changing from ${sessionId} to ${currentSessionId}`);
       setSessionId(currentSessionId);
       // Reset loading state when session changes
       lastLoadedSessionId.current = null;
@@ -144,44 +157,61 @@ export function useChatSession({
     // Always ensure we have a chat service
     if (!chatServiceRef.current || chatServiceRef.current.getSessionId() !== currentSessionId) {
       chatServiceRef.current = new ChatService(currentSessionId, userId);
-      console.log(`✅ Created ChatService for session ${currentSessionId}`);
+      console.log(`Created ChatService for session ${currentSessionId}`);
     }
 
+    return () => {
+      chatServiceRef.current?.clearInactivityTimer();
+    };
+  }, [initialSessionId, userId, sessionId]);
+  
+  // Separate effect for loading messages to prevent infinite loops
+  // CRITICAL FIX: Remove loadSessionMessages from dependency array to prevent circular calls
+  useEffect(() => {
     // Load messages if we have a user and existing session (but no initial messages provided)
     if (userId && initialSessionId && (!initialMessages || initialMessages.length === 0)) {
       // Only load if we haven't already loaded this session
       if (lastLoadedSessionId.current !== initialSessionId && lastLoadedSessionId.current !== `loading-${initialSessionId}`) {
-        console.log(`📥 Loading messages for existing session ${initialSessionId}`);
+        console.log(`Loading messages for existing session ${initialSessionId}`);
         loadSessionMessages(initialSessionId);
       }
     } else if (!initialSessionId || !userId) {
       // New session or no user - clear messages to trigger welcome message
       setMessages([]);
     }
-
-    return () => {
-      chatServiceRef.current?.clearInactivityTimer();
-    };
-  }, [initialSessionId, userId, sessionId, loadSessionMessages, initialMessages]);
+  }, [userId, initialSessionId, initialMessages]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: loadSessionMessages intentionally omitted to prevent circular dependency
 
   // Add welcome message when messages are empty and not loading
-  // This prevents interference with optimistic updates during message sending
+  // CRITICAL FIX: Use separate boolean state to prevent competing updates
+  const [shouldShowWelcome, setShouldShowWelcome] = useState(false);
+  
+  // Check if we should show welcome message
   useEffect(() => {
-    if (messages.length === 0) {
-      // Use a longer delay and double-check conditions to avoid race conditions
+    if (messages.length === 0 && sessionId && !lastLoadedSessionId.current) {
+      setShouldShowWelcome(true);
+    } else {
+      setShouldShowWelcome(false);
+    }
+  }, [messages.length, sessionId]);
+  
+  // Add welcome message when needed
+  useEffect(() => {
+    if (shouldShowWelcome) {
       const timer = setTimeout(() => {
         setMessages(current => {
-          // Only add welcome message if still empty and we have a stable state
+          // Only add if still empty and no welcome message exists
           if (current.length === 0 && !current.some(msg => msg.id === 'welcome-message')) {
-            console.log('📝 Adding welcome message to empty chat');
+            console.log('Adding welcome message to empty chat');
             return [welcomeMessage];
           }
           return current;
         });
-      }, 100); // Reduced delay since we removed flushSync
+        setShouldShowWelcome(false); // Reset flag after adding
+      }, 100);
       return () => clearTimeout(timer);
     }
-  }, [messages.length, welcomeMessage]);
+  }, [shouldShowWelcome, welcomeMessage]);
 
   return {
     sessionId,
