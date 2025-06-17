@@ -59,7 +59,9 @@ export async function POST(req: NextRequest) {
       try {
         // Get the first few messages to generate a title (don't need entire conversation)
         const relevantMessages = messages.slice(0, 6) // First 6 messages should be enough
-        console.log('📝 Sending messages to OpenRouter:', relevantMessages.map(m => ({ role: m.role, content: m.content.slice(0, 50) + '...' })))
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📝 Sending messages to OpenRouter:', relevantMessages.map(m => ({ role: m.role, content: m.content.slice(0, 50) + '...' })))
+        }
 
         // Use Gemini Flash Lite for cost-effective title generation
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -99,11 +101,15 @@ Respond with ONLY the title, nothing else.`
 
         if (response.ok) {
           const data = await response.json()
-          console.log('🤖 OpenRouter API response:', JSON.stringify(data, null, 2))
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🤖 OpenRouter API response:', JSON.stringify(data, null, 2))
+          }
           
           if (!data.error && data.choices?.[0]?.message?.content) {
             let aiTitle = data.choices[0].message.content.trim()
-            console.log('🤖 Raw AI title:', aiTitle)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🤖 Raw AI title:', aiTitle)
+            }
             
             // Clean up the generated title
             aiTitle = aiTitle
@@ -111,7 +117,9 @@ Respond with ONLY the title, nothing else.`
               .replace(/[^\w\s-]/g, '') // Remove special characters except hyphens
               .trim()
 
-            console.log('🤖 Cleaned AI title:', aiTitle)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('🤖 Cleaned AI title:', aiTitle)
+            }
 
             // Ensure title isn't too long
             if (aiTitle.length > 40) {
@@ -122,12 +130,18 @@ Respond with ONLY the title, nothing else.`
             if (aiTitle.length >= 3) {
               generatedTitle = aiTitle
               method = 'ai-generated'
-              console.log('✅ Using AI-generated title:', aiTitle)
+              if (process.env.NODE_ENV === 'development') {
+                console.log('✅ Using AI-generated title:', aiTitle)
+              }
             } else {
-              console.log('❌ AI title too short, using fallback')
+              if (process.env.NODE_ENV === 'development') {
+                console.log('❌ AI title too short, using fallback')
+              }
             }
           } else {
-            console.log('❌ No valid content in AI response:', data)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('❌ No valid content in AI response:', data)
+            }
           }
         } else {
           const errorText = await response.text()
@@ -139,23 +153,19 @@ Respond with ONLY the title, nothing else.`
       }
     }
 
-    // Verify user owns the session by fetching it first
-    const sessionResponse = await fetch(new URL(`/api/sessions/${sessionId}`, req.url).toString(), {
-      method: 'GET',
-      headers: {
-        'Cookie': req.headers.get('cookie') || '',
-      },
-    })
+    // Verify user owns the session by querying database directly
+    const { data: session, error: sessionError } = await supabase
+      .from('chat_sessions')
+      .select('title')
+      .eq('id', sessionId)
+      .eq('user_id', user.id)
+      .single()
 
-    if (!sessionResponse.ok) {
-      if (sessionResponse.status === 404) {
-        return NextResponse.json({ error: 'Chat session not found or access denied' }, { status: 404 })
-      }
-      throw new Error('Failed to fetch session')
+    if (sessionError || !session) {
+      return NextResponse.json({ error: 'Chat session not found or access denied' }, { status: 404 })
     }
 
-    const sessionData = await sessionResponse.json()
-    const existingTitle = sessionData.session?.title || 'New Chat'
+    const existingTitle = session.title || 'New Chat'
     
     // If AI generation fails and we should preserve existing title, use existing title
     if (method === 'fallback' && preserveExistingOnFailure && existingTitle !== 'New Chat') {
@@ -163,34 +173,35 @@ Respond with ONLY the title, nothing else.`
       method = 'preserved'
     }
 
-    console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle} (method: ${method})`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle} (method: ${method})`)
+    }
 
     // Update the session with the new title (only if it changed)
     let updateSuccessful = true;
     
     if (method === 'preserved' && generatedTitle === existingTitle) {
       // Title was preserved and unchanged, skip database update
-      console.log('Title preserved - skipping database update');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Title preserved - skipping database update');
+      }
     } else {
-      console.log(`🔄 Updating session ${sessionId} with title: "${generatedTitle}"`)
-      const updateResponse = await fetch(new URL(`/api/sessions/${sessionId}`, req.url).toString(), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': req.headers.get('cookie') || '',
-        },
-        body: JSON.stringify({
-          title: generatedTitle,
-        }),
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔄 Updating session ${sessionId} with title: "${generatedTitle}"`)
+      }
       
-      if (updateResponse.ok) {
-        const updateData = await updateResponse.json()
-        console.log(`✅ Successfully updated session title in database:`, updateData.session?.title)
-      } else {
-        const errorText = await updateResponse.text()
-        console.error(`❌ Failed to update session title:`, updateResponse.status, errorText)
+      // Update the session title directly in database
+      const { error: updateError } = await supabase
+        .from('chat_sessions')
+        .update({ title: generatedTitle })
+        .eq('id', sessionId)
+        .eq('user_id', user.id)
+      
+      if (updateError) {
+        console.error(`❌ Failed to update session title:`, updateError)
         updateSuccessful = false;
+      } else if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ Successfully updated session title in database: ${generatedTitle}`)
       }
     }
 

@@ -176,12 +176,24 @@ export function useMessageHandling({
             }
           }
         } catch (error) {
-          console.error('Error saving chat session:', error);
+          console.error('❌ CRITICAL: Failed to save chat session:', error);
+          
+          // Stop the chat flow when session saving fails
+          setIsLoading(false);
+          
+          // Remove the thinking message since we're stopping
+          setMessages(currentMessages => 
+            currentMessages.filter(msg => msg.id !== thinkingMessage.id)
+          );
+          
           toast({
-            title: "Save Warning",
-            description: "Your message was sent but may not be saved to history.",
+            title: "Save Failed",
+            description: "Unable to save your conversation. Please try again or check your connection.",
             variant: "destructive",
           });
+          
+          // Exit early - don't continue with API call if we can't save
+          return;
         }
       }
 
@@ -299,7 +311,13 @@ export function useMessageHandling({
                           if (process.env.NODE_ENV === 'development') console.log(`Final save: chat session with ${currentMessages.length} messages`);
                         }
                       } catch (error) {
-                        console.error('Error saving final chat session:', error);
+                        console.error('❌ CRITICAL: Failed to save final chat session:', error);
+                        // Show user that their conversation may not be saved
+                        toast({
+                          title: "Save Warning",
+                          description: "Your conversation may not be fully saved. Please check your chat history.",
+                          variant: "destructive",
+                        });
                       }
                     }, 100);
                     return currentMessages;

@@ -63,41 +63,64 @@ export class ChatService {
   }
 
   public async saveChatSession(messages: Message[], model: string, title?: string) {
-    try {
-      // Don't save if no user is authenticated
-      if (!this.userId) {
+    // Don't save if no user is authenticated
+    if (!this.userId) {
+      if (process.env.NODE_ENV === 'development') {
         console.log('Skipping chat session save - no user authenticated')
-        return
       }
+      return
+    }
 
-      // Use provided title or default to 'New Chat' - title generation now handled by dedicated API
-      const sessionTitle = title || 'New Chat'
-      
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          id: this.sessionId,
-          title: sessionTitle,
-          messages,
-          model,
-        }),
-      })
+    // Use provided title or default to 'New Chat' - title generation now handled by dedicated API
+    const sessionTitle = title || 'New Chat'
+    
+    // Implement retry logic for critical session saves
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: this.sessionId,
+            title: sessionTitle,
+            messages,
+            model,
+          }),
+        })
 
-      if (!response.ok) {
+        if (response.ok) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ Session ${this.sessionId} saved successfully on attempt ${attempt}`)
+          }
+          return // Success - exit retry loop
+        }
+
         const error = await response.json()
-        throw new Error(error.error || 'Failed to save chat session')
-      }
-    } catch (error) {
-      // Handle errors gracefully
-      console.warn('Chat session save failed (storage may be disabled):', error)
-      // Don't throw error in development mode when storage is not configured
-      if (process.env.NODE_ENV !== 'development') {
-        throw error
+        throw new Error(error.error || `HTTP ${response.status}: Failed to save chat session`)
+        
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error')
+        
+        if (attempt < maxRetries) {
+          // Wait before retrying: 200ms, 400ms, 800ms
+          const delay = 200 * Math.pow(2, attempt - 1);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`⚠️ Session save failed (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
+          }
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
       }
     }
+    
+    // If we get here, all retries failed - this is critical
+    console.error(`❌ CRITICAL: Failed to save session ${this.sessionId} after ${maxRetries} attempts:`, lastError)
+    throw lastError || new Error('Failed to save session after all retries')
   }
 
   public async loadChatSession(): Promise<Message[]> {
@@ -107,7 +130,9 @@ export class ChatService {
         return []
       }
 
-      console.log(`Loading session ${this.sessionId} for user ${this.userId}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Loading session ${this.sessionId} for user ${this.userId}`)
+      }
       
       // Retry logic to handle race conditions between session creation and retrieval
       const maxRetries = 3;
@@ -125,7 +150,9 @@ export class ChatService {
           if (response.ok) {
             const data = await response.json()
             const session = data.session
-            console.log(`✅ Session ${this.sessionId} loaded successfully on attempt ${attempt}`)
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`✅ Session ${this.sessionId} loaded successfully on attempt ${attempt}`)
+            }
             return this.parseSessionMessages(session)
           }
           
@@ -133,11 +160,15 @@ export class ChatService {
             if (attempt < maxRetries) {
               // Wait before retrying: 100ms, 200ms, 400ms
               const delay = 100 * Math.pow(2, attempt - 1);
-              console.log(`⏳ Session ${this.sessionId} not found (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`)
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`⏳ Session ${this.sessionId} not found (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`)
+              }
               await new Promise(resolve => setTimeout(resolve, delay))
               continue
             } else {
-              console.log(`❌ Session ${this.sessionId} not found after ${maxRetries} attempts`)
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`❌ Session ${this.sessionId} not found after ${maxRetries} attempts`)
+              }
               return []
             }
           }
@@ -149,7 +180,9 @@ export class ChatService {
           lastError = error instanceof Error ? error : new Error('Unknown error')
           if (attempt < maxRetries) {
             const delay = 100 * Math.pow(2, attempt - 1);
-            console.log(`⚠️ Error loading session (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`⚠️ Error loading session (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
+            }
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
           }
@@ -167,11 +200,15 @@ export class ChatService {
 
   private parseSessionMessages(session: { messages?: unknown[] }): Message[] {
     if (session && Array.isArray(session.messages)) {
-      console.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
+      }
       return session.messages as Message[]
     }
     
-    console.log(`No messages found for session ${this.sessionId}`)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`No messages found for session ${this.sessionId}`)
+    }
     return []
   }
 

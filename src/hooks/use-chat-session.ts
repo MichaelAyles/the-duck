@@ -52,23 +52,31 @@ export function useChatSession({
   const loadSessionMessages = useCallback(async (sessionId: string) => {
     try {
       if (!userId || !chatServiceRef.current) {
-        console.log('Skipping session load: missing userId or chatService');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Skipping session load: missing userId or chatService');
+        }
         return;
       }
       
       // Prevent duplicate loads of the same session
       if (lastLoadedSessionId.current === sessionId) {
-        console.log(`Session ${sessionId} already loaded, skipping duplicate request`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Session ${sessionId} already loaded, skipping duplicate request`);
+        }
         return;
       }
       
       // Prevent overlapping load requests using the ref instead of state
       if (lastLoadedSessionId.current === `loading-${sessionId}`) {
-        console.log(`Session load already in progress, skipping request for ${sessionId}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Session load already in progress, skipping request for ${sessionId}`);
+        }
         return;
       }
       
-      console.log(`🔄 Loading session messages for: ${sessionId}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔄 Loading session messages for: ${sessionId}`);
+      }
       lastLoadedSessionId.current = `loading-${sessionId}`;
       
       // Load messages using ChatService (now with retry logic)
@@ -82,12 +90,16 @@ export function useChatSession({
         }));
         
         setMessages(formattedMessages);
-        console.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
+        }
         lastLoadedSessionId.current = sessionId;
       } else {
         // If no messages found, show welcome message
         setMessages([welcomeMessage]);
-        console.log('📝 No messages found, showing welcome message');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📝 No messages found, showing welcome message');
+        }
         lastLoadedSessionId.current = sessionId;
       }
     } catch (error) {
@@ -176,7 +188,9 @@ export function useChatSession({
     if (userId && initialSessionId && (!initialMessages || initialMessages.length === 0)) {
       // Only load if we haven't already loaded this session
       if (lastLoadedSessionId.current !== initialSessionId && lastLoadedSessionId.current !== `loading-${initialSessionId}`) {
-        console.log(`Loading messages for existing session ${initialSessionId}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Loading messages for existing session ${initialSessionId}`);
+        }
         loadSessionMessages(initialSessionId);
       }
     } else if (!initialSessionId || !userId) {
