@@ -1,24 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// New optimized types for JSON-based preferences
-export interface LearningPreferenceItem {
-  value?: string
-  weight: number
-  source: 'manual' | 'chat_summary' | 'implicit' | 'feedback'
-  confidence: number
-  last_reinforced_at: string
-  created_at: string
-  updated_at: string
-}
-
-export interface LearningPreferencesData {
-  [category: string]: {
-    [key: string]: LearningPreferenceItem
-  }
-}
-
-// Legacy interface for backward compatibility with existing components
 export interface LearningPreference {
   id: string
   category: string
@@ -33,7 +15,7 @@ export interface LearningPreference {
 }
 
 export interface LearningPreferencesResponse {
-  preferences: LearningPreference[]  // Return legacy array format for compatibility
+  preferences: LearningPreference[]
   summary: {
     total_preferences: number
     strong_likes: number
@@ -43,7 +25,7 @@ export interface LearningPreferencesResponse {
   }
 }
 
-// GET - Retrieve user's learning preferences (now single query!)
+// GET - Retrieve user's learning preferences
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -57,36 +39,32 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 100
+    const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : 0
 
-    // Single query to get all user preferences as JSON
-    const { data: userPrefs, error: prefError } = await supabase
-      .from('user_learning_preferences_v2')
-      .select('preferences')
+    // Build query
+    let query = supabase
+      .from('user_learning_preferences')
+      .select('*')
       .eq('user_id', user.id)
-      .single()
+      .order('weight', { ascending: false })
+      .order('updated_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (category) {
+      query = query.eq('category', category)
+    }
+
+    const { data: preferences, error: prefError } = await query
 
     if (prefError) {
-      // If no preferences found, return empty state
-      if (prefError.code === 'PGRST116') {
-        return NextResponse.json({
-          preferences: {},
-          summary: {
-            total_preferences: 0,
-            strong_likes: 0,
-            strong_dislikes: 0,
-            categories: [],
-            recent_changes: 0
-          }
-        })
-      }
-      
       console.error('Failed to fetch learning preferences:', prefError)
       
       // If table doesn't exist yet, return empty state
       if (prefError.message?.includes('relation') || prefError.message?.includes('does not exist')) {
         console.warn('Learning preferences table not yet deployed, returning empty state')
         return NextResponse.json({
-          preferences: {},
+          preferences: [],
           summary: {
             total_preferences: 0,
             strong_likes: 0,
@@ -103,33 +81,16 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let preferencesJSON = userPrefs?.preferences || {}
-
-    // Filter by category if requested
-    if (category && preferencesJSON[category]) {
-      preferencesJSON = { [category]: preferencesJSON[category] }
-    } else if (category) {
-      preferencesJSON = {}
-    }
-
-    // Convert JSON to legacy array format for backward compatibility
-    const preferences = convertJSONToLegacyFormat(preferencesJSON)
-
-    // Get summary statistics with single function call
+    // Get summary statistics
     const { data: summaryData, error: summaryError } = await supabase
-      .rpc('get_user_learning_summary_v2', { target_user_id: user.id })
+      .rpc('get_user_learning_summary', { target_user_id: user.id })
 
     if (summaryError) {
       console.error('Failed to fetch learning summary:', summaryError)
       
-      // If function doesn't exist yet, calculate summary from JSON
+      // If function doesn't exist yet, use default summary
       if (summaryError.message?.includes('function') || summaryError.message?.includes('does not exist')) {
-        console.warn('Learning summary function not yet deployed, calculating from JSON')
-        const summary = calculateSummaryFromJSON(userPrefs?.preferences || {})
-        return NextResponse.json({
-          preferences,
-          summary
-        })
+        console.warn('Learning summary function not yet deployed, using default summary')
       } else {
         return NextResponse.json(
           { error: 'Failed to fetch learning summary' },
@@ -147,7 +108,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      preferences,
+      preferences: preferences || [],
       summary
     })
   } catch (error) {
@@ -159,7 +120,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Add or update a learning preference (now single operation!)
+// POST - Add or update a learning preference
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -177,8 +138,7 @@ export async function POST(request: NextRequest) {
       preference_key, 
       preference_value, 
       weight, 
-      source = 'manual',
-      confidence = 1.0
+      source = 'manual'
     } = body
 
     // Validate required fields
@@ -205,20 +165,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Use the optimized upsert function
-    const { data: preferenceKey, error: upsertError } = await supabase
-      .rpc('upsert_learning_preference_v2', {
+    // Use the upsert function
+    const { data: preferenceId, error: upsertError } = await supabase
+      .rpc('upsert_learning_preference', {
         target_user_id: user.id,
         pref_category: category,
         pref_key: preference_key,
         pref_value: preference_value || null,
         pref_weight: weight,
-        pref_source: source,
-        pref_confidence: confidence
+        pref_source: source
       })
 
     if (upsertError) {
       console.error('Failed to upsert learning preference:', upsertError)
+      
+      // Check if it's a limit violation
+      if (upsertError.message?.includes('1000 learning preferences')) {
+        return NextResponse.json(
+          { error: 'Maximum learning preferences limit reached (1000)' },
+          { status: 400 }
+        )
+      }
       
       // Check if it's a missing table/function error
       if (upsertError.message?.includes('relation') || upsertError.message?.includes('does not exist') || upsertError.message?.includes('function')) {
@@ -241,8 +208,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Fetch the updated preference
+    const { data: updatedPreference, error: fetchError } = await supabase
+      .from('user_learning_preferences')
+      .select('*')
+      .eq('id', preferenceId)
+      .single()
+
+    if (fetchError) {
+      console.error('Failed to fetch updated preference:', fetchError)
+      return NextResponse.json(
+        { error: 'Preference saved but failed to retrieve' },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({ 
-      preference_key: preferenceKey,
+      preference: updatedPreference,
       message: 'Learning preference updated successfully'
     })
   } catch (error) {
@@ -254,7 +236,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Bulk update multiple learning preferences (now atomic!)
+// PUT - Bulk update multiple learning preferences
 export async function PUT(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -276,21 +258,20 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const results: string[] = []
-    const errors: Array<{ preference: unknown; error: string }> = []
+    const results = []
+    const errors = []
 
-    // Process each preference with optimized upsert
+    // Process each preference
     for (const pref of preferences) {
       try {
-        const { data: preferenceKey, error: upsertError } = await supabase
-          .rpc('upsert_learning_preference_v2', {
+        const { data: preferenceId, error: upsertError } = await supabase
+          .rpc('upsert_learning_preference', {
             target_user_id: user.id,
             pref_category: pref.category,
             pref_key: pref.preference_key,
             pref_value: pref.preference_value || null,
             pref_weight: pref.weight,
-            pref_source: pref.source || 'manual',
-            pref_confidence: pref.confidence || 1.0
+            pref_source: pref.source || 'manual'
           })
 
         if (upsertError) {
@@ -299,7 +280,7 @@ export async function PUT(request: NextRequest) {
             error: upsertError.message
           })
         } else {
-          results.push(preferenceKey)
+          results.push(preferenceId)
         }
       } catch (error) {
         errors.push({
@@ -324,7 +305,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Remove learning preferences (now supports JSON operations)
+// DELETE - Remove learning preferences
 export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -337,17 +318,17 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
     const category = searchParams.get('category')
     const preference_key = searchParams.get('preference_key')
 
-    // Delete specific preference
-    if (category && preference_key) {
-      const { data: deleted, error: deleteError } = await supabase
-        .rpc('delete_learning_preference_v2', {
-          target_user_id: user.id,
-          pref_category: category,
-          pref_key: preference_key
-        })
+    // Delete by ID
+    if (id) {
+      const { error: deleteError } = await supabase
+        .from('user_learning_preferences')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('id', id)
 
       if (deleteError) {
         console.error('Failed to delete learning preference:', deleteError)
@@ -357,10 +338,25 @@ export async function DELETE(request: NextRequest) {
         )
       }
 
-      if (!deleted) {
+      return NextResponse.json({ 
+        message: 'Learning preference deleted successfully' 
+      })
+    }
+
+    // Delete by category and key
+    if (category && preference_key) {
+      const { error: deleteError } = await supabase
+        .from('user_learning_preferences')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('category', category)
+        .eq('preference_key', preference_key)
+
+      if (deleteError) {
+        console.error('Failed to delete learning preference:', deleteError)
         return NextResponse.json(
-          { error: 'Preference not found' },
-          { status: 404 }
+          { error: 'Failed to delete learning preference' },
+          { status: 500 }
         )
       }
 
@@ -371,15 +367,15 @@ export async function DELETE(request: NextRequest) {
 
     // Delete all preferences (reset knowledge)
     const { error: deleteError } = await supabase
-      .rpc('clear_learning_preferences_v2', {
-        target_user_id: user.id
-      })
+      .from('user_learning_preferences')
+      .delete()
+      .eq('user_id', user.id)
 
     if (deleteError) {
       console.error('Failed to delete all learning preferences:', deleteError)
       
-      // If function doesn't exist yet, return success
-      if (deleteError.message?.includes('function') || deleteError.message?.includes('does not exist')) {
+      // If table doesn't exist yet, return success
+      if (deleteError.message?.includes('relation') || deleteError.message?.includes('does not exist')) {
         return NextResponse.json({ 
           message: 'No preferences to delete' 
         })
@@ -411,74 +407,5 @@ export async function DELETE(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     )
-  }
-}
-
-// Convert JSON structure to legacy array format for backward compatibility
-function convertJSONToLegacyFormat(preferencesData: LearningPreferencesData): LearningPreference[] {
-  const legacyPreferences: LearningPreference[] = []
-  
-  for (const [category, categoryPrefs] of Object.entries(preferencesData)) {
-    for (const [key, pref] of Object.entries(categoryPrefs)) {
-      legacyPreferences.push({
-        id: `${category}.${key}`, // Generate ID from category and key
-        category,
-        preference_key: key,
-        preference_value: pref.value,
-        weight: pref.weight,
-        source: pref.source,
-        confidence: pref.confidence,
-        last_reinforced_at: pref.last_reinforced_at,
-        created_at: pref.created_at,
-        updated_at: pref.updated_at
-      })
-    }
-  }
-  
-  // Sort by weight (descending) then by updated_at (descending) to match legacy behavior
-  return legacyPreferences
-    .sort((a, b) => {
-      if (b.weight !== a.weight) {
-        return b.weight - a.weight
-      }
-      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    })
-    .slice(0, 50) // Maintain the 50 item limit to avoid token bloat
-}
-
-// Helper function to calculate summary from JSON when DB function is not available
-function calculateSummaryFromJSON(preferences: LearningPreferencesData) {
-  let total_preferences = 0
-  let strong_likes = 0
-  let strong_dislikes = 0
-  const categories: string[] = []
-  let recent_changes = 0
-  
-  const weekAgo = new Date()
-  weekAgo.setDate(weekAgo.getDate() - 7)
-  
-  for (const [category, categoryPrefs] of Object.entries(preferences)) {
-    if (!categories.includes(category)) {
-      categories.push(category)
-    }
-    
-    for (const [, pref] of Object.entries(categoryPrefs)) {
-      total_preferences++
-      
-      if (pref.weight >= 7) strong_likes++
-      else if (pref.weight <= -7) strong_dislikes++
-      
-      if (new Date(pref.updated_at) > weekAgo) {
-        recent_changes++
-      }
-    }
-  }
-  
-  return {
-    total_preferences,
-    strong_likes,
-    strong_dislikes,
-    categories,
-    recent_changes
   }
 }

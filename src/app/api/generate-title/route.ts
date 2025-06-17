@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
       try {
         // Get the first few messages to generate a title (don't need entire conversation)
         const relevantMessages = messages.slice(0, 6) // First 6 messages should be enough
+        console.log('📝 Sending messages to OpenRouter:', relevantMessages.map(m => ({ role: m.role, content: m.content.slice(0, 50) + '...' })))
 
         // Use Gemini Flash Lite for cost-effective title generation
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -92,21 +93,25 @@ Respond with ONLY the title, nothing else.`
               }))
             ],
             temperature: 0.3, // Lower temperature for more consistent titles
-            max_tokens: 20, // Short titles only
+            max_tokens: 40, // Allow for more descriptive titles
           }),
         })
 
         if (response.ok) {
           const data = await response.json()
+          console.log('🤖 OpenRouter API response:', JSON.stringify(data, null, 2))
           
           if (!data.error && data.choices?.[0]?.message?.content) {
             let aiTitle = data.choices[0].message.content.trim()
+            console.log('🤖 Raw AI title:', aiTitle)
             
             // Clean up the generated title
             aiTitle = aiTitle
               .replace(/['"]/g, '') // Remove quotes
               .replace(/[^\w\s-]/g, '') // Remove special characters except hyphens
               .trim()
+
+            console.log('🤖 Cleaned AI title:', aiTitle)
 
             // Ensure title isn't too long
             if (aiTitle.length > 40) {
@@ -117,8 +122,16 @@ Respond with ONLY the title, nothing else.`
             if (aiTitle.length >= 3) {
               generatedTitle = aiTitle
               method = 'ai-generated'
+              console.log('✅ Using AI-generated title:', aiTitle)
+            } else {
+              console.log('❌ AI title too short, using fallback')
             }
+          } else {
+            console.log('❌ No valid content in AI response:', data)
           }
+        } else {
+          const errorText = await response.text()
+          console.error('❌ OpenRouter API HTTP error:', response.status, response.statusText, errorText)
         }
       } catch (apiError) {
         console.error('OpenRouter API error:', apiError)
@@ -153,17 +166,14 @@ Respond with ONLY the title, nothing else.`
     console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle} (method: ${method})`)
 
     // Update the session with the new title (only if it changed)
-    let updateResponse = { ok: true }; // Default to success for preserved titles
-    let shouldUpdate = true;
+    let updateSuccessful = true;
     
     if (method === 'preserved' && generatedTitle === existingTitle) {
       // Title was preserved and unchanged, skip database update
-      shouldUpdate = false;
       console.log('Title preserved - skipping database update');
-    }
-    
-    if (shouldUpdate) {
-      updateResponse = await fetch(new URL(`/api/sessions/${sessionId}`, req.url).toString(), {
+    } else {
+      console.log(`🔄 Updating session ${sessionId} with title: "${generatedTitle}"`)
+      const updateResponse = await fetch(new URL(`/api/sessions/${sessionId}`, req.url).toString(), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -173,9 +183,14 @@ Respond with ONLY the title, nothing else.`
           title: generatedTitle,
         }),
       })
-
-      if (!updateResponse.ok) {
-        console.error('Failed to update session title')
+      
+      if (updateResponse.ok) {
+        const updateData = await updateResponse.json()
+        console.log(`✅ Successfully updated session title in database:`, updateData.session?.title)
+      } else {
+        const errorText = await updateResponse.text()
+        console.error(`❌ Failed to update session title:`, updateResponse.status, errorText)
+        updateSuccessful = false;
       }
     }
 
@@ -183,7 +198,7 @@ Respond with ONLY the title, nothing else.`
       title: generatedTitle,
       method,
       sessionId,
-      updated: updateResponse.ok
+      updated: updateSuccessful
     })
 
   } catch (error) {

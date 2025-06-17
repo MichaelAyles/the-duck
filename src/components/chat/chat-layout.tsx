@@ -132,7 +132,7 @@ export function ChatLayout() {
       </div>
       
       {/* Chat Container - Single instance managing all chat UI */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <ChatContainer
           key={currentSessionId || 'new'}
           sessionId={currentSessionId}

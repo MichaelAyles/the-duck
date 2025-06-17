@@ -30,7 +30,9 @@ export function useChatSession({
 }: UseChatSessionProps): UseChatSessionReturn {
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const [messages, setMessages] = useState<Message[]>(initialMessages || []);
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
   const chatServiceRef = useRef<ChatService | null>(null);
+  const lastLoadedSessionId = useRef<string | null>(null);
   const { toast } = useToast();
   
   // Acknowledge the parameter to avoid unused variable warning
@@ -47,14 +49,31 @@ export function useChatSession({
     },
   }), []);
 
-  // Load messages for an existing session
+  // Load messages for an existing session with race condition protection
   const loadSessionMessages = useCallback(async (sessionId: string) => {
     try {
-      if (!userId || !chatServiceRef.current) return;
+      if (!userId || !chatServiceRef.current) {
+        console.log('Skipping session load: missing userId or chatService');
+        return;
+      }
       
-      console.log('Loading session messages for:', sessionId);
+      // Prevent duplicate loads of the same session
+      if (lastLoadedSessionId.current === sessionId) {
+        console.log(`Session ${sessionId} already loaded, skipping duplicate request`);
+        return;
+      }
       
-      // Load messages using ChatService
+      // Prevent overlapping load requests
+      if (isLoadingSession) {
+        console.log(`Session load already in progress, skipping request for ${sessionId}`);
+        return;
+      }
+      
+      console.log(`🔄 Loading session messages for: ${sessionId}`);
+      setIsLoadingSession(true);
+      lastLoadedSessionId.current = sessionId;
+      
+      // Load messages using ChatService (now with retry logic)
       const loadedMessages = await chatServiceRef.current.loadChatSession();
       
       if (loadedMessages && loadedMessages.length > 0) {
@@ -65,14 +84,17 @@ export function useChatSession({
         }));
         
         setMessages(formattedMessages);
-        console.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
+        console.log(`✅ Loaded ${formattedMessages.length} messages for session ${sessionId}`);
       } else {
         // If no messages found, show welcome message
         setMessages([welcomeMessage]);
-        console.log('No messages found, showing welcome message');
+        console.log('📝 No messages found, showing welcome message');
       }
     } catch (error) {
-      console.error('Error loading session messages:', error);
+      console.error('❌ Error loading session messages:', error);
+      
+      // Reset the loaded session tracking on error to allow retries
+      lastLoadedSessionId.current = null;
       
       // Show user-friendly error toast
       toast({
@@ -83,64 +105,68 @@ export function useChatSession({
       
       // On error, show welcome message
       setMessages([welcomeMessage]);
+    } finally {
+      setIsLoadingSession(false);
     }
-  }, [userId, welcomeMessage, toast]);
+  }, [userId, welcomeMessage, toast, isLoadingSession]);
 
   // Create a new session
   const createNewSession = useCallback((): string => {
     const newSessionId = crypto.randomUUID();
     setSessionId(newSessionId);
     chatServiceRef.current = new ChatService(newSessionId, userId);
+    // Reset loading state for fresh session
+    lastLoadedSessionId.current = null;
+    setIsLoadingSession(false);
     return newSessionId;
   }, [userId]);
 
-  // Handle session changes - this effect runs when the sessionId prop changes
-  useEffect(() => {
-    if (initialSessionId && initialSessionId !== sessionId) {
-      console.log('SessionId changed to:', initialSessionId);
-      // Session changed, update our state and load new messages
-      setSessionId(initialSessionId);
-      
-      // Create new ChatService for the new session
-      if (userId) {
-        chatServiceRef.current = new ChatService(initialSessionId, userId);
-        loadSessionMessages(initialSessionId);
-      }
-    }
-  }, [initialSessionId, sessionId, userId, loadSessionMessages]);
-
   // When initialMessages changes, update our state
   useEffect(() => {
-    if (initialMessages) {
+    if (initialMessages && initialMessages.length > 0) {
       setMessages(initialMessages);
+      // Don't need to load from server if we already have messages
+      if (initialSessionId) {
+        lastLoadedSessionId.current = initialSessionId;
+      }
     }
-  }, [initialMessages]);
+  }, [initialMessages, initialSessionId]);
 
-  // Initialize session and chat service
+  // Main session initialization and management effect
   useEffect(() => {
     const currentSessionId = initialSessionId || crypto.randomUUID();
-    setSessionId(currentSessionId);
     
-    chatServiceRef.current = new ChatService(currentSessionId, userId);
+    // Only update session ID if it actually changed
+    if (currentSessionId !== sessionId) {
+      console.log(`🔄 Session ID changing from ${sessionId} to ${currentSessionId}`);
+      setSessionId(currentSessionId);
+      // Reset loading state when session changes
+      lastLoadedSessionId.current = null;
+      setIsLoadingSession(false);
+    }
+    
+    // Always ensure we have a chat service
+    if (!chatServiceRef.current || chatServiceRef.current.getSessionId() !== currentSessionId) {
+      chatServiceRef.current = new ChatService(currentSessionId, userId);
+      console.log(`✅ Created ChatService for session ${currentSessionId}`);
+    }
 
-    // Load messages for the session
-    if (userId) {
-      if (initialSessionId && !initialMessages?.length) {
-        // Load existing session messages if not already provided
+    // Load messages if we have a user and existing session (but no initial messages provided)
+    if (userId && initialSessionId && (!initialMessages || initialMessages.length === 0)) {
+      // Only load if we haven't already loaded this session
+      if (lastLoadedSessionId.current !== initialSessionId && !isLoadingSession) {
+        console.log(`📥 Loading messages for existing session ${initialSessionId}`);
         loadSessionMessages(initialSessionId);
-      } else if (!initialSessionId) {
-        // New session - clear messages to trigger welcome message
-        setMessages([]);
       }
-    } else {
-      // No user - show welcome message
+    } else if (!initialSessionId || !userId) {
+      // New session or no user - clear messages to trigger welcome message
       setMessages([]);
     }
 
     return () => {
       chatServiceRef.current?.clearInactivityTimer();
     };
-  }, [initialSessionId, userId, loadSessionMessages, initialMessages?.length]);
+  }, [initialSessionId, userId, sessionId, loadSessionMessages, initialMessages, isLoadingSession]);
 
   // Add welcome message when messages are empty and not loading
   // This prevents interference with optimistic updates during message sending

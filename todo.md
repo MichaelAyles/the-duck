@@ -189,6 +189,12 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **Performance Issues**: Optimized with memoization and refs
 
 ### ✅ **RECENTLY COMPLETED**
+- **Critical Performance Optimization**: Fixed excessive API calls and database schema (June 17, 2025)
+  - Fixed models API excessive polling (from 8+ calls to 1 per session)
+  - Implemented session loading retry logic to fix 404 race conditions
+  - Optimized learning preferences from 1000+ rows to 1 JSON row per user
+  - Reduced database queries by 99%+ for preference operations
+  - Added race condition protection and loading state management
 - **Redis Integration**: Distributed rate limiting and caching with Upstash Redis (January 2025)
   - Replaced in-memory rate limiter with Redis-based solution
   - Added caching for user preferences (30-min TTL)

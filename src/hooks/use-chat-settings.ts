@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { ChatSettings } from '@/components/chat/chat-interface';
-import { useModels } from '@/hooks/use-models';
+import { useStarredModels } from '@/hooks/use-starred-models';
 import { useToast } from '@/hooks/use-toast';
 import { DEFAULT_CHAT_SETTINGS } from '@/lib/config';
 
@@ -14,24 +14,16 @@ interface UseChatSettingsReturn {
 }
 
 export function useChatSettings(): UseChatSettingsReturn {
-  const { activeModel, setActive, isStarred } = useModels();
+  const { activeModel, setActive, isStarred } = useStarredModels();
   const { toast } = useToast();
   
-  // Initialize settings with user's active model instead of hardcoded value
+  // Initialize settings with active model (this doesn't trigger API calls)
   const [settings, setSettings] = useState<ChatSettings>({
     ...DEFAULT_CHAT_SETTINGS,
-    model: activeModel || DEFAULT_CHAT_SETTINGS.model, // Use centralized fallback
+    model: activeModel || DEFAULT_CHAT_SETTINGS.model,
   });
   
   const [isProcessingStorage, setIsProcessingStorage] = useState(false);
-
-  // Update model setting when active model is loaded
-  useEffect(() => {
-    if (activeModel && activeModel !== settings.model) {
-      console.log('Updating model setting to active model:', activeModel);
-      setSettings(prev => ({ ...prev, model: activeModel }));
-    }
-  }, [activeModel, settings.model]);
 
   const handleSettingsChange = useCallback(async (newSettings: Partial<ChatSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));

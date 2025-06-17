@@ -109,35 +109,70 @@ export class ChatService {
 
       console.log(`Loading session ${this.sessionId} for user ${this.userId}`)
       
-      const response = await fetch(`/api/sessions/${this.sessionId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+      // Retry logic to handle race conditions between session creation and retrieval
+      const maxRetries = 3;
+      let lastError: Error | null = null;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch(`/api/sessions/${this.sessionId}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          })
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.log(`Session ${this.sessionId} not found`)
-          return []
+          if (response.ok) {
+            const data = await response.json()
+            const session = data.session
+            console.log(`✅ Session ${this.sessionId} loaded successfully on attempt ${attempt}`)
+            return this.parseSessionMessages(session)
+          }
+          
+          if (response.status === 404) {
+            if (attempt < maxRetries) {
+              // Wait before retrying: 100ms, 200ms, 400ms
+              const delay = 100 * Math.pow(2, attempt - 1);
+              console.log(`⏳ Session ${this.sessionId} not found (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`)
+              await new Promise(resolve => setTimeout(resolve, delay))
+              continue
+            } else {
+              console.log(`❌ Session ${this.sessionId} not found after ${maxRetries} attempts`)
+              return []
+            }
+          }
+          
+          // Other HTTP errors
+          throw new Error(`HTTP ${response.status}: Failed to load chat session`)
+          
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error('Unknown error')
+          if (attempt < maxRetries) {
+            const delay = 100 * Math.pow(2, attempt - 1);
+            console.log(`⚠️ Error loading session (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
         }
-        throw new Error('Failed to load chat session')
-      }
-
-      const data = await response.json()
-      const session = data.session
-      
-      if (session && Array.isArray(session.messages)) {
-        console.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
-        return session.messages as Message[]
       }
       
-      console.log(`No messages found for session ${this.sessionId}`)
-      return []
+      // If we get here, all retries failed
+      throw lastError || new Error('Failed to load session after all retries')
+      
     } catch (error) {
       console.warn('Failed to load chat session:', error)
       return []
     }
+  }
+
+  private parseSessionMessages(session: { messages?: unknown[] }): Message[] {
+    if (session && Array.isArray(session.messages)) {
+      console.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
+      return session.messages as Message[]
+    }
+    
+    console.log(`No messages found for session ${this.sessionId}`)
+    return []
   }
 
   public async summarizeChat(messages: Message[]): Promise<ChatSummary> {

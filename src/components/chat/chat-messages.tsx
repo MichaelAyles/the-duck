@@ -61,8 +61,8 @@ function ChatMessagesComponent({ messages, isLoading }: ChatMessagesProps) {
   }, [messages]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-      <div className="max-w-4xl mx-auto space-y-4">
+    <div className="h-full overflow-y-auto p-4">
+      <div className="max-w-4xl mx-auto space-y-4 pb-4">
         {messages.map((message) => {
           const isWelcomeMessage = message.id === "welcome-message";
           const shouldFade = isWelcomeMessage && fadingWelcome;

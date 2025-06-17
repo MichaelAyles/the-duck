@@ -1,5 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
-import { LearningPreference, LearningPreferencesResponse } from '@/app/api/learning-preferences/route'
+import { LearningPreference } from '@/lib/learning-preferences'
+
+// Local interface for the response
+interface LearningPreferencesResponse {
+  preferences: LearningPreference[]
+  summary: {
+    total_preferences: number
+    strong_likes: number
+    strong_dislikes: number
+    categories: string[]
+    recent_changes: number
+  }
+}
 
 export interface LearningPreferenceSummary {
   total_preferences: number

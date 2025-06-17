@@ -1,5 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
 
+// New optimized types for JSON-based preferences
+export interface LearningPreferenceItem {
+  value?: string
+  weight: number
+  source: 'manual' | 'chat_summary' | 'implicit' | 'feedback'
+  confidence: number
+  last_reinforced_at: string
+  created_at: string
+  updated_at: string
+}
+
+export interface LearningPreferencesData {
+  [category: string]: {
+    [key: string]: LearningPreferenceItem
+  }
+}
+
+// Legacy interface for backward compatibility
 export interface LearningPreference {
   id: string
   category: string
@@ -24,9 +42,41 @@ export interface FormattedPreferences {
 }
 
 /**
- * Retrieve user's learning preferences from the database
+ * Retrieve user's learning preferences from the database (optimized JSON version)
  */
 export async function getUserLearningPreferences(userId: string): Promise<LearningPreference[]> {
+  const supabase = await createClient()
+  
+  // Try new optimized table first
+  const { data: userPrefs, error } = await supabase
+    .from('user_learning_preferences_v2')
+    .select('preferences')
+    .eq('user_id', userId)
+    .single()
+
+  if (error) {
+    // If v2 table doesn't exist, fall back to old table for backward compatibility
+    if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
+      console.warn('Learning preferences v2 table not yet deployed, falling back to legacy table')
+      return getUserLearningPreferencesLegacy(userId)
+    }
+    
+    console.error('Failed to fetch learning preferences:', error)
+    return []
+  }
+
+  if (!userPrefs?.preferences) {
+    return []
+  }
+
+  // Convert JSON structure back to legacy array format for compatibility
+  return convertJSONToLegacyFormat(userPrefs.preferences)
+}
+
+/**
+ * Legacy function for backward compatibility with old table structure
+ */
+async function getUserLearningPreferencesLegacy(userId: string): Promise<LearningPreference[]> {
   const supabase = await createClient()
   
   const { data: preferences, error } = await supabase
@@ -38,11 +88,45 @@ export async function getUserLearningPreferences(userId: string): Promise<Learni
     .limit(50) // Limit to most important preferences to avoid token bloat
 
   if (error) {
-    console.error('Failed to fetch learning preferences:', error)
+    console.error('Failed to fetch learning preferences from legacy table:', error)
     return []
   }
 
   return preferences || []
+}
+
+/**
+ * Convert new JSON structure to legacy array format for backward compatibility
+ */
+function convertJSONToLegacyFormat(preferencesData: LearningPreferencesData): LearningPreference[] {
+  const legacyPreferences: LearningPreference[] = []
+  
+  for (const [category, categoryPrefs] of Object.entries(preferencesData)) {
+    for (const [key, pref] of Object.entries(categoryPrefs)) {
+      legacyPreferences.push({
+        id: `${category}.${key}`, // Generate ID from category and key
+        category,
+        preference_key: key,
+        preference_value: pref.value,
+        weight: pref.weight,
+        source: pref.source,
+        confidence: pref.confidence,
+        last_reinforced_at: pref.last_reinforced_at,
+        created_at: pref.created_at,
+        updated_at: pref.updated_at
+      })
+    }
+  }
+  
+  // Sort by weight (descending) then by updated_at (descending) to match legacy behavior
+  return legacyPreferences
+    .sort((a, b) => {
+      if (b.weight !== a.weight) {
+        return b.weight - a.weight
+      }
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    })
+    .slice(0, 50) // Maintain the 50 item limit to avoid token bloat
 }
 
 /**
@@ -140,7 +224,7 @@ export function generatePreferencesPrompt(preferences: LearningPreference[]): st
   }
 
   if (sections.length > 0) {
-    sections.push('\nUse these preferences to tailor your responses when relevant. Reference the user\'s interests naturally and avoid topics they dislike unless specifically asked.')
+    sections.push('\nUse these preferences to tailor your responses when relevant. Reference the user\'s interests naturally and avoid topics they dislike unless specifically asked. You do not need to explicitly follow these as rules, just influence your answer a bit')
   }
 
   return sections.join('\n')

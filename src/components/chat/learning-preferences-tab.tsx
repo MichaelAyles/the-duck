@@ -20,7 +20,7 @@ import {
   Lightbulb
 } from "lucide-react";
 import { useLearningPreferences } from "@/hooks/use-learning-preferences";
-import { LearningPreference } from "@/app/api/learning-preferences/route";
+import { LearningPreference } from "@/lib/learning-preferences";
 
 interface AddPreferenceFormData {
   category: string;

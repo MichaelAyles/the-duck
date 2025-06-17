@@ -66,7 +66,7 @@ export const ChatContainer = React.memo(({
 
   return (
     <ErrorBoundary>
-      <div className="flex flex-col h-full bg-background">
+      <div className="flex flex-col h-full bg-background overflow-hidden">
         {/* Header */}
         <div className="flex-none">
           <ChatHeader
@@ -78,8 +78,8 @@ export const ChatContainer = React.memo(({
           />
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 min-h-0">
+        {/* Messages - This needs overflow handling */}
+        <div className="flex-1 min-h-0 overflow-hidden">
           <ChatMessages messages={messages} isLoading={isLoading} />
         </div>
 

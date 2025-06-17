@@ -46,6 +46,19 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
   const [isResetting, setIsResetting] = useState(false);
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  // Lazy load models - only when user opens the dropdown
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const models = useModels();
+  
+  // Handle model loading when dropdown opens
+  const handleModelDropdownOpen = async () => {
+    if (!modelsLoaded) {
+      setModelsLoaded(true);
+      await models.initializeCuratedModels();
+    }
+  };
+  
+  // Extract models conditionally
   const { 
     curatedModels, 
     allModels, 
@@ -58,8 +71,8 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
     toggleStar, 
     setActive,
     resetToDefaults,
-    fetchAllModels 
-  } = useModels();
+    fetchAllModels
+  } = models;
   
   // Suppress unused variable warning
   void activeModel;
@@ -176,7 +189,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center gap-3 bg-secondary/30 backdrop-blur-sm rounded-xl px-4 py-2 border border-border/20">
               <span className="text-sm text-muted-foreground font-medium">Model:</span>
-              <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })}>
+              <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })} onOpenChange={(open) => open && handleModelDropdownOpen()}>
                 <SelectTrigger className="w-64 bg-background/50 border-border/30 shadow-sm hover:shadow-md transition-all duration-300 rounded-lg">
                   <SelectValue className="truncate font-medium">
                     {curatedModels.find(m => m.id === settings.model)?.name || 
@@ -248,9 +261,10 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       <SelectItem value="load-more" disabled>
                         <button
                           type="button"
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.preventDefault()
-                            fetchAllModels?.()
+                            await handleModelDropdownOpen()
+                            await fetchAllModels?.()
                           }}
                           className="w-full text-left text-sm text-muted-foreground hover:text-foreground transition-colors"
                         >
@@ -314,7 +328,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                   <div className="space-y-4 p-1">
                     <div className="space-y-2">
                       <Label>Selected Model</Label>
-                    <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })}>
+                    <Select value={settings.model} onValueChange={(value) => onSettingsChange({ model: value })} onOpenChange={(open) => open && handleModelDropdownOpen()}>
                       <SelectTrigger>
                         <SelectValue className="truncate">
                           {curatedModels.find(m => m.id === settings.model)?.name || 
@@ -411,7 +425,12 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                         </Button>
                         <button
                           type="button"
-                          onClick={() => !isLoading && fetchAllModels?.()}
+                          onClick={async () => {
+                            if (!isLoading) {
+                              await handleModelDropdownOpen();
+                              await fetchAllModels?.();
+                            }
+                          }}
                           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                           disabled={isLoading}
                         >

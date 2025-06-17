@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useStarredModels } from './use-starred-models'
 
 interface Model {
@@ -26,9 +26,8 @@ export function useModels() {
     loading: starredLoading 
   } = useStarredModels()
 
-  // Fetch curated models on mount
-  useEffect(() => {
-    const fetchCuratedModels = async () => {
+  // Fetch curated models only when explicitly requested
+  const fetchCuratedModels = useCallback(async () => {
       try {
         setIsLoading(true)
         const response = await fetch('/api/models?type=curated&include_starred=true')
@@ -58,10 +57,16 @@ export function useModels() {
       } finally {
         setIsLoading(false)
       }
+  }, [isStarred, isActive]) // Dependencies for the callback
+  
+  // Initialize curated models on first call
+  const [hasInitialized, setHasInitialized] = useState(false)
+  const initializeCuratedModels = useCallback(async () => {
+    if (!hasInitialized) {
+      setHasInitialized(true)
+      await fetchCuratedModels()
     }
-
-    fetchCuratedModels()
-  }, [starredModels, isStarred, isActive]) // Re-fetch when starred models change
+  }, [hasInitialized, fetchCuratedModels])
 
   const fetchAllModels = async () => {
     if (allModels.length > 0) return // Already fetched
@@ -107,6 +112,7 @@ export function useModels() {
     isLoading: isLoading || starredLoading,
     error,
     fetchAllModels,
+    initializeCuratedModels,
     // Starred model functionality
     starredModels,
     activeModel,
