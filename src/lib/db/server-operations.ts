@@ -137,9 +137,11 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
 export async function createUserPreferencesWithDynamicDefaults(userId: string): Promise<UserPreferencesData> {
   try {
     // Get dynamic top 5 models from OpenRouter
+    // Clean the API key (remove surrounding quotes if present)
+    const cleanApiKey = process.env.OPENROUTER_API_KEY?.replace(/^["']|["']$/g, '')
     const response = await fetch('https://openrouter.ai/api/v1/models', {
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${cleanApiKey}`,
         'Content-Type': 'application/json'
       }
     })

@@ -10,9 +10,13 @@ export function getRedis(): Redis {
       throw new Error('Upstash Redis environment variables are not set');
     }
 
+    // Clean environment variables (remove quotes)
+    const cleanUrl = process.env.UPSTASH_REDIS_REST_URL?.replace(/^["']|["']$/g, '')
+    const cleanToken = process.env.UPSTASH_REDIS_REST_TOKEN?.replace(/^["']|["']$/g, '')
+    
     redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      url: cleanUrl,
+      token: cleanToken,
     });
   }
 

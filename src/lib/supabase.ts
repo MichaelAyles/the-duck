@@ -8,9 +8,15 @@ import { Database } from '@/types/supabase'
  * and SSR support for seamless client-server authentication.
  */
 
-// Validate environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+// Validate and clean environment variables
+const rawSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const rawSupabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+const supabaseUrl = rawSupabaseUrl
+  ?.replace(/^["']|["']$/g, '')
+  ?.replace(/\/+$/, '')
+const supabaseAnonKey = rawSupabaseAnonKey
+  ?.replace(/^["']|["']$/g, '')
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase environment variables are missing. Authentication will be disabled.')

@@ -245,7 +245,8 @@ export function withRateLimit(
 // 🔐 API Key Validation Middleware
 export function withApiKeyValidation(handler: (req: NextRequest) => Promise<NextResponse>) {
   return async (req: NextRequest): Promise<NextResponse> => {
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    // Clean API key (remove quotes)
+    const apiKey = process.env.OPENROUTER_API_KEY?.replace(/^["']|["']$/g, '');
     
     if (!apiKey) {
       console.error('🚨 OpenRouter API key not configured');

@@ -56,14 +56,18 @@ function createFallbackTitle(messages: Message[]): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
-    }
-
     const { messages, sessionId, preserveExistingOnFailure = false } = await req.json()
+
+    // Get authenticated user if we need to save the title
+    let userId: string | null = null
+    if (sessionId) {
+      const supabase = await createClient()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (!authError && user) {
+        userId = user.id
+      }
+    }
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -88,6 +92,9 @@ export async function POST(req: NextRequest) {
         console.log('🔑 OpenRouter API key found, attempting AI title generation')
       }
       try {
+        // Clean the API key (remove surrounding quotes if present)
+        const cleanApiKey = process.env.OPENROUTER_API_KEY.replace(/^["']|["']$/g, '')
+        
         // Use all messages for title generation (2.0 flash lite is very cheap)
         const relevantMessages = messages
         if (process.env.NODE_ENV === 'development') {
@@ -98,7 +105,7 @@ export async function POST(req: NextRequest) {
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            'Authorization': `Bearer ${cleanApiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
           },
@@ -188,56 +195,68 @@ Respond with ONLY the title, nothing else.`
       }
     }
 
-    // Verify user owns the session by querying database directly
-    const { data: session, error: sessionError } = await supabase
-      .from('chat_sessions')
-      .select('title')
-      .eq('id', sessionId)
-      .eq('user_id', user.id)
-      .single()
-
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Chat session not found or access denied' }, { status: 404 })
-    }
-
-    const existingTitle = session.title || 'New Chat'
-    
-    // If AI generation fails and we should preserve existing title, use existing title
-    if (method === 'fallback' && preserveExistingOnFailure && existingTitle !== 'New Chat') {
-      generatedTitle = existingTitle
-      method = 'preserved'
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`✅ Generated title for session ${sessionId}: ${generatedTitle} (method: ${method})`)
-    }
-
-    // Update the session with the new title (only if it changed)
+    // Handle database operations only if we have a user and sessionId
     let updateSuccessful = true;
+    let existingTitle = 'New Chat';
     
-    if (method === 'preserved' && generatedTitle === existingTitle) {
-      // Title was preserved and unchanged, skip database update
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Title preserved - skipping database update');
+    if (userId && sessionId) {
+      const supabase = await createClient()
+      
+      // Verify user owns the session by querying database directly
+      const { data: session, error: sessionError } = await supabase
+        .from('chat_sessions')
+        .select('title')
+        .eq('id', sessionId)
+        .eq('user_id', userId)
+        .single()
+
+      if (sessionError || !session) {
+        console.warn('Chat session not found or access denied, continuing without database update')
+        updateSuccessful = false;
+      } else {
+        existingTitle = session.title || 'New Chat'
+        
+        // If AI generation fails and we should preserve existing title, use existing title
+        if (method === 'fallback' && preserveExistingOnFailure && existingTitle !== 'New Chat') {
+          generatedTitle = existingTitle
+          method = 'preserved'
+        }
+
+        // Update the session with the new title (only if it changed)
+        if (method === 'preserved' && generatedTitle === existingTitle) {
+          // Title was preserved and unchanged, skip database update
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Title preserved - skipping database update');
+          }
+        } else {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🔄 Updating session ${sessionId} with title: "${generatedTitle}"`)
+          }
+          
+          // Update the session title directly in database
+          const { error: updateError } = await supabase
+            .from('chat_sessions')
+            .update({ title: generatedTitle })
+            .eq('id', sessionId)
+            .eq('user_id', userId)
+          
+          if (updateError) {
+            console.error(`❌ Failed to update session title:`, updateError)
+            updateSuccessful = false;
+          } else if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ Successfully updated session title in database: ${generatedTitle}`)
+          }
+        }
       }
     } else {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🔄 Updating session ${sessionId} with title: "${generatedTitle}"`)
+        console.log('No user authentication or sessionId provided, skipping database operations')
       }
-      
-      // Update the session title directly in database
-      const { error: updateError } = await supabase
-        .from('chat_sessions')
-        .update({ title: generatedTitle })
-        .eq('id', sessionId)
-        .eq('user_id', user.id)
-      
-      if (updateError) {
-        console.error(`❌ Failed to update session title:`, updateError)
-        updateSuccessful = false;
-      } else if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Successfully updated session title in database: ${generatedTitle}`)
-      }
+      updateSuccessful = false; // No database update attempted
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Generated title: ${generatedTitle} (method: ${method})`)
     }
 
     return NextResponse.json({

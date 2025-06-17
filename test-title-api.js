@@ -1,5 +1,5 @@
 // Test the title generation API directly
-const fetch = require('node-fetch');
+const { default: fetch } = require('node-fetch');
 
 async function testTitleGeneration() {
   console.log('=== Testing Title Generation API ===\n');

@@ -27,7 +27,8 @@ export class OpenRouterClient {
   private baseUrl = 'https://openrouter.ai/api/v1'
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || null
+    // Clean the API key (remove surrounding quotes if present)
+    this.apiKey = apiKey ? apiKey.replace(/^["']|["']$/g, '') : null
   }
 
   async getModels(): Promise<OpenRouterModel[]> {

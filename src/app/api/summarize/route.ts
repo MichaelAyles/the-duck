@@ -53,11 +53,14 @@ export async function POST(req: Request) {
       return NextResponse.json(createFallbackSummary(messages))
     }
 
+    // Clean the API key (remove surrounding quotes if present)
+    const cleanApiKey = process.env.OPENROUTER_API_KEY.replace(/^["']|["']$/g, '')
+
     // Use OpenRouter's Gemini Flash model for cost-effective summarization
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${cleanApiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
       },
