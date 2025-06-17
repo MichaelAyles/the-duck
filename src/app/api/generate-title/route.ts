@@ -10,8 +10,13 @@ import { createClient } from '@/lib/supabase/server'
  */
 
 function createFallbackTitle(messages: Message[]): string {
+  // Debug: Log all messages to see what we're working with
+  console.error('🔍 DEBUG: createFallbackTitle called with messages:', messages.map(m => ({ role: m.role, content: m.content.slice(0, 50) + '...' })))
+  
   // Extract first user message and create a simple title
   const firstUserMessage = messages.find(msg => msg.role === 'user')
+  console.error('🔍 DEBUG: firstUserMessage found:', firstUserMessage ? { role: firstUserMessage.role, content: firstUserMessage.content.slice(0, 50) + '...' } : 'NONE')
+  
   if (!firstUserMessage) return 'New Chat'
   
   // Get first few words and clean them up
@@ -23,21 +28,31 @@ function createFallbackTitle(messages: Message[]): string {
     title = title.slice(0, 27) + '...'
   }
   
+  console.error('🔍 DEBUG: Generated fallback title:', title)
   return title || 'New Chat'
 }
 
 export async function POST(req: NextRequest) {
   try {
+    console.error('🔍 DEBUG: Title generation API called')
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      console.error('🔍 DEBUG: Auth failed:', authError)
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
     const { messages, sessionId, preserveExistingOnFailure = false } = await req.json()
+    console.error('🔍 DEBUG: Request data:', { 
+      messagesCount: messages?.length, 
+      sessionId, 
+      preserveExistingOnFailure,
+      firstMessage: messages?.[0] ? { role: messages[0].role, content: messages[0].content.slice(0, 50) + '...' } : 'NONE'
+    })
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      console.error('🔍 DEBUG: No messages provided')
       return NextResponse.json(
         { error: 'Messages array is required' },
         { status: 400 }
@@ -45,6 +60,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!sessionId) {
+      console.error('🔍 DEBUG: No session ID provided')
       return NextResponse.json(
         { error: 'Session ID is required' },
         { status: 400 }
@@ -55,6 +71,7 @@ export async function POST(req: NextRequest) {
     let method = 'fallback'
 
     // Check if OpenRouter API key is available
+    console.error('🔍 DEBUG: OpenRouter API key available:', !!process.env.OPENROUTER_API_KEY)
     if (process.env.OPENROUTER_API_KEY) {
       try {
         // Get the first few messages to generate a title (don't need entire conversation)
