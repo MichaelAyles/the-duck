@@ -88,10 +88,10 @@ export async function POST(req: NextRequest) {
         console.log('🔑 OpenRouter API key found, attempting AI title generation')
       }
       try {
-        // Get the first few messages to generate a title (don't need entire conversation)
-        const relevantMessages = messages.slice(0, 6) // First 6 messages should be enough
+        // Use all messages for title generation (2.0 flash lite is very cheap)
+        const relevantMessages = messages
         if (process.env.NODE_ENV === 'development') {
-          console.log('📝 Sending messages to OpenRouter:', relevantMessages.map(m => ({ role: m.role, content: m.content.slice(0, 50) + '...' })))
+          console.log('📝 Sending messages to OpenRouter:', relevantMessages.length, 'messages')
         }
 
         // Use Gemini Flash Lite for cost-effective title generation
@@ -122,7 +122,7 @@ Respond with ONLY the title, nothing else.`
               },
               ...relevantMessages.map((msg: Message) => ({
                 role: msg.role === 'system' ? 'assistant' : msg.role,
-                content: msg.content.length > 200 ? msg.content.slice(0, 200) + '...' : msg.content
+                content: msg.content // Use full content for better context
               }))
             ],
             temperature: 0.3, // Lower temperature for more consistent titles
