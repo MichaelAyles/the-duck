@@ -30,7 +30,6 @@ export function useChatSession({
 }: UseChatSessionProps): UseChatSessionReturn {
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const [messages, setMessages] = useState<Message[]>(initialMessages || []);
-  const [isLoadingSession, setIsLoadingSession] = useState(false);
   const chatServiceRef = useRef<ChatService | null>(null);
   const lastLoadedSessionId = useRef<string | null>(null);
   const { toast } = useToast();
@@ -63,15 +62,14 @@ export function useChatSession({
         return;
       }
       
-      // Prevent overlapping load requests
-      if (isLoadingSession) {
+      // Prevent overlapping load requests using the ref instead of state
+      if (lastLoadedSessionId.current === `loading-${sessionId}`) {
         console.log(`Session load already in progress, skipping request for ${sessionId}`);
         return;
       }
       
       console.log(`🔄 Loading session messages for: ${sessionId}`);
-      setIsLoadingSession(true);
-      lastLoadedSessionId.current = sessionId;
+      lastLoadedSessionId.current = `loading-${sessionId}`;
       
       // Load messages using ChatService (now with retry logic)
       const loadedMessages = await chatServiceRef.current.loadChatSession();
@@ -85,10 +83,12 @@ export function useChatSession({
         
         setMessages(formattedMessages);
         console.log(`✅ Loaded ${formattedMessages.length} messages for session ${sessionId}`);
+        lastLoadedSessionId.current = sessionId;
       } else {
         // If no messages found, show welcome message
         setMessages([welcomeMessage]);
         console.log('📝 No messages found, showing welcome message');
+        lastLoadedSessionId.current = sessionId;
       }
     } catch (error) {
       console.error('❌ Error loading session messages:', error);
@@ -105,10 +105,8 @@ export function useChatSession({
       
       // On error, show welcome message
       setMessages([welcomeMessage]);
-    } finally {
-      setIsLoadingSession(false);
     }
-  }, [userId, welcomeMessage, toast, isLoadingSession]);
+  }, [userId, welcomeMessage, toast]);
 
   // Create a new session
   const createNewSession = useCallback((): string => {
@@ -117,7 +115,6 @@ export function useChatSession({
     chatServiceRef.current = new ChatService(newSessionId, userId);
     // Reset loading state for fresh session
     lastLoadedSessionId.current = null;
-    setIsLoadingSession(false);
     return newSessionId;
   }, [userId]);
 
@@ -142,7 +139,6 @@ export function useChatSession({
       setSessionId(currentSessionId);
       // Reset loading state when session changes
       lastLoadedSessionId.current = null;
-      setIsLoadingSession(false);
     }
     
     // Always ensure we have a chat service
@@ -154,7 +150,7 @@ export function useChatSession({
     // Load messages if we have a user and existing session (but no initial messages provided)
     if (userId && initialSessionId && (!initialMessages || initialMessages.length === 0)) {
       // Only load if we haven't already loaded this session
-      if (lastLoadedSessionId.current !== initialSessionId && !isLoadingSession) {
+      if (lastLoadedSessionId.current !== initialSessionId && lastLoadedSessionId.current !== `loading-${initialSessionId}`) {
         console.log(`📥 Loading messages for existing session ${initialSessionId}`);
         loadSessionMessages(initialSessionId);
       }
@@ -166,7 +162,7 @@ export function useChatSession({
     return () => {
       chatServiceRef.current?.clearInactivityTimer();
     };
-  }, [initialSessionId, userId, sessionId, loadSessionMessages, initialMessages, isLoadingSession]);
+  }, [initialSessionId, userId, sessionId, loadSessionMessages, initialMessages]);
 
   // Add welcome message when messages are empty and not loading
   // This prevents interference with optimistic updates during message sending
