@@ -37,13 +37,13 @@ class RequestCache {
 
     // Return cached data if valid
     if (entry && (now - entry.timestamp) < cacheTTL) {
-      return entry.data;
+      return entry.data as T;
     }
 
     // Check if request is already pending
     const pendingRequest = this.pendingRequests.get(key);
     if (pendingRequest) {
-      return pendingRequest;
+      return pendingRequest as Promise<T>;
     }
 
     // Create new request
