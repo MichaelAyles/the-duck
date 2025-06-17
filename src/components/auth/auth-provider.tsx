@@ -25,8 +25,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isConfigured = isSupabaseConfigured;
 
   useEffect(() => {
-    if (!isConfigured) {
-      // If using mock client, set loading to false immediately
+    if (!isConfigured || !supabase) {
+      // If Supabase is not configured or client is null, set loading to false immediately
       setDebugInfo('Supabase not configured - running without auth');
       if (process.env.NODE_ENV === 'development') console.log('Auth: Supabase not configured - proceeding without authentication');
       setLoading(false);
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('Auth loading timeout - proceeding without authentication');
       setDebugInfo('Auth timeout - proceeding without session');
       setLoading(false);
-    }, 5000); // 5 second timeout
+    }, 3000); // Reduced to 3 second timeout
 
     // Get initial session - only if we have a real Supabase client
     const getInitialSession = async () => {
@@ -46,8 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setDebugInfo('Checking for existing session...');
         if (process.env.NODE_ENV === 'development') console.log('Auth: Checking for existing session...');
         
-        // Check if supabase client exists and has auth methods
-        if (supabase && 'getSession' in supabase.auth) {
+        // Double-check supabase client exists and has auth methods
+        if (supabase && supabase.auth && typeof supabase.auth.getSession === 'function') {
           if (process.env.NODE_ENV === 'development') console.log('Auth: Supabase client available, getting session');
           const { data: { session } } = await supabase.auth.getSession();
           if (process.env.NODE_ENV === 'development') console.log('Auth: Session retrieved:', session ? 'authenticated' : 'no session');
@@ -72,16 +72,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes - only if we have a real Supabase client
     let unsubscribe: (() => void) | null = null;
     
-    if (supabase && 'onAuthStateChange' in supabase.auth) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (_event: AuthChangeEvent, session: Session | null) => {
-          setSession(session);
-          setUser(session?.user ?? null);
-          clearTimeout(timeout);
-          setLoading(false);
-        }
-      );
-      unsubscribe = () => subscription.unsubscribe();
+    if (supabase && supabase.auth && typeof supabase.auth.onAuthStateChange === 'function') {
+      try {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          (_event: AuthChangeEvent, session: Session | null) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            clearTimeout(timeout);
+            setLoading(false);
+          }
+        );
+        unsubscribe = () => subscription.unsubscribe();
+      } catch (error) {
+        console.error('Error setting up auth state listener:', error);
+        clearTimeout(timeout);
+        setLoading(false);
+      }
     }
 
     return () => {

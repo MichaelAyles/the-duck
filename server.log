@@ -1,0 +1,502 @@
+
+> the-duck@0.1.0 dev
+> next dev --port 12000 --hostname 0.0.0.0
+
+   ▲ Next.js 15.3.3
+   - Local:        http://localhost:12000
+   - Network:      http://0.0.0.0:12000
+   - Environments: .env.local
+   - Experiments (use with caution):
+     ✓ webpackBuildWorker
+
+ ✓ Starting...
+ ✓ Ready in 1724ms
+ ○ Compiling / ...
+ ✓ Compiled / in 10.3s (3302 modules)
+ GET / 200 in 11365ms
+ ✓ Compiled in 692ms (1482 modules)
+ ⚠ Cross origin request detected from work-1-hzlbjlmiiwcwbrci.prod-runtime.all-hands.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling /api/starred-models ...
+ ✓ Compiled /api/starred-models in 2.9s (3410 modules)
+Starred models GET error: TypeError: fetch failed
+    at async handleStarredModelsGet (src/app/api/starred-models/route.ts:14:21)
+    at async eval (src/lib/security.ts:229:25)
+    at async eval (src/lib/security.ts:161:23)
+  12 |   try {
+  13 |     // Try to get user preferences from the user preferences API
+> 14 |     const response = await fetch(new URL('/api/user/preferences', request.url).toString(), {
+     |                     ^
+  15 |       method: 'GET',
+  16 |       headers: {
+  17 |         'Cookie': request.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/starred-models 200 in 3630ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 3761ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 510ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 491ms
+ ○ Compiling /api/sessions ...
+ ✓ Compiled /api/sessions in 549ms (3412 modules)
+ POST /api/sessions 200 in 1580ms
+ ○ Compiling /api/generate-title ...
+ ✓ Compiled /api/generate-title in 633ms (3414 modules)
+🔑 OpenRouter API key found, attempting AI title generation
+📝 Sending messages to OpenRouter: [
+  {
+    role: 'user',
+    content: 'Hello! Can you help me understand how machine lear...'
+  }
+]
+🤖 OpenRouter API response: {
+  "id": "gen-1750168282-P6KHew8yYDdMY2D3IJxD",
+  "provider": "Google",
+  "model": "google/gemini-2.0-flash-lite-001",
+  "object": "chat.completion",
+  "created": 1750168282,
+  "choices": [
+    {
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "STOP",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Machine Learning Explained\n",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 121,
+    "completion_tokens": 4,
+    "total_tokens": 125
+  }
+}
+🤖 Raw AI title: Machine Learning Explained
+🤖 Cleaned AI title: Machine Learning Explained
+✅ Using AI-generated title: Machine Learning Explained
+✅ Generated title for session 7d2bbcc6-30f6-40e0-9986-a079117d03bf: Machine Learning Explained (method: ai-generated)
+🔄 Updating session 7d2bbcc6-30f6-40e0-9986-a079117d03bf with title: "Machine Learning Explained"
+✅ Successfully updated session title in database: Machine Learning Explained
+ POST /api/generate-title 200 in 2509ms
+ ✓ Compiled /api/chat in 395ms (3418 modules)
+Cached OpenRouter models
+📊 API Usage: {"timestamp":"2025-06-17T13:51:33.184Z","endpoint":"/api/chat","model":"google/gemini-2.5-flash-preview-05-20","tokenCount":1205,"ip":"10.2.20.9"}
+ POST /api/chat 200 in 9024ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 483ms
+ POST /api/sessions 200 in 845ms
+ POST /api/sessions 200 in 886ms
+ ○ Compiling /api/summarize ...
+ ✓ Compiled /api/summarize in 589ms (3422 modules)
+Failed to parse summary JSON, using fallback: SyntaxError: Unexpected token 'D', "Do you hav"... is not valid JSON
+    at JSON.parse (<anonymous>)
+    at POST (src/app/api/summarize/route.ts:170:27)
+  168 |       
+  169 |       // Parse the cleaned JSON response
+> 170 |       const summary = JSON.parse(cleanedText)
+      |                           ^
+  171 |       
+  172 |       // Save summary to database if sessionId and userId are available
+  173 |       if (sessionId && userId) {
+Raw response was:  Do you have any specific questions or areas you'd like me to elaborate on?
+
+ POST /api/summarize 200 in 2281ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 556ms
+ ○ Compiling /api/sessions/[sessionId] ...
+ ✓ Compiled /api/sessions/[sessionId] in 546ms (3424 modules)
+ GET /api/sessions/2030a878-3278-4d6d-95c6-c21a433ad556 404 in 2051ms
+ GET /api/sessions/2030a878-3278-4d6d-95c6-c21a433ad556 404 in 850ms
+ GET /api/sessions/2030a878-3278-4d6d-95c6-c21a433ad556 404 in 582ms
+ ✓ Compiled in 1871ms (3285 modules)
+ ✓ Compiled in 293ms (1483 modules)
+ ✓ Compiled in 393ms (1483 modules)
+ ○ Compiling /api/sessions ...
+ ✓ Compiled /api/sessions in 552ms (1920 modules)
+ POST /api/sessions 200 in 1462ms
+ ✓ Compiled /api/generate-title in 209ms (1922 modules)
+🔑 OpenRouter API key found, attempting AI title generation
+📝 Sending messages to OpenRouter: [ { role: 'user', content: 'What is artificial intelligence?...' } ]
+🤖 OpenRouter API response: {
+  "id": "gen-1750168460-cASPJ4YkICP39ft25jHk",
+  "provider": "Google",
+  "model": "google/gemini-2.0-flash-lite-001",
+  "object": "chat.completion",
+  "created": 1750168460,
+  "choices": [
+    {
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "STOP",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Defining Artificial Intelligence\n",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 114,
+    "completion_tokens": 4,
+    "total_tokens": 118
+  }
+}
+🤖 Raw AI title: Defining Artificial Intelligence
+🤖 Cleaned AI title: Defining Artificial Intelligence
+✅ Using AI-generated title: Defining Artificial Intelligence
+✅ Generated title for session 2030a878-3278-4d6d-95c6-c21a433ad556: Defining Artificial Intelligence (method: ai-generated)
+🔄 Updating session 2030a878-3278-4d6d-95c6-c21a433ad556 with title: "Defining Artificial Intelligence"
+✅ Successfully updated session title in database: Defining Artificial Intelligence
+ POST /api/generate-title 200 in 1799ms
+ ✓ Compiled /api/chat in 186ms (1945 modules)
+Returning cached OpenRouter models
+📊 API Usage: {"timestamp":"2025-06-17T13:54:35.747Z","endpoint":"/api/chat","model":"google/gemini-2.5-flash-preview-05-20","tokenCount":394,"ip":"10.2.20.9"}
+ POST /api/chat 200 in 13972ms
+ ✓ Compiled /api/chat-history in 490ms (1947 modules)
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 1330ms
+ POST /api/sessions 200 in 1308ms
+ POST /api/sessions 200 in 1514ms
+ ○ Compiling /api/summarize ...
+ ✓ Compiled /api/summarize in 518ms (1951 modules)
+Failed to parse summary JSON, using fallback: SyntaxError: Unexpected token 'A', "AI systems"... is not valid JSON
+    at JSON.parse (<anonymous>)
+    at POST (src/app/api/summarize/route.ts:180:27)
+  178 |       
+  179 |       // Parse the cleaned JSON response
+> 180 |       const summary = JSON.parse(cleanedText)
+      |                           ^
+  181 |       
+  182 |       // Save summary to database if sessionId and userId are available
+  183 |       if (sessionId && userId) {
+Raw response was:  AI systems are often designed to mimic human cognitive functions.
+
+Error in summarize endpoint: ReferenceError: cleanedText is not defined
+    at POST (src/app/api/summarize/route.ts:246:42)
+  244 |       if (process.env.NODE_ENV === 'development') {
+  245 |         console.warn('Raw response was:', summaryText)
+> 246 |         console.warn('Cleaned text was:', cleanedText)
+      |                                          ^
+  247 |       }
+  248 |       return NextResponse.json(createFallbackSummary(messages))
+  249 |     }
+ POST /api/summarize 200 in 1599ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 238ms
+ ✓ Compiled /api/sessions/[sessionId] in 436ms (1953 modules)
+ GET /api/sessions/d88d619b-6b91-4c66-9b64-4f2fdb9cacd9 404 in 1096ms
+ GET /api/sessions/d88d619b-6b91-4c66-9b64-4f2fdb9cacd9 404 in 870ms
+ GET /api/sessions/d88d619b-6b91-4c66-9b64-4f2fdb9cacd9 404 in 583ms
+ ✓ Compiled in 897ms (3436 modules)
+ ✓ Compiled in 475ms (3436 modules)
+ ✓ Compiled in 411ms (3285 modules)
+ GET / 200 in 657ms
+ ✓ Compiled /api/starred-models in 352ms (1920 modules)
+ ✓ Compiled (1941 modules)
+Starred models GET error: TypeError: fetch failed
+    at async handleStarredModelsGet (src/app/api/starred-models/route.ts:14:21)
+    at async eval (src/lib/security.ts:229:25)
+    at async eval (src/lib/security.ts:161:23)
+  12 |   try {
+  13 |     // Try to get user preferences from the user preferences API
+> 14 |     const response = await fetch(new URL('/api/user/preferences', request.url).toString(), {
+     |                     ^
+  15 |       method: 'GET',
+  16 |       headers: {
+  17 |         'Cookie': request.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/starred-models 200 in 1431ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 1506ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 212ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 431ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 201ms
+ ✓ Compiled /api/sessions in 235ms (1943 modules)
+ POST /api/sessions 200 in 1199ms
+ ✓ Compiled /api/generate-title in 182ms (1945 modules)
+🔑 OpenRouter API key found, attempting AI title generation
+📝 Sending messages to OpenRouter: [
+  {
+    role: 'user',
+    content: 'Can you explain how machine learning algorithms wo...'
+  }
+]
+🤖 OpenRouter API response: {
+  "id": "gen-1750168600-8JnUkpCrhkd1zvpJRJEy",
+  "provider": "Google",
+  "model": "google/gemini-2.0-flash-lite-001",
+  "object": "chat.completion",
+  "created": 1750168600,
+  "choices": [
+    {
+      "logprobs": null,
+      "finish_reason": "stop",
+      "native_finish_reason": "STOP",
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Machine Learning Overview\n",
+        "refusal": null,
+        "reasoning": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 126,
+    "completion_tokens": 4,
+    "total_tokens": 130
+  }
+}
+🤖 Raw AI title: Machine Learning Overview
+🤖 Cleaned AI title: Machine Learning Overview
+✅ Using AI-generated title: Machine Learning Overview
+✅ Generated title for session c7160acc-7255-4657-844c-11872663ad9e: Machine Learning Overview (method: ai-generated)
+🔄 Updating session c7160acc-7255-4657-844c-11872663ad9e with title: "Machine Learning Overview"
+✅ Successfully updated session title in database: Machine Learning Overview
+ POST /api/generate-title 200 in 2018ms
+ ✓ Compiled /api/chat in 372ms (1949 modules)
+Returning cached OpenRouter models
+📊 API Usage: {"timestamp":"2025-06-17T13:56:50.032Z","endpoint":"/api/chat","model":"google/gemini-2.5-flash-preview-05-20","tokenCount":930,"ip":"10.2.20.9"}
+ POST /api/chat 200 in 7850ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 228ms
+ POST /api/sessions 200 in 971ms
+ POST /api/sessions 200 in 1001ms
+ ✓ Compiled /api/summarize in 267ms (1953 modules)
+ GET / 200 in 138ms
+Failed to save chat summary to database: {
+  code: '42P10',
+  details: null,
+  hint: null,
+  message: 'there is no unique or exclusion constraint matching the ON CONFLICT specification'
+}
+✅ Saved learning preference: topic/machine learning (weight: 5)
+✅ Saved learning preference: explanation/examples (weight: 6)
+✅ Saved learning preference: topic/supervised learning (weight: 4)
+✅ Saved learning preference: topic/unsupervised learning (weight: 4)
+✅ Saved learning preference: topic/reinforcement learning (weight: 4)
+✅ Processed 5 learning preferences from chat summary
+ POST /api/summarize 200 in 5448ms
+Chat history error: TypeError: fetch failed
+    at async GET (src/app/api/chat-history/route.ts:30:21)
+  28 |     })
+  29 |
+> 30 |     const response = await fetch(sessionsUrl.toString(), {
+     |                     ^
+  31 |       method: 'GET',
+  32 |       headers: {
+  33 |         'Cookie': req.headers.get('cookie') || '', {
+  [cause]: [Error: C04CDFC8287F0000:error:0A00010B:SSL routines:ssl3_get_record:wrong version number:../deps/openssl/openssl/ssl/record/ssl3_record.c:354:
+  ] {
+    library: 'SSL routines',
+    reason: 'wrong version number',
+    code: 'ERR_SSL_WRONG_VERSION_NUMBER'
+  }
+}
+ GET /api/chat-history?limit=50 500 in 290ms
+ ✓ Compiled /api/sessions/[sessionId] in 278ms (1955 modules)
+ GET /api/sessions/6b200a41-3e8d-42b5-9f8b-ce4467302bb9 404 in 692ms
+ GET /api/sessions/6b200a41-3e8d-42b5-9f8b-ce4467302bb9 404 in 874ms
+ GET /api/sessions/6b200a41-3e8d-42b5-9f8b-ce4467302bb9 404 in 385ms

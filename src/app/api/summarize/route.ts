@@ -63,6 +63,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model: 'google/gemini-2.0-flash-lite-001',
+        response_format: { type: "json_object" },
         messages: [
           {
             role: 'system',
@@ -71,6 +72,8 @@ export async function POST(req: Request) {
 2. Key topics covered
 3. Analysis of the user's writing style and preferences
 4. Specific learning preferences with weights from -10 (strong dislike) to +10 (strong like)
+
+IMPORTANT: You MUST respond with ONLY a valid JSON object. Do not include any text before or after the JSON. Do not use markdown code blocks.
 
 Format your response as a JSON object with the following structure:
 {
@@ -155,15 +158,28 @@ Assign weights based on:
       return NextResponse.json(createFallbackSummary(messages))
     }
 
+    let cleanedText = summaryText.trim()
+    
     try {
       // Clean the response by removing markdown code blocks if present
-      let cleanedText = summaryText.trim()
       
       // Remove ```json and ``` markers if present
       if (cleanedText.startsWith('```json')) {
         cleanedText = cleanedText.replace(/^```json\s*/, '').replace(/\s*```$/, '')
       } else if (cleanedText.startsWith('```')) {
         cleanedText = cleanedText.replace(/^```\s*/, '').replace(/\s*```$/, '')
+      }
+      
+      // Try to find JSON within the text if it's not pure JSON
+      if (!cleanedText.startsWith('{')) {
+        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          cleanedText = jsonMatch[0]
+        } else {
+          // If no JSON found, the model returned plain text - use fallback
+          console.warn('Model returned plain text instead of JSON, using fallback')
+          return NextResponse.json(createFallbackSummary(messages))
+        }
       }
       
       // Parse the cleaned JSON response
@@ -231,7 +247,10 @@ Assign weights based on:
       return NextResponse.json(summary)
     } catch (parseError) {
       console.warn('Failed to parse summary JSON, using fallback:', parseError)
-      console.warn('Raw response was:', summaryText)
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Raw response was:', summaryText)
+        console.warn('Cleaned text was:', cleanedText)
+      }
       return NextResponse.json(createFallbackSummary(messages))
     }
 

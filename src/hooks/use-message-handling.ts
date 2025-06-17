@@ -45,11 +45,13 @@ export function useMessageHandling({
 
   // Generate title with new logic: try AI, fallback to existing title on failure
   const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string): Promise<string | null> => {
-    // Filter out welcome message and empty messages
+    // Filter out welcome message, system messages, and empty messages
     const conversationMessages = messages.filter(msg => 
       msg.id !== "welcome-message" && 
+      msg.role !== "system" &&
       msg.metadata?.model !== "system" &&
-      msg.content.trim()
+      msg.content && 
+      msg.content.trim().length > 0
     );
     
     const userMessages = conversationMessages.filter(msg => msg.role === 'user');
@@ -65,14 +67,14 @@ export function useMessageHandling({
           body: JSON.stringify({
             messages: conversationMessages,
             sessionId,
-            preserveExistingOnFailure: true // New flag to preserve existing title on AI failure
+            preserveExistingOnFailure: true
           }),
         });
 
         if (response.ok) {
           const data = await response.json();
           if (process.env.NODE_ENV === 'development') {
-            if (process.env.NODE_ENV === 'development') console.log(`Generated/updated title for session ${sessionId}:`, data.title);
+            console.log(`Generated/updated title for session ${sessionId}:`, data.title);
           }
           return data.title; // Return the new title
         } else {
