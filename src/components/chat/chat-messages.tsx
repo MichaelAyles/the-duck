@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { User, Loader2 } from "lucide-react";
@@ -14,10 +14,18 @@ interface ChatMessagesProps {
   isLoading: boolean;
 }
 
-export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
+function ChatMessagesComponent({ messages, isLoading }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [fadingWelcome, setFadingWelcome] = useState(false);
   const prevMessagesRef = useRef<Message[]>([]);
+
+  // Debug logging for message changes
+  console.log('🎬 ChatMessages render - messages:', messages.map(m => ({ 
+    id: m.id, 
+    role: m.role, 
+    content: m.content.slice(0, 20), 
+    isThinking: m.metadata?.isThinking 
+  })), 'isLoading:', isLoading);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,8 +41,14 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
     const hasWelcomeMessage = messages.some(msg => msg.id === "welcome-message");
     const hadWelcomeMessage = prevMessages.some(msg => msg.id === "welcome-message");
     
-    // If we had a welcome message but now don't, the transition just happened
-    if (hadWelcomeMessage && !hasWelcomeMessage) {
+    // If we had a welcome message but now don't, OR if we have non-welcome messages now when we didn't before
+    const hasNonWelcomeMessages = messages.some(msg => msg.id !== "welcome-message");
+    const hadNonWelcomeMessages = prevMessages.some(msg => msg.id !== "welcome-message");
+    
+    // Trigger fade when welcome message should disappear (either removed or new messages added)
+    if ((hadWelcomeMessage && !hasWelcomeMessage) || 
+        (hasWelcomeMessage && hasNonWelcomeMessages && !hadNonWelcomeMessages)) {
+      console.log('🎬 Triggering welcome message fade');
       setFadingWelcome(true);
       
       // Reset fade state after animation
@@ -52,6 +66,9 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
         {messages.map((message) => {
           const isWelcomeMessage = message.id === "welcome-message";
           const shouldFade = isWelcomeMessage && fadingWelcome;
+          const shouldShowThinking = message.role === "assistant" && message.metadata?.isThinking && !message.content && isLoading;
+          
+          console.log(`🎭 Rendering message ${message.id}: role=${message.role}, isWelcome=${isWelcomeMessage}, shouldFade=${shouldFade}, shouldShowThinking=${shouldShowThinking}, content="${message.content.slice(0, 20)}"`);
           
           return (
             <div
@@ -76,12 +93,12 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
                 message.role === "user"
                   ? "duck-gradient text-primary-foreground ml-12 hover:duck-glow"
                   : "bg-card hover:bg-card/80",
-                message.role === "assistant" && !message.content && isLoading && "animate-pulse"
+                message.role === "assistant" && !message.content && isLoading && "animate-gentle-pulse"
               )}
             >
-              {message.role === "assistant" && (!message.content || message.metadata?.isThinking) && isLoading ? (
+              {shouldShowThinking ? (
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <Loader2 className="h-4 w-4 animate-[spin_1.5s_linear_infinite] text-primary" />
                   <span className="text-sm text-muted-foreground">🦆 Thinking quack-tastically...</span>
                 </div>
               ) : (
@@ -121,3 +138,21 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
     </div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const ChatMessages = memo(ChatMessagesComponent, (prevProps, nextProps) => {
+  // Custom comparison function
+  if (prevProps.isLoading !== nextProps.isLoading) return false;
+  if (prevProps.messages.length !== nextProps.messages.length) return false;
+  
+  // Deep compare messages only if needed
+  for (let i = 0; i < prevProps.messages.length; i++) {
+    const prev = prevProps.messages[i];
+    const next = nextProps.messages[i];
+    if (prev.id !== next.id || prev.content !== next.content || prev.role !== next.role) {
+      return false;
+    }
+  }
+  
+  return true; // Props are equal, skip re-render
+});

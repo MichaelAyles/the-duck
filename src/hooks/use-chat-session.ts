@@ -96,8 +96,8 @@ export function useChatSession({
 
   // Handle session changes - this effect runs when the sessionId prop changes
   useEffect(() => {
-    console.log('SessionId changed to:', initialSessionId);
     if (initialSessionId && initialSessionId !== sessionId) {
+      console.log('SessionId changed to:', initialSessionId);
       // Session changed, update our state and load new messages
       setSessionId(initialSessionId);
       
@@ -150,12 +150,13 @@ export function useChatSession({
       const timer = setTimeout(() => {
         setMessages(current => {
           // Only add welcome message if still empty and we have a stable state
-          if (current.length === 0) {
+          if (current.length === 0 && !current.some(msg => msg.id === 'welcome-message')) {
+            console.log('📝 Adding welcome message to empty chat');
             return [welcomeMessage];
           }
           return current;
         });
-      }, 200); // Increased delay to avoid interference with optimistic updates
+      }, 100); // Reduced delay since we removed flushSync
       return () => clearTimeout(timer);
     }
   }, [messages.length, welcomeMessage]);

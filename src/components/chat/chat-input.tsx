@@ -18,7 +18,9 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled }: C
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (message.trim() && !disabled) {
+      console.log(`🎯 [${new Date().toISOString()}] ChatInput sending message:`, message);
       onSendMessage(message);
       setMessage("");
       if (textareaRef.current) {

@@ -124,6 +124,11 @@
   .scale-in {
     animation: scaleIn 0.2s ease-out;
   }
+
+  /* Slower, gentler pulse for thinking animation */
+  .animate-gentle-pulse {
+    animation: gentlePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
 }
 
 @keyframes fadeIn {
@@ -154,5 +159,14 @@
   to {
     transform: scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes gentlePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
   }
 }

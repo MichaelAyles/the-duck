@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { flushSync } from 'react-dom';
 import { ChatService } from '@/lib/chat-service';
 import { Message } from '@/types/chat';
 import { ChatSettings } from '@/components/chat/chat-interface';
@@ -89,10 +88,11 @@ export function useMessageHandling({
   }, []);
 
   const handleSendMessage = useCallback((content: string) => {
-    console.log('🚀 handleSendMessage called');
+    const startTime = performance.now();
+    console.log(`🚀 [${new Date().toISOString()}] handleSendMessage called`);
     if (!content.trim() || isLoading) return;
 
-    console.log('🚀 Creating user and thinking messages');
+    console.log(`🚀 [${new Date().toISOString()}] Creating user and thinking messages`);
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -111,20 +111,30 @@ export function useMessageHandling({
       },
     };
 
+    // Track when thinking started for minimum display time
+    const thinkingStartTime = Date.now();
+
     // Use ref to get the most current messages and avoid stale closures
     const currentMessages = messagesRef.current;
+    console.log('📋 Current messages before filtering:', currentMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
     
     console.log('🚀 About to update UI with messages');
     // IMMEDIATELY update UI - no awaits, no blocking
     const filteredMessages = currentMessages.filter(msg => msg.id !== "welcome-message");
-    const newMessages = [...filteredMessages, userMessage, thinkingMessage];
+    console.log('📋 Filtered messages (no welcome):', filteredMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
     
-    // Force synchronous UI update with flushSync
-    flushSync(() => {
-      setMessages(newMessages);
-      setIsLoading(true);
-    });
-    console.log('🚀 UI forcibly flushed! Messages should be visible immediately');
+    const newMessages = [...filteredMessages, userMessage, thinkingMessage];
+    console.log('📋 New messages array to set:', newMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20), isThinking: m.metadata?.isThinking })));
+    
+    // Update the ref immediately to ensure consistency
+    messagesRef.current = newMessages;
+    
+    // Update state immediately without flushSync
+    console.log(`⚡ [${new Date().toISOString()}] Updating messages and loading state`);
+    setMessages(newMessages);
+    setIsLoading(true);
+    const updateTime = performance.now() - startTime;
+    console.log(`✅ [${new Date().toISOString()}] State updated - took ${updateTime.toFixed(2)}ms`);
 
     // Fire and forget: run all background operations asynchronously
     (async () => {
@@ -187,6 +197,7 @@ export function useMessageHandling({
         }
       }
 
+      console.log('🌐 Starting API call...');
       const response = await fetch(API_ENDPOINTS.CHAT, {
         method: 'POST',
         headers: {
@@ -227,8 +238,11 @@ export function useMessageHandling({
         throw new Error('No response body');
       }
 
+      console.log('📡 API response received, starting to read stream...');
       const decoder = new TextDecoder();
       let buffer = '';
+      let hasReceivedFirstChunk = false;
+      let accumulatedContent = '';
 
       try {
         while (true) {
@@ -243,6 +257,7 @@ export function useMessageHandling({
             if (line.startsWith('data: ')) {
               const data = line.slice(6).trim();
               if (data === '[DONE]') {
+                console.log('🏁 Stream complete - setting isLoading to false');
                 setIsLoading(false);
                 
                 // Save final session and update title when response is complete
@@ -301,22 +316,64 @@ export function useMessageHandling({
                     const lastMessageIndex = updated.length - 1;
                     const lastMessage = updated[lastMessageIndex];
                     if (lastMessage && lastMessage.role === 'assistant') {
-                      // If this is the first content chunk and we have a thinking message, replace it
-                      if (lastMessage.metadata?.isThinking && !lastMessage.content) {
-                        updated[lastMessageIndex] = {
-                          ...lastMessage,
-                          content: parsed.content,
-                          metadata: {
-                            ...lastMessage.metadata,
-                            isThinking: false,
-                          },
-                        };
+                      if (!hasReceivedFirstChunk && lastMessage.metadata?.isThinking) {
+                        // First chunk: calculate if we need to delay
+                        const thinkingDuration = Date.now() - thinkingStartTime;
+                        const minimumThinkingTime = 800; // Show thinking for at least 800ms
+                        
+                        if (thinkingDuration < minimumThinkingTime) {
+                          // Delay replacing the thinking message
+                          const remainingTime = minimumThinkingTime - thinkingDuration;
+                          console.log(`🎯 Delaying thinking message replacement by ${remainingTime}ms`);
+                          
+                          // Store the content to accumulate
+                          accumulatedContent = parsed.content;
+                          
+                          setTimeout(() => {
+                            setMessages(prev => {
+                              const updated = [...prev];
+                              const lastIdx = updated.length - 1;
+                              if (updated[lastIdx] && updated[lastIdx].role === 'assistant') {
+                                updated[lastIdx] = {
+                                  ...updated[lastIdx],
+                                  content: accumulatedContent,
+                                  metadata: {
+                                    ...updated[lastIdx].metadata,
+                                    isThinking: false,
+                                  },
+                                };
+                              }
+                              return updated;
+                            });
+                          }, remainingTime);
+                          
+                          hasReceivedFirstChunk = true;
+                          return prev; // Don't update yet
+                        } else {
+                          // Enough time has passed, replace immediately
+                          console.log('🎯 First chunk received - replacing thinking message');
+                          hasReceivedFirstChunk = true;
+                          updated[lastMessageIndex] = {
+                            ...lastMessage,
+                            content: parsed.content,
+                            metadata: {
+                              ...lastMessage.metadata,
+                              isThinking: false,
+                            },
+                          };
+                        }
                       } else {
-                        // Continue appending content for ongoing streams
-                        updated[lastMessageIndex] = {
-                          ...lastMessage,
-                          content: lastMessage.content + parsed.content
-                        };
+                        // Subsequent chunks: append content
+                        if (accumulatedContent) {
+                          // We're accumulating content during the delay
+                          accumulatedContent += parsed.content;
+                        } else {
+                          // Normal streaming after thinking is shown
+                          updated[lastMessageIndex] = {
+                            ...lastMessage,
+                            content: lastMessage.content + parsed.content
+                          };
+                        }
                       }
                     }
                     return updated;

@@ -2,11 +2,10 @@
 
 import React, { useState, useCallback } from "react";
 import { Message } from "@/types/chat";
-import { ChatInterface } from "./chat-interface";
+import { ChatContainer } from "./chat-container";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 export function ChatLayout() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -91,11 +90,11 @@ export function ChatLayout() {
 
   // If no user, show chat interface without sidebar
   if (!user) {
-    return <ChatInterface />;
+    return <ChatContainer />;
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background relative">
+    <div className="flex h-screen bg-background relative">
       {/* Mobile Sidebar Overlay */}
       {isMobileSidebarOpen && (
         <>
@@ -119,66 +118,29 @@ export function ChatLayout() {
         </>
       )}
 
-      {/* Header - Fixed at top spanning full width */}
-      <div className="flex-none">
-        <ChatInterface
+      {/* Sidebar - Fixed width, hidden on mobile */}
+      <div className="flex-none hidden lg:block">
+        <ChatHistorySidebar
+          currentSessionId={currentSessionId || undefined}
+          onSessionSelect={handleSessionSelect}
+          onNewChat={handleNewChat}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleSidebar}
+          refreshTrigger={refreshTrigger}
+          className="h-full"
+        />
+      </div>
+      
+      {/* Chat Container - Single instance managing all chat UI */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <ChatContainer
           key={currentSessionId || 'new'}
           sessionId={currentSessionId}
           initialMessages={messages}
           isLoading={isLoading}
           onSessionUpdate={handleSessionUpdate}
-          renderHeaderOnly={true}
           onToggleMobileSidebar={handleToggleMobileSidebar}
         />
-      </div>
-      
-      {/* Middle Section - Sidebar and Chat Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar - Fixed width, between header and footer, hidden on mobile */}
-        <div className="flex-none hidden lg:block">
-          <ChatHistorySidebar
-            currentSessionId={currentSessionId || undefined}
-            onSessionSelect={handleSessionSelect}
-            onNewChat={handleNewChat}
-            isCollapsed={isSidebarCollapsed}
-            onToggleCollapse={handleToggleSidebar}
-            refreshTrigger={refreshTrigger}
-            className="h-full"
-          />
-        </div>
-        
-        {/* Chat Messages Area - Scrollable content */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <ChatInterface
-            key={currentSessionId || 'new'}
-            sessionId={currentSessionId}
-            initialMessages={messages}
-            isLoading={isLoading}
-            onSessionUpdate={handleSessionUpdate}
-            renderBodyOnly={true}
-          />
-        </div>
-      </div>
-      
-      {/* Footer - Fixed at bottom aligned with chat area */}
-      <div className="flex flex-none">
-        {/* Spacer for sidebar on desktop */}
-        <div className={cn(
-          "flex-none hidden lg:block transition-all duration-300",
-          isSidebarCollapsed ? "w-12" : "w-80"
-        )} />
-        
-        {/* Input aligned with chat content */}
-        <div className="flex-1">
-          <ChatInterface
-            key={currentSessionId || 'new'}
-            sessionId={currentSessionId}
-            initialMessages={messages}
-            isLoading={isLoading}
-            onSessionUpdate={handleSessionUpdate}
-            renderInputOnly={true}
-          />
-        </div>
       </div>
     </div>
   );
