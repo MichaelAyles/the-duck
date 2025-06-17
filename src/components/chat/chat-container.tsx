@@ -78,8 +78,8 @@ export const ChatContainer = React.memo(({
           />
         </div>
 
-        {/* Messages - This needs overflow handling */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        {/* Messages - Allow scrolling */}
+        <div className="flex-1 min-h-0">
           <ChatMessages messages={messages} isLoading={isLoading} />
         </div>
 
