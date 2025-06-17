@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
+import { cachedFetch, invalidateCache } from '@/lib/request-cache'
 
 export interface UseStarredModelsReturn {
   starredModels: string[]
@@ -29,13 +30,8 @@ export function useStarredModels(): UseStarredModelsReturn {
       setLoading(true)
       setError(null)
       
-      const response = await fetch('/api/starred-models')
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.details || errorData.error || 'Failed to load starred models')
-      }
-      
-      const data = await response.json()
+      // Use cached fetch to prevent duplicate requests
+      const data = await cachedFetch.starredModels()
       
       // Check if the response contains an error (even with 200 status)
       if (data.error) {
@@ -46,7 +42,7 @@ export function useStarredModels(): UseStarredModelsReturn {
       setActiveModelState(data.activeModel || data.primaryModel || DEFAULT_ACTIVE_MODELS[0])
       
       if (data.message) {
-        console.log('Starred models loaded:', data.message)
+        if (process.env.NODE_ENV === 'development') console.log('Starred models loaded:', data.message)
       }
     } catch (err) {
       console.error('Error loading starred models:', err)
@@ -99,6 +95,9 @@ export function useStarredModels(): UseStarredModelsReturn {
       }
 
       const data = await response.json()
+      
+      // Invalidate cache after successful update
+      invalidateCache.starredModels()
       
       // Check if the response contains an error (even with 200 status)
       if (data.error) {

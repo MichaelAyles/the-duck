@@ -19,15 +19,20 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
   const [fadingWelcome, setFadingWelcome] = useState(false);
   const prevMessagesRef = useRef<Message[]>([]);
 
-  // Debug logging for message changes (memoized to prevent object recreation)
-  const debugMessages = useMemo(() => messages.map(m => ({ 
-    id: m.id, 
-    role: m.role, 
-    content: m.content.slice(0, 20), 
-    isThinking: m.metadata?.isThinking 
-  })), [messages]);
+  // Debug logging for message changes (only in development)
+  const debugMessages = useMemo(() => {
+    if (process.env.NODE_ENV !== 'development') return [];
+    return messages.map(m => ({ 
+      id: m.id, 
+      role: m.role, 
+      content: m.content.slice(0, 20), 
+      isThinking: m.metadata?.isThinking 
+    }));
+  }, [messages]);
   
-  console.log('ChatMessages render - messages:', debugMessages, 'isLoading:', isLoading);
+  if (process.env.NODE_ENV === 'development' && debugMessages.length > 0) {
+    console.log('ChatMessages render - messages:', debugMessages, 'isLoading:', isLoading);
+  }
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -50,7 +55,9 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
     // Trigger fade when welcome message should disappear (either removed or new messages added)
     if ((hadWelcomeMessage && !hasWelcomeMessage) || 
         (hasWelcomeMessage && hasNonWelcomeMessages && !hadNonWelcomeMessages)) {
-      console.log('Triggering welcome message fade');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Triggering welcome message fade');
+      }
       setFadingWelcome(true);
       
       // Reset fade state after animation

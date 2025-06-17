@@ -25,7 +25,9 @@ export function ChatLayout() {
     setMessages([]); // Clear previous messages
 
     try {
-      console.log(`🔄 Loading session: ${sessionId}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔄 Loading session: ${sessionId}`);
+      }
       const response = await fetch(`/api/load-session?sessionId=${sessionId}`);
       if (!response.ok) {
         throw new Error("Failed to load session");
@@ -34,11 +36,13 @@ export function ChatLayout() {
       const messages = data.session?.messages || [];
       const title = data.session?.title || 'Untitled Chat';
       
-      console.log(`Loaded session ${sessionId}:`, {
-        title,
-        messageCount: messages.length,
-        hasMessages: messages.length > 0
-      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Loaded session ${sessionId}:`, {
+          title,
+          messageCount: messages.length,
+          hasMessages: messages.length > 0
+        });
+      }
       
       setMessages(messages);
       toast({

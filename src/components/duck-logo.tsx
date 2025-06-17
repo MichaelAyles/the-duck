@@ -30,6 +30,12 @@ export function DuckLogo({ className, size = "md", variant = "duck" }: DuckLogoP
         width={dimensions.width}
         height={dimensions.height}
         className="object-contain"
+        style={{
+          width: 'auto',
+          height: 'auto',
+          maxWidth: dimensions.width,
+          maxHeight: dimensions.height
+        }}
         priority
       />
     </div>

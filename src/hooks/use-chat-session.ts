@@ -148,7 +148,9 @@ export function useChatSession({
     
     // Only update session ID if it actually changed
     if (currentSessionId !== sessionId) {
-      console.log(`Session ID changing from ${sessionId} to ${currentSessionId}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Session ID changing from ${sessionId} to ${currentSessionId}`);
+      }
       setSessionId(currentSessionId);
       // Reset loading state when session changes
       lastLoadedSessionId.current = null;
@@ -157,7 +159,9 @@ export function useChatSession({
     // Always ensure we have a chat service
     if (!chatServiceRef.current || chatServiceRef.current.getSessionId() !== currentSessionId) {
       chatServiceRef.current = new ChatService(currentSessionId, userId);
-      console.log(`Created ChatService for session ${currentSessionId}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Created ChatService for session ${currentSessionId}`);
+      }
     }
 
     return () => {
@@ -202,7 +206,9 @@ export function useChatSession({
         setMessages(current => {
           // Only add if still empty and no welcome message exists
           if (current.length === 0 && !current.some(msg => msg.id === 'welcome-message')) {
-            console.log('Adding welcome message to empty chat');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Adding welcome message to empty chat');
+            }
             return [welcomeMessage];
           }
           return current;

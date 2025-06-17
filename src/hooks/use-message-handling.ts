@@ -71,7 +71,9 @@ export function useMessageHandling({
 
         if (response.ok) {
           const data = await response.json();
-          console.log(`Generated/updated title for session ${sessionId}:`, data.title);
+          if (process.env.NODE_ENV === 'development') {
+            if (process.env.NODE_ENV === 'development') console.log(`Generated/updated title for session ${sessionId}:`, data.title);
+          }
           return data.title; // Return the new title
         } else {
           const errorText = await response.text();
@@ -89,10 +91,14 @@ export function useMessageHandling({
 
   const handleSendMessage = useCallback((content: string) => {
     const startTime = performance.now();
-    console.log(`🚀 [${new Date().toISOString()}] handleSendMessage called`);
+    if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === 'development') console.log(`🚀 [${new Date().toISOString()}] handleSendMessage called`);
+    }
     if (!content.trim() || isLoading) return;
 
-    console.log(`🚀 [${new Date().toISOString()}] Creating user and thinking messages`);
+    if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV === 'development') console.log(`🚀 [${new Date().toISOString()}] Creating user and thinking messages`);
+    }
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -116,25 +122,33 @@ export function useMessageHandling({
 
     // Use ref to get the most current messages and avoid stale closures
     const currentMessages = messagesRef.current;
-    console.log('📋 Current messages before filtering:', currentMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📋 Current messages before filtering:', currentMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
+      console.log('🚀 About to update UI with messages');
+    }
     
-    console.log('🚀 About to update UI with messages');
     // IMMEDIATELY update UI - no awaits, no blocking
     const filteredMessages = currentMessages.filter(msg => msg.id !== "welcome-message");
-    console.log('📋 Filtered messages (no welcome):', filteredMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📋 Filtered messages (no welcome):', filteredMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
+    }
     
     const newMessages = [...filteredMessages, userMessage, thinkingMessage];
-    console.log('📋 New messages array to set:', newMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20), isThinking: m.metadata?.isThinking })));
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📋 New messages array to set:', newMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20), isThinking: m.metadata?.isThinking })));
+    }
     
     // Update the ref immediately to ensure consistency
     messagesRef.current = newMessages;
     
     // Update state immediately without flushSync
-    console.log(`⚡ [${new Date().toISOString()}] Updating messages and loading state`);
+    if (process.env.NODE_ENV === 'development') console.log(`⚡ [${new Date().toISOString()}] Updating messages and loading state`);
     setMessages(newMessages);
     setIsLoading(true);
     const updateTime = performance.now() - startTime;
-    console.log(`[${new Date().toISOString()}] State updated - took ${updateTime.toFixed(2)}ms`);
+    if (process.env.NODE_ENV === 'development') console.log(`[${new Date().toISOString()}] State updated - took ${updateTime.toFixed(2)}ms`);
 
     // Fire and forget: run all background operations asynchronously
     (async () => {
@@ -150,7 +164,7 @@ export function useMessageHandling({
           // Save without the thinking message first
           const messagesToSave = [...filteredMessages, userMessage];
           await chatServiceRef.current?.saveChatSession(messagesToSave, settings.model, titleToUse);
-          console.log(`Successfully saved chat session with ${messagesToSave.length} messages`);
+          if (process.env.NODE_ENV === 'development') console.log(`Successfully saved chat session with ${messagesToSave.length} messages`);
           
           // Generate title after saving for first message
           if (userMessages.length === 1) {
@@ -190,14 +204,14 @@ export function useMessageHandling({
                 sessionId
               }),
             });
-            console.log('🧠 Learning preferences updated from full conversation context');
+            if (process.env.NODE_ENV === 'development') console.log('🧠 Learning preferences updated from full conversation context');
           } catch (error) {
             console.warn('Failed to extract learning preferences:', error);
           }
         }
       }
 
-      console.log('🌐 Starting API call...');
+      if (process.env.NODE_ENV === 'development') console.log('🌐 Starting API call...');
       const response = await fetch(API_ENDPOINTS.CHAT, {
         method: 'POST',
         headers: {
@@ -238,7 +252,7 @@ export function useMessageHandling({
         throw new Error('No response body');
       }
 
-      console.log('📡 API response received, starting to read stream...');
+      if (process.env.NODE_ENV === 'development') console.log('📡 API response received, starting to read stream...');
       const decoder = new TextDecoder();
       let buffer = '';
       let hasReceivedFirstChunk = false;
@@ -257,7 +271,7 @@ export function useMessageHandling({
             if (line.startsWith('data: ')) {
               const data = line.slice(6).trim();
               if (data === '[DONE]') {
-                console.log('🏁 Stream complete - setting isLoading to false');
+                if (process.env.NODE_ENV === 'development') console.log('🏁 Stream complete - setting isLoading to false');
                 setIsLoading(false);
                 
                 // Save final session and update title when response is complete
@@ -274,15 +288,15 @@ export function useMessageHandling({
                           // Only save with new title if generation succeeded
                           if (generatedTitle) {
                             await chatServiceRef.current?.saveChatSession(currentMessages, settings.model, generatedTitle);
-                            console.log(`Final save with updated title: ${generatedTitle}`);
+                            if (process.env.NODE_ENV === 'development') console.log(`Final save with updated title: ${generatedTitle}`);
                           } else {
                             await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
-                            console.log(`Final save: chat session with ${currentMessages.length} messages (title preserved)`);
+                            if (process.env.NODE_ENV === 'development') console.log(`Final save: chat session with ${currentMessages.length} messages (title preserved)`);
                           }
                         } else {
                           // First message was already saved with title above
                           await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
-                          console.log(`Final save: chat session with ${currentMessages.length} messages`);
+                          if (process.env.NODE_ENV === 'development') console.log(`Final save: chat session with ${currentMessages.length} messages`);
                         }
                       } catch (error) {
                         console.error('Error saving final chat session:', error);
@@ -324,7 +338,7 @@ export function useMessageHandling({
                         if (thinkingDuration < minimumThinkingTime) {
                           // Delay replacing the thinking message
                           const remainingTime = minimumThinkingTime - thinkingDuration;
-                          console.log(`🎯 Delaying thinking message replacement by ${remainingTime}ms`);
+                          if (process.env.NODE_ENV === 'development') console.log(`🎯 Delaying thinking message replacement by ${remainingTime}ms`);
                           
                           // Store the content to accumulate
                           accumulatedContent = parsed.content;
@@ -351,7 +365,7 @@ export function useMessageHandling({
                           return prev; // Don't update yet
                         } else {
                           // Enough time has passed, replace immediately
-                          console.log('🎯 First chunk received - replacing thinking message');
+                          if (process.env.NODE_ENV === 'development') console.log('🎯 First chunk received - replacing thinking message');
                           hasReceivedFirstChunk = true;
                           updated[lastMessageIndex] = {
                             ...lastMessage,

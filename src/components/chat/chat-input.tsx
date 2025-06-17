@@ -20,7 +20,9 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled }: C
     e.preventDefault();
     
     if (message.trim() && !disabled) {
-      console.log(`🎯 [${new Date().toISOString()}] ChatInput sending message:`, message);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🎯 [${new Date().toISOString()}] ChatInput sending message:`, message);
+      }
       onSendMessage(message);
       setMessage("");
       if (textareaRef.current) {
