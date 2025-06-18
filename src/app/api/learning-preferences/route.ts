@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger'
 
 // New optimized types for JSON-based preferences
 export interface LearningPreferenceItem {
@@ -50,13 +51,13 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.log('🔒 Learning preferences GET: No authenticated user')
+      logger.dev.log('🔒 Learning preferences GET: No authenticated user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
-    console.log('📚 Learning preferences GET: User:', user.id, 'Category filter:', category)
+    logger.dev.log('📚 Learning preferences GET: User:', user.id, 'Category filter:', category)
 
     // Check if table exists first
     const { error: tableError } = await supabase
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
       .select('*')
       .limit(0)
 
-    console.log('🗃️ Learning preferences table check:', { 
+    logger.dev.log('🗃️ Learning preferences table check:', { 
       exists: !tableError, 
       error: tableError?.message || 'none' 
     })
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .single()
 
-    console.log('🔍 Learning preferences query result:', { 
+    logger.dev.log('🔍 Learning preferences query result:', { 
       found: !!userPrefs, 
       preferencesData: userPrefs?.preferences,
       error: prefError?.code || 'none' 
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
     if (prefError) {
       // If no preferences found, return empty state
       if (prefError.code === 'PGRST116') {
-        console.log('📭 No learning preferences found for user, returning empty state')
+        logger.dev.log('📭 No learning preferences found for user, returning empty state')
         return NextResponse.json({
           preferences: [], // Return empty array instead of empty object
           summary: {
@@ -98,11 +99,11 @@ export async function GET(request: NextRequest) {
         })
       }
       
-      console.error('Failed to fetch learning preferences:', prefError)
+      logger.error('Failed to fetch learning preferences:', prefError)
       
       // If table doesn't exist yet, return empty state
       if (prefError.message?.includes('relation') || prefError.message?.includes('does not exist')) {
-        console.warn('⚠️ Learning preferences table not yet deployed, returning empty state')
+        logger.dev.log('⚠️ Learning preferences table not yet deployed, returning empty state')
         return NextResponse.json({
           preferences: [], // Return empty array instead of empty object
           summary: {
@@ -122,23 +123,23 @@ export async function GET(request: NextRequest) {
     }
 
     let preferencesJSON = userPrefs?.preferences || {}
-    console.log('🔄 Raw preferences JSON from database:', preferencesJSON)
+    logger.dev.log('🔄 Raw preferences JSON from database:', preferencesJSON)
 
     // Filter by category if requested
     if (category && preferencesJSON[category]) {
       preferencesJSON = { [category]: preferencesJSON[category] }
-      console.log('🎯 Filtered by category:', category, preferencesJSON)
+      logger.dev.log('🎯 Filtered by category:', category, preferencesJSON)
     } else if (category) {
       preferencesJSON = {}
-      console.log('🎯 Category filter applied but no data for:', category)
+      logger.dev.log('🎯 Category filter applied but no data for:', category)
     }
 
     // Convert JSON to legacy array format for backward compatibility
     const preferences = convertJSONToLegacyFormat(preferencesJSON)
-    console.log('📋 Converted to legacy format:', preferences.length, 'preferences')
+    logger.dev.log('📋 Converted to legacy format:', preferences.length, 'preferences')
 
     // Get summary statistics with single function call - with validation
-    console.log('📊 Attempting to get learning summary via RPC function...')
+    logger.dev.log('📊 Attempting to get learning summary via RPC function...')
     let summaryData
     let summaryError: { message?: string; code?: string } | null = null
     
@@ -146,23 +147,23 @@ export async function GET(request: NextRequest) {
       const result = await supabase.rpc('get_user_learning_summary_v2', { target_user_id: user.id })
       summaryData = result.data
       summaryError = result.error
-      console.log('📊 RPC function result:', { summaryData, error: summaryError?.code || 'none' })
+      logger.dev.log('📊 RPC function result:', { summaryData, error: summaryError?.code || 'none' })
     } catch (rpcError) {
       summaryError = rpcError as { message?: string; code?: string }
-      console.log('📊 RPC function failed:', summaryError)
+      logger.dev.log('📊 RPC function failed:', summaryError)
     }
 
     if (summaryError) {
-      console.error('Failed to fetch learning summary:', summaryError)
+      logger.error('Failed to fetch learning summary:', summaryError)
       
       // Handle missing function or table gracefully
       if (summaryError.message?.includes('function') || 
           summaryError.message?.includes('does not exist') ||
           summaryError.code === '42883' || // Function does not exist
           summaryError.code === '42P01') {  // Table does not exist
-        console.warn('⚠️ Learning summary function not yet deployed, calculating from JSON')
+        logger.dev.log('⚠️ Learning summary function not yet deployed, calculating from JSON')
         const summary = calculateSummaryFromJSON(userPrefs?.preferences || {})
-        console.log('📊 Calculated summary from JSON:', summary)
+        logger.dev.log('📊 Calculated summary from JSON:', summary)
         return NextResponse.json({
           preferences,
           summary
@@ -183,7 +184,7 @@ export async function GET(request: NextRequest) {
       recent_changes: 0
     }
 
-    console.log('📤 Returning learning preferences:', { 
+    logger.dev.log('📤 Returning learning preferences:', { 
       preferencesCount: preferences.length, 
       summary 
     })
@@ -193,7 +194,7 @@ export async function GET(request: NextRequest) {
       summary
     })
   } catch (error) {
-    console.error('Error in GET /api/learning-preferences:', error)
+    logger.error('Error in GET /api/learning-preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -210,7 +211,7 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.log('🔒 Learning preferences POST: No authenticated user')
+      logger.dev.log('🔒 Learning preferences POST: No authenticated user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -224,8 +225,8 @@ export async function POST(request: NextRequest) {
       confidence = 1.0
     } = body
 
-    console.log('💾 Learning preferences POST: Adding preference for user:', user.id)
-    console.log('📋 Preference data:', { category, preference_key, preference_value, weight, source, confidence })
+    logger.dev.log('💾 Learning preferences POST: Adding preference for user:', user.id)
+    logger.dev.log('📋 Preference data:', { category, preference_key, preference_value, weight, source, confidence })
 
     // Validate required fields
     if (!category || !preference_key) {
@@ -252,7 +253,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the optimized upsert function with validation
-    console.log('🔧 Calling upsert_learning_preference_v2 RPC function...')
+    logger.dev.log('🔧 Calling upsert_learning_preference_v2 RPC function...')
     let preferenceKey
     let upsertError: { message?: string; code?: string } | null = null
     
@@ -265,20 +266,20 @@ export async function POST(request: NextRequest) {
       pref_source: source,
       pref_confidence: confidence
     }
-    console.log('🔧 RPC parameters:', rpcParams)
+    logger.dev.log('🔧 RPC parameters:', rpcParams)
     
     try {
       const result = await supabase.rpc('upsert_learning_preference_v2', rpcParams)
       preferenceKey = result.data
       upsertError = result.error
-      console.log('✅ RPC function result:', { preferenceKey, error: upsertError?.code || 'none' })
+      logger.dev.log('✅ RPC function result:', { preferenceKey, error: upsertError?.code || 'none' })
     } catch (rpcError) {
       upsertError = rpcError as { message?: string; code?: string }
-      console.log('❌ RPC function failed:', upsertError)
+      logger.dev.log('❌ RPC function failed:', upsertError)
     }
 
     if (upsertError) {
-      console.error('Failed to upsert learning preference:', upsertError)
+      logger.error('Failed to upsert learning preference:', upsertError)
       
       // Check if it's a missing table/function error with proper error codes
       if (upsertError.message?.includes('relation') || 
@@ -286,7 +287,7 @@ export async function POST(request: NextRequest) {
           upsertError.message?.includes('function') ||
           upsertError.code === '42883' || // Function does not exist
           upsertError.code === '42P01') {  // Table does not exist
-        console.error('🚨 Learning preferences schema not deployed!')
+        logger.error('🚨 Learning preferences schema not deployed!')
         return NextResponse.json(
           { 
             error: 'Learning preferences system not yet deployed',
@@ -306,13 +307,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('🎉 Learning preference successfully saved:', preferenceKey)
+    logger.dev.log('🎉 Learning preference successfully saved:', preferenceKey)
     return NextResponse.json({ 
       preference_key: preferenceKey,
       message: 'Learning preference updated successfully'
     })
   } catch (error) {
-    console.error('Error in POST /api/learning-preferences:', error)
+    logger.error('Error in POST /api/learning-preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -382,7 +383,7 @@ export async function PUT(request: NextRequest) {
       message: `Updated ${results.length} preferences${errors.length > 0 ? ` with ${errors.length} errors` : ''}`
     })
   } catch (error) {
-    console.error('Error in PUT /api/learning-preferences:', error)
+    logger.error('Error in PUT /api/learning-preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -416,7 +417,7 @@ export async function DELETE(request: NextRequest) {
         })
 
       if (deleteError) {
-        console.error('Failed to delete learning preference:', deleteError)
+        logger.error('Failed to delete learning preference:', deleteError)
         return NextResponse.json(
           { error: 'Failed to delete learning preference' },
           { status: 500 }
@@ -442,7 +443,7 @@ export async function DELETE(request: NextRequest) {
       })
 
     if (deleteError) {
-      console.error('Failed to delete all learning preferences:', deleteError)
+      logger.error('Failed to delete all learning preferences:', deleteError)
       
       // If function doesn't exist yet, return success
       if ((deleteError as { message?: string })?.message?.includes('function') || (deleteError as { message?: string })?.message?.includes('does not exist')) {
@@ -473,7 +474,7 @@ export async function DELETE(request: NextRequest) {
         .in('session_id', sessionIds)
       
       if (summaryError) {
-        console.error('Failed to delete chat summaries:', summaryError)
+        logger.error('Failed to delete chat summaries:', summaryError)
         // Don't fail the request if summaries can't be deleted
       }
     }
@@ -482,7 +483,7 @@ export async function DELETE(request: NextRequest) {
       message: 'All learning preferences and summaries deleted successfully' 
     })
   } catch (error) {
-    console.error('Error in DELETE /api/learning-preferences:', error)
+    logger.error('Error in DELETE /api/learning-preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

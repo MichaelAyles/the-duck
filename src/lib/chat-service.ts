@@ -1,5 +1,6 @@
 import { Message } from '@/types/chat'
 import { nanoid } from 'nanoid'
+import { logger } from '@/lib/logger'
 
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000 // 10 minutes in milliseconds
 
@@ -66,7 +67,7 @@ export class ChatService {
     // Don't save if no user is authenticated
     if (!this.userId) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('Skipping chat session save - no user authenticated')
+        logger.dev.log('Skipping chat session save - no user authenticated')
       }
       return
     }
@@ -95,7 +96,7 @@ export class ChatService {
 
         if (response.ok) {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ Session ${this.sessionId} saved successfully on attempt ${attempt}`)
+            logger.dev.log(`✅ Session ${this.sessionId} saved successfully on attempt ${attempt}`)
           }
           return // Success - exit retry loop
         }
@@ -110,7 +111,7 @@ export class ChatService {
           // Wait before retrying: 200ms, 400ms, 800ms
           const delay = 200 * Math.pow(2, attempt - 1);
           if (process.env.NODE_ENV === 'development') {
-            console.log(`⚠️ Session save failed (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
+            logger.dev.log(`⚠️ Session save failed (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
           }
           await new Promise(resolve => setTimeout(resolve, delay))
           continue
@@ -119,19 +120,19 @@ export class ChatService {
     }
     
     // If we get here, all retries failed - this is critical
-    console.error(`❌ CRITICAL: Failed to save session ${this.sessionId} after ${maxRetries} attempts:`, lastError)
+    logger.error(`❌ CRITICAL: Failed to save session ${this.sessionId} after ${maxRetries} attempts:`, lastError)
     throw lastError || new Error('Failed to save session after all retries')
   }
 
   public async loadChatSession(): Promise<Message[]> {
     try {
       if (!this.userId) {
-        console.log('No user ID available for loading session')
+        logger.dev.log('No user ID available for loading session')
         return []
       }
 
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Loading session ${this.sessionId} for user ${this.userId}`)
+        logger.dev.log(`Loading session ${this.sessionId} for user ${this.userId}`)
       }
       
       // Retry logic to handle race conditions between session creation and retrieval
@@ -151,7 +152,7 @@ export class ChatService {
             const data = await response.json()
             const session = data.session
             if (process.env.NODE_ENV === 'development') {
-              console.log(`✅ Session ${this.sessionId} loaded successfully on attempt ${attempt}`)
+              logger.dev.log(`✅ Session ${this.sessionId} loaded successfully on attempt ${attempt}`)
             }
             return this.parseSessionMessages(session)
           }
@@ -161,13 +162,13 @@ export class ChatService {
               // Wait before retrying: 100ms, 200ms, 400ms
               const delay = 100 * Math.pow(2, attempt - 1);
               if (process.env.NODE_ENV === 'development') {
-                console.log(`⏳ Session ${this.sessionId} not found (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`)
+                logger.dev.log(`⏳ Session ${this.sessionId} not found (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`)
               }
               await new Promise(resolve => setTimeout(resolve, delay))
               continue
             } else {
               if (process.env.NODE_ENV === 'development') {
-                console.log(`❌ Session ${this.sessionId} not found after ${maxRetries} attempts`)
+                logger.dev.log(`❌ Session ${this.sessionId} not found after ${maxRetries} attempts`)
               }
               return []
             }
@@ -181,7 +182,7 @@ export class ChatService {
           if (attempt < maxRetries) {
             const delay = 100 * Math.pow(2, attempt - 1);
             if (process.env.NODE_ENV === 'development') {
-              console.log(`⚠️ Error loading session (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
+              logger.dev.log(`⚠️ Error loading session (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
             }
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
@@ -201,13 +202,13 @@ export class ChatService {
   private parseSessionMessages(session: { messages?: unknown[] }): Message[] {
     if (session && Array.isArray(session.messages)) {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
+        logger.dev.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
       }
       return session.messages as Message[]
     }
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`No messages found for session ${this.sessionId}`)
+      logger.dev.log(`No messages found for session ${this.sessionId}`)
     }
     return []
   }
@@ -286,7 +287,7 @@ export class ChatService {
       await this.endChatSession()
       return summary
     } catch (error) {
-      console.error('Failed to summarize and end chat:', error)
+      logger.error('Failed to summarize and end chat:', error)
       await this.endChatSession() // Still try to end the session
       throw error
     }

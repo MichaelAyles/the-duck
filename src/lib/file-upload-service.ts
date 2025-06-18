@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { FileUpload, FileUploadResponse } from '@/types/file-upload';
 import { MAX_FILE_SIZE, isAllowedFileType } from '@/types/file-upload';
+import { logger } from '@/lib/logger';
 
 export class FileUploadService {
   private supabase = supabase;
@@ -48,7 +49,7 @@ export class FileUploadService {
         });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
+        logger.error('Upload error:', uploadError);
         return {
           success: false,
           error: uploadError.message || 'Failed to upload file to storage',
@@ -79,7 +80,7 @@ export class FileUploadService {
             .from('chat-uploads')
             .remove([storagePath]);
         } catch (cleanupError) {
-          console.warn('Failed to cleanup uploaded file:', cleanupError);
+          logger.dev.log('Failed to cleanup uploaded file:', cleanupError);
         }
         throw new Error(error.error || 'Failed to save file metadata');
       }
@@ -97,7 +98,7 @@ export class FileUploadService {
         url: urlData?.signedUrl,
       };
     } catch (error) {
-      console.error('File upload error:', error);
+      logger.error('File upload error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to upload file',
@@ -123,7 +124,7 @@ export class FileUploadService {
 
       return response.ok;
     } catch (error) {
-      console.error('File deletion error:', error);
+      logger.error('File deletion error:', error);
       return false;
     }
   }
@@ -144,7 +145,7 @@ export class FileUploadService {
         remainingSpace: MAX_FILE_SIZE * 100 - data.total_size, // 1GB total limit
       };
     } catch (error) {
-      console.error('Failed to get storage usage:', error);
+      logger.error('Failed to get storage usage:', error);
       return null;
     }
   }

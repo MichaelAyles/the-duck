@@ -1,6 +1,7 @@
 import { OpenRouterModel, ChatMessage } from '@/types/chat'
 import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 import { cache, cacheKeys, CACHE_TTL } from '@/lib/redis'
+import { logger } from '@/lib/logger'
 
 interface OpenRouterModelResponse {
   id: string;
@@ -34,7 +35,7 @@ export class OpenRouterClient {
   async getModels(): Promise<OpenRouterModel[]> {
     if (!this.apiKey) {
       // Return centralized default active models when no API key is available
-      console.warn('OpenRouter API key not configured, returning default active models')
+      logger.dev.log('OpenRouter API key not configured, returning default active models')
       
       return DEFAULT_ACTIVE_MODELS.map((modelId) => {
         const [provider, ...modelParts] = modelId.split('/')
@@ -65,7 +66,7 @@ export class OpenRouterClient {
       const cachedModels = await cache.get<OpenRouterModel[]>(cacheKey)
       
       if (cachedModels) {
-        console.log('Returning cached OpenRouter models')
+        logger.dev.log('Returning cached OpenRouter models')
         return cachedModels
       }
 
@@ -94,11 +95,11 @@ export class OpenRouterClient {
 
       // Cache the models with 1 hour TTL
       await cache.set(cacheKey, models, CACHE_TTL.MODEL_CATALOG)
-      console.log('Cached OpenRouter models')
+      logger.dev.log('Cached OpenRouter models')
 
       return models
     } catch (error) {
-      console.error('Error fetching OpenRouter models:', error)
+      logger.error('Error fetching OpenRouter models:', error)
       throw error
     }
   }
@@ -157,7 +158,7 @@ export class OpenRouterClient {
               });
               
               if (process.env.NODE_ENV === 'development') {
-                console.log(`🖼️ Sending ${imageAttachments.length} image(s) to OpenRouter for vision processing`);
+                logger.dev.log(`🖼️ Sending ${imageAttachments.length} image(s) to OpenRouter for vision processing`);
               }
               
               return {
@@ -210,13 +211,13 @@ export class OpenRouterClient {
               const content = parsed.choices[0]?.delta?.content
               if (content) yield content
             } catch (e) {
-              console.error('Error parsing streaming response:', e)
+              logger.error('Error parsing streaming response:', e)
             }
           }
         }
       }
     } catch (error) {
-      console.error('Error in OpenRouter stream chat:', error)
+      logger.error('Error in OpenRouter stream chat:', error)
       throw error
     }
   }
@@ -275,7 +276,7 @@ export class OpenRouterClient {
               });
               
               if (process.env.NODE_ENV === 'development') {
-                console.log(`🖼️ Sending ${imageAttachments.length} image(s) to OpenRouter for vision processing`);
+                logger.dev.log(`🖼️ Sending ${imageAttachments.length} image(s) to OpenRouter for vision processing`);
               }
               
               return {
@@ -306,7 +307,7 @@ export class OpenRouterClient {
       const data = await response.json()
       return data.choices[0]?.message?.content || ''
     } catch (error) {
-      console.error('Error in OpenRouter chat:', error)
+      logger.error('Error in OpenRouter chat:', error)
       throw error
     }
   }

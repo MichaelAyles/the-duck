@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Message } from '@/types/chat'
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger'
 
 /**
  * 🏷️ Chat Title Generation API
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
     // Check if OpenRouter API key is available
     if (process.env.OPENROUTER_API_KEY) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔑 OpenRouter API key found, attempting AI title generation')
+        logger.dev.log('🔑 OpenRouter API key found, attempting AI title generation')
       }
       try {
         // Clean the API key (remove surrounding quotes if present)
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
         // Use all messages for title generation (2.0 flash lite is very cheap)
         const relevantMessages = messages
         if (process.env.NODE_ENV === 'development') {
-          console.log('📝 Sending messages to OpenRouter:', relevantMessages.length, 'messages')
+          logger.dev.log('📝 Sending messages to OpenRouter:', relevantMessages.length, 'messages')
         }
 
         // Use Gemini Flash Lite for cost-effective title generation
@@ -140,13 +141,13 @@ Respond with ONLY the title, nothing else.`
         if (response.ok) {
           const data = await response.json()
           if (process.env.NODE_ENV === 'development') {
-            console.log('🤖 OpenRouter API response:', JSON.stringify(data, null, 2))
+            logger.dev.log('🤖 OpenRouter API response:', JSON.stringify(data, null, 2))
           }
           
           if (!data.error && data.choices?.[0]?.message?.content) {
             let aiTitle = data.choices[0].message.content.trim()
             if (process.env.NODE_ENV === 'development') {
-              console.log('🤖 Raw AI title:', aiTitle)
+              logger.dev.log('🤖 Raw AI title:', aiTitle)
             }
             
             // Clean up the generated title
@@ -156,7 +157,7 @@ Respond with ONLY the title, nothing else.`
               .trim()
 
             if (process.env.NODE_ENV === 'development') {
-              console.log('🤖 Cleaned AI title:', aiTitle)
+              logger.dev.log('🤖 Cleaned AI title:', aiTitle)
             }
 
             // Ensure title isn't too long
@@ -169,29 +170,29 @@ Respond with ONLY the title, nothing else.`
               generatedTitle = aiTitle
               method = 'ai-generated'
               if (process.env.NODE_ENV === 'development') {
-                console.log('✅ Using AI-generated title:', aiTitle)
+                logger.dev.log('✅ Using AI-generated title:', aiTitle)
               }
             } else {
               if (process.env.NODE_ENV === 'development') {
-                console.log('❌ AI title too short, using fallback')
+                logger.dev.log('❌ AI title too short, using fallback')
               }
             }
           } else {
             if (process.env.NODE_ENV === 'development') {
-              console.log('❌ No valid content in AI response:', data)
+              logger.dev.log('❌ No valid content in AI response:', data)
             }
           }
         } else {
           const errorText = await response.text()
-          console.error('❌ OpenRouter API HTTP error:', response.status, response.statusText, errorText)
+          logger.error('❌ OpenRouter API HTTP error:', response.status, response.statusText, errorText)
         }
       } catch (apiError) {
-        console.error('OpenRouter API error:', apiError)
+        logger.error('OpenRouter API error:', apiError)
         // Continue with fallback title
       }
     } else {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔑 No OpenRouter API key found, using fallback title generation')
+        logger.dev.log('🔑 No OpenRouter API key found, using fallback title generation')
       }
     }
 
@@ -226,11 +227,11 @@ Respond with ONLY the title, nothing else.`
         if (method === 'preserved' && generatedTitle === existingTitle) {
           // Title was preserved and unchanged, skip database update
           if (process.env.NODE_ENV === 'development') {
-            console.log('Title preserved - skipping database update');
+            logger.dev.log('Title preserved - skipping database update');
           }
         } else {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`🔄 Updating session ${sessionId} with title: "${generatedTitle}"`)
+            logger.dev.log(`🔄 Updating session ${sessionId} with title: "${generatedTitle}"`)
           }
           
           // Update the session title directly in database
@@ -241,22 +242,22 @@ Respond with ONLY the title, nothing else.`
             .eq('user_id', userId)
           
           if (updateError) {
-            console.error(`❌ Failed to update session title:`, updateError)
+            logger.error(`❌ Failed to update session title:`, updateError)
             updateSuccessful = false;
           } else if (process.env.NODE_ENV === 'development') {
-            console.log(`✅ Successfully updated session title in database: ${generatedTitle}`)
+            logger.dev.log(`✅ Successfully updated session title in database: ${generatedTitle}`)
           }
         }
       }
     } else {
       if (process.env.NODE_ENV === 'development') {
-        console.log('No user authentication or sessionId provided, skipping database operations')
+        logger.dev.log('No user authentication or sessionId provided, skipping database operations')
       }
       updateSuccessful = false; // No database update attempted
     }
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`✅ Generated title: ${generatedTitle} (method: ${method})`)
+      logger.dev.log(`✅ Generated title: ${generatedTitle} (method: ${method})`)
     }
 
     return NextResponse.json({
@@ -267,7 +268,7 @@ Respond with ONLY the title, nothing else.`
     })
 
   } catch (error) {
-    console.error('Title generation error:', error)
+    logger.error('Title generation error:', error)
     
     // Always return a fallback title
     const { messages } = await req.json().catch(() => ({ messages: [] }))

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createRateLimiter } from './redis';
+import { logger } from './logger';
 
 // 🛡️ Security Configuration
 export const SECURITY_CONFIG = {
@@ -175,7 +176,7 @@ export function withSecurity(handler: (req: NextRequest) => Promise<NextResponse
       
       return response;
     } catch (error) {
-      console.error('Security middleware error:', error);
+      logger.error('Security middleware error:', error);
       return NextResponse.json(
         { error: 'Internal server error' },
         { status: 500 }
@@ -242,7 +243,7 @@ export function withRateLimit(
         
         return response;
       } catch (error) {
-        console.error('Rate limiting error:', error);
+        logger.error('Rate limiting error:', error);
         // If Redis is unavailable, allow the request but log the error
         return handler(req);
       }
@@ -257,7 +258,7 @@ export function withApiKeyValidation(handler: (req: NextRequest) => Promise<Next
     const apiKey = process.env.OPENROUTER_API_KEY?.replace(/^["']|["']$/g, '');
     
     if (!apiKey) {
-      console.error('🚨 OpenRouter API key not configured');
+      logger.error('🚨 OpenRouter API key not configured');
       return NextResponse.json(
         { error: 'Service temporarily unavailable' },
         { status: 503 }
@@ -265,7 +266,7 @@ export function withApiKeyValidation(handler: (req: NextRequest) => Promise<Next
     }
     
     if (!ApiKeySecurity.validateOpenRouterKey(apiKey)) {
-      console.error('🚨 Invalid OpenRouter API key format');
+      logger.error('🚨 Invalid OpenRouter API key format');
       return NextResponse.json(
         { error: 'Service configuration error' },
         { status: 500 }
@@ -299,7 +300,7 @@ export function withInputValidation<T>(schema: z.ZodSchema<T>) {
           );
         }
         
-        console.error('Input validation error:', error);
+        logger.error('Input validation error:', error);
         return NextResponse.json(
           { error: 'Invalid request format' },
           { status: 400 }
@@ -326,7 +327,7 @@ export const SecurityAudit = {
     };
     
     // Log for analytics and cost tracking
-    console.log('📊 API Usage:', JSON.stringify(logEntry));
+    logger.security('📊 API Usage:', JSON.stringify(logEntry));
   }
 };
 

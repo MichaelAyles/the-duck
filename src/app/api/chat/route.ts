@@ -11,6 +11,7 @@ import {
 } from '@/lib/security'
 import { createClient } from '@/lib/supabase/server'
 import { getUserLearningPreferences, createPersonalizedSystemPrompt } from '@/lib/learning-preferences'
+import { logger } from '@/lib/logger'
 
 // Helper function to convert text to duck speak
 function convertToDuckSpeak(text: string): string {
@@ -93,7 +94,7 @@ async function trackUsage(
         .eq('user_id', userId)
     }
   } catch (error) {
-    console.error('Failed to update user credits:', error)
+    logger.error('Failed to update user credits:', error)
     // Don't fail the request if credit update fails
   }
 }
@@ -140,9 +141,9 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
     if (user) {
       try {
         learningPreferences = await getUserLearningPreferences(user.id)
-        console.log('🧠 Chat API: Loaded learning preferences for user:', user.id, 'Count:', learningPreferences.length)
+        logger.dev.log('🧠 Chat API: Loaded learning preferences for user:', user.id, 'Count:', learningPreferences.length)
         if (learningPreferences.length > 0) {
-          console.log('🎯 Learning preferences loaded:', learningPreferences.map(p => `${p.category}/${p.preference_key} (${p.weight})`))
+          logger.dev.log('🎯 Learning preferences loaded:', learningPreferences.map(p => `${p.category}/${p.preference_key} (${p.weight})`))
         }
       } catch (error) {
         console.warn('Failed to fetch learning preferences:', error)
@@ -152,7 +153,7 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
 
     // Create personalized system prompt that incorporates user preferences
     const systemPrompt = createPersonalizedSystemPrompt(learningPreferences, tone);
-    console.log('📝 Chat API: System prompt length:', systemPrompt.length, 'characters');
+    logger.dev.log('📝 Chat API: System prompt length:', systemPrompt.length, 'characters');
 
     // Sanitize messages content and ensure proper format
     const sanitizedMessages = [
@@ -173,7 +174,7 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
         
         // Debug logging for attachments
         if (message.attachments && message.attachments.length > 0) {
-          console.log(`📎 Chat API: Message ${index} has ${message.attachments.length} attachments:`, 
+          logger.dev.log(`📎 Chat API: Message ${index} has ${message.attachments.length} attachments:`, 
             message.attachments.map(a => ({ name: a.file_name, type: a.mime_type, hasUrl: !!a.url }))
           );
         }
@@ -198,7 +199,7 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
             // Debug logging before sending to OpenRouter
             const messagesWithAttachments = sanitizedMessages.filter(msg => 'attachments' in msg && msg.attachments && msg.attachments.length > 0);
             if (messagesWithAttachments.length > 0) {
-              console.log(`🔍 Chat API: About to send ${messagesWithAttachments.length} messages with attachments to OpenRouter`);
+              logger.dev.log(`🔍 Chat API: About to send ${messagesWithAttachments.length} messages with attachments to OpenRouter`);
             }
             
             for await (const chunk of client.streamChat(sanitizedMessages, model, options)) {
@@ -227,7 +228,7 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
                 
                 await trackUsage(user.id, sessionId, model, promptTokens, completionTokens, modelPricing);
               } catch (error) {
-                console.error('Failed to track usage:', error);
+                logger.error('Failed to track usage:', error);
                 // Don't fail the request if usage tracking fails
               }
             }
@@ -239,7 +240,7 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
             controller.enqueue(encoder.encode('data: [DONE]\n\n'))
             controller.close()
           } catch (error) {
-            console.error('Streaming error:', error)
+            logger.error('Streaming error:', error)
             const errorData = `data: ${JSON.stringify({ 
               error: error instanceof Error ? error.message : 'Unknown error' 
             })}\n\n`
@@ -279,7 +280,7 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
           
           await trackUsage(user.id, sessionId, model, promptTokens, completionTokens, modelPricing);
         } catch (error) {
-          console.error('Failed to track usage:', error);
+          logger.error('Failed to track usage:', error);
           // Don't fail the request if usage tracking fails
         }
       }
@@ -290,10 +291,10 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
       return NextResponse.json({ content: processedResponse })
     }
   } catch (error) {
-    console.error('Chat API error:', error)
+    logger.error('Chat API error:', error)
     
     // Log error for monitoring
-    console.error('Chat API error details:', {
+    logger.error('Chat API error details:', {
       endpoint: '/api/chat',
       error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: new Date().toISOString()

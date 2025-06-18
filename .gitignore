@@ -29,6 +29,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+server.log
+*.log
+
+# development/testing files
+test-*.js
+debug-*.js
+.cursorignore
 
 # env files (can opt-in for committing if needed)
 # env files - allow examples, block actual credentials

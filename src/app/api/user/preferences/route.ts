@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 import { OpenRouterClient } from '@/lib/openrouter'
+import { logger } from '@/lib/logger'
 
 export interface UserPreferencesData {
   starredModels: string[]
@@ -126,10 +127,10 @@ async function createUserPreferencesWithDynamicDefaults(): Promise<UserPreferenc
       
       if (top5Models.length > 0) {
         dynamicStarredModels = top5Models
-        console.log('✨ Using dynamic top 5 models for new user:', top5Models)
+        logger.dev.log('✨ Using dynamic top 5 models for new user:', top5Models)
       }
     } catch (modelError) {
-      console.warn('Failed to get dynamic models, using defaults:', modelError)
+      logger.dev.log('Failed to get dynamic models, using defaults:', modelError)
     }
 
     return {
@@ -138,7 +139,7 @@ async function createUserPreferencesWithDynamicDefaults(): Promise<UserPreferenc
       primaryModel: dynamicStarredModels[0] || DEFAULT_USER_PREFERENCES.primaryModel
     }
   } catch (error) {
-    console.error('Error creating user preferences with dynamic defaults:', error)
+    logger.error('Error creating user preferences with dynamic defaults:', error)
     throw error
   }
 }
@@ -151,11 +152,11 @@ export async function GET() {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.log('🔒 User preferences GET: No authenticated user')
+      logger.dev.log('🔒 User preferences GET: No authenticated user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('👤 User preferences GET: Fetching for user:', user.id)
+    logger.dev.log('👤 User preferences GET: Fetching for user:', user.id)
 
     // First check if the table exists and its structure
     const { error: tableError } = await supabase
@@ -163,7 +164,7 @@ export async function GET() {
       .select('*')
       .limit(0)
 
-    console.log('🗃️ Table structure check:', { tableExists: !tableError, error: tableError?.message })
+    logger.dev.log('🗃️ Table structure check:', { tableExists: !tableError, error: tableError?.message })
 
     // Try to get existing preferences
     const { data, error } = await supabase
@@ -172,14 +173,14 @@ export async function GET() {
       .eq('user_id', user.id)
       .single()
 
-    console.log('🔍 Database query result:', { data, error: error?.code || 'none' })
+    logger.dev.log('🔍 Database query result:', { data, error: error?.code || 'none' })
 
     if (error) {
       if (error.code === 'PGRST116') {
         // No preferences found, create defaults
-        console.log('📝 No preferences found, creating defaults for user:', user.id)
+        logger.dev.log('📝 No preferences found, creating defaults for user:', user.id)
         const defaultPrefs = await createUserPreferencesWithDynamicDefaults()
-        console.log('🎯 Default preferences generated:', defaultPrefs)
+        logger.dev.log('🎯 Default preferences generated:', defaultPrefs)
         
         const insertData = {
           user_id: user.id,
@@ -187,7 +188,7 @@ export async function GET() {
           theme: defaultPrefs.theme,
           default_model: defaultPrefs.primaryModel
         }
-        console.log('💾 Inserting to database:', insertData)
+        logger.dev.log('💾 Inserting to database:', insertData)
         
         const { data: newData, error: createError } = await supabase
           .from('user_preferences')
@@ -195,12 +196,12 @@ export async function GET() {
           .select('starred_models, theme, default_model')
           .single()
 
-        console.log('✅ Insert result:', { newData, error: createError?.code || 'none' })
+        logger.dev.log('✅ Insert result:', { newData, error: createError?.code || 'none' })
 
         if (createError) {
           // Handle unique constraint violation for user preferences
           if (createError.code === '23505') {
-            console.log('🔄 Race condition detected, fetching existing preferences')
+            logger.dev.log('🔄 Race condition detected, fetching existing preferences')
             // Race condition - another request created preferences, fetch them
             const { data: existingData } = await supabase
               .from('user_preferences')
@@ -208,7 +209,7 @@ export async function GET() {
               .eq('user_id', user.id)
               .single()
             
-            console.log('🔍 Existing data after race condition:', existingData)
+            logger.dev.log('🔍 Existing data after race condition:', existingData)
             
             if (existingData) {
               const apiPreferences = {
@@ -217,12 +218,12 @@ export async function GET() {
                 theme: existingData.theme || 'system',
                 primaryModel: existingData.default_model || defaultPrefs.primaryModel
               }
-              console.log('📤 Returning preferences after race condition:', apiPreferences)
+              logger.dev.log('📤 Returning preferences after race condition:', apiPreferences)
               return NextResponse.json({ preferences: apiPreferences })
             }
           }
           
-          console.error('❌ Failed to create user preferences:', createError)
+          logger.error('❌ Failed to create user preferences:', createError)
           return NextResponse.json(
             { error: 'Failed to create user preferences' },
             { status: 500 }
@@ -237,11 +238,11 @@ export async function GET() {
           primaryModel: newData.default_model || defaultPrefs.primaryModel
         }
         
-        console.log('📤 Returning newly created preferences:', apiPreferences)
+        logger.dev.log('📤 Returning newly created preferences:', apiPreferences)
         return NextResponse.json({ preferences: apiPreferences })
       }
       
-      console.error('Failed to fetch user preferences:', error)
+      logger.error('Failed to fetch user preferences:', error)
       return NextResponse.json(
         { error: 'Failed to fetch user preferences' },
         { status: 500 }
@@ -249,7 +250,7 @@ export async function GET() {
     }
 
     // Transform SQL columns to API format
-    console.log('🔄 Transforming existing data to API format')
+    logger.dev.log('🔄 Transforming existing data to API format')
     const defaultPrefs = await createUserPreferencesWithDynamicDefaults()
     const apiPreferences = {
       ...defaultPrefs,
@@ -258,10 +259,10 @@ export async function GET() {
       primaryModel: data.default_model || defaultPrefs.primaryModel
     }
     
-    console.log('📤 Returning existing preferences:', apiPreferences)
+    logger.dev.log('📤 Returning existing preferences:', apiPreferences)
     return NextResponse.json({ preferences: apiPreferences })
   } catch (error) {
-    console.error('Error in GET /api/user/preferences:', error)
+    logger.error('Error in GET /api/user/preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -277,13 +278,13 @@ export async function PUT(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
-      console.log('🔒 User preferences PUT: No authenticated user')
+      logger.dev.log('🔒 User preferences PUT: No authenticated user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
     const updates = body as Partial<UserPreferencesData>
-    console.log('📝 User preferences PUT: Updates for user:', user.id, updates)
+    logger.dev.log('📝 User preferences PUT: Updates for user:', user.id, updates)
 
     // Get current preferences first
     const { data: currentData, error: fetchError } = await supabase
@@ -293,7 +294,7 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Failed to fetch current preferences:', fetchError)
+      logger.error('Failed to fetch current preferences:', fetchError)
       return NextResponse.json(
         { error: 'Failed to fetch current preferences' },
         { status: 500 }
@@ -324,7 +325,7 @@ export async function PUT(request: NextRequest) {
       theme: updatedPrefs.theme,
       default_model: updatedPrefs.primaryModel
     }
-    console.log('💾 Upserting preferences to database:', upsertData)
+    logger.dev.log('💾 Upserting preferences to database:', upsertData)
     
     const { data, error } = await supabase
       .from('user_preferences')
@@ -334,7 +335,7 @@ export async function PUT(request: NextRequest) {
       .select('starred_models, theme, default_model')
       .single()
 
-    console.log('✅ Upsert result:', { data, error: error?.code || 'none' })
+    logger.dev.log('✅ Upsert result:', { data, error: error?.code || 'none' })
 
     if (error) {
       // Handle specific constraint errors
@@ -350,7 +351,7 @@ export async function PUT(request: NextRequest) {
         )
       }
       
-      console.error('Failed to update user preferences:', error)
+      logger.error('Failed to update user preferences:', error)
       return NextResponse.json(
         { error: 'Failed to update user preferences' },
         { status: 500 }
@@ -365,10 +366,10 @@ export async function PUT(request: NextRequest) {
       primaryModel: data.default_model || updatedPrefs.primaryModel
     }
     
-    console.log('📤 Returning updated preferences (PUT):', apiPreferences)
+    logger.dev.log('📤 Returning updated preferences (PUT):', apiPreferences)
     return NextResponse.json({ preferences: apiPreferences })
   } catch (error) {
-    console.error('Error in PUT /api/user/preferences:', error)
+    logger.error('Error in PUT /api/user/preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -405,7 +406,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (fetchError && fetchError.code !== 'PGRST116') {
-      console.error('Failed to fetch current preferences:', fetchError)
+      logger.error('Failed to fetch current preferences:', fetchError)
       return NextResponse.json(
         { error: 'Failed to fetch current preferences' },
         { status: 500 }
@@ -502,7 +503,7 @@ export async function POST(request: NextRequest) {
         )
       }
       
-      console.error('Failed to update user preferences:', error)
+      logger.error('Failed to update user preferences:', error)
       return NextResponse.json(
         { error: 'Failed to update user preferences' },
         { status: 500 }
@@ -519,7 +520,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ preferences: apiPreferences })
   } catch (error) {
-    console.error('Error in POST /api/user/preferences:', error)
+    logger.error('Error in POST /api/user/preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -7,6 +7,7 @@ import { ChatSettings } from '@/components/chat/chat-interface';
 import { useToast } from '@/hooks/use-toast';
 import { API_ENDPOINTS } from '@/lib/config';
 import type { FileUpload } from '@/types/file-upload';
+import { logger } from '@/lib/logger';
 
 interface UseMessageHandlingProps {
   sessionId: string | null;
@@ -80,16 +81,16 @@ export function useMessageHandling({
         if (response.ok) {
           const data = await response.json();
           if (process.env.NODE_ENV === 'development') {
-            console.log(`Generated/updated title for session ${sessionId}:`, data.title);
+            logger.dev.log(`Generated/updated title for session ${sessionId}:`, data.title);
           }
           return data.title; // Return the new title
         } else {
           const errorText = await response.text();
-          console.error(`Failed to generate title for session ${sessionId}:`, response.status, response.statusText, errorText);
+          logger.error(`Failed to generate title for session ${sessionId}:`, response.status, response.statusText, errorText);
           return null; // Return null to indicate failure - existing title will be preserved
         }
       } catch (error) {
-        console.error('Error generating title:', error);
+        logger.error('Error generating title:', error);
         return null; // Return null to indicate failure
       }
     }
@@ -100,7 +101,7 @@ export function useMessageHandling({
   const handleSendMessage = useCallback((content: string, attachments?: FileUpload[]) => {
     const startTime = performance.now();
     if (process.env.NODE_ENV === 'development') {
-      if (process.env.NODE_ENV === 'development') console.log(`🚀 [${new Date().toISOString()}] handleSendMessage called`);
+      if (process.env.NODE_ENV === 'development') logger.dev.log(`🚀 [${new Date().toISOString()}] handleSendMessage called`);
     }
     if ((!content.trim() && (!attachments || attachments.length === 0)) || isLoading) return;
 
@@ -108,12 +109,12 @@ export function useMessageHandling({
     if (lockSession) {
       lockSession();
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🔒 [RACE CONDITION PREVENTION] Session locked for message handling`);
+        logger.dev.log(`🔒 [RACE CONDITION PREVENTION] Session locked for message handling`);
       }
     }
 
     if (process.env.NODE_ENV === 'development') {
-      if (process.env.NODE_ENV === 'development') console.log(`🚀 [${new Date().toISOString()}] Creating user and thinking messages`);
+      if (process.env.NODE_ENV === 'development') logger.dev.log(`🚀 [${new Date().toISOString()}] Creating user and thinking messages`);
     }
     
     // Format content with attachments info if present
@@ -154,32 +155,32 @@ export function useMessageHandling({
     // Use ref to get the most current messages and avoid stale closures
     const currentMessages = messagesRef.current;
     if (process.env.NODE_ENV === 'development') {
-      console.log('📋 Current messages before filtering:', currentMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
-      console.log('🚀 About to update UI with messages');
+      logger.dev.log('📋 Current messages before filtering:', currentMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
+      logger.dev.log('🚀 About to update UI with messages');
     }
     
     // IMMEDIATELY update UI - no awaits, no blocking
     const filteredMessages = currentMessages.filter(msg => msg.id !== "welcome-message");
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('📋 Filtered messages (no welcome):', filteredMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
+      logger.dev.log('📋 Filtered messages (no welcome):', filteredMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20) })));
     }
     
     const newMessages = [...filteredMessages, userMessage, thinkingMessage];
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('📋 New messages array to set:', newMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20), isThinking: m.metadata?.isThinking })));
+      logger.dev.log('📋 New messages array to set:', newMessages.map(m => ({ id: m.id, role: m.role, content: m.content.slice(0, 20), isThinking: m.metadata?.isThinking })));
     }
     
     // Update the ref immediately to ensure consistency
     messagesRef.current = newMessages;
     
     // Update state immediately without flushSync
-    if (process.env.NODE_ENV === 'development') console.log(`⚡ [${new Date().toISOString()}] Updating messages and loading state`);
+    if (process.env.NODE_ENV === 'development') logger.dev.log(`⚡ [${new Date().toISOString()}] Updating messages and loading state`);
     setMessages(newMessages);
     setIsLoading(true);
     const updateTime = performance.now() - startTime;
-    if (process.env.NODE_ENV === 'development') console.log(`[${new Date().toISOString()}] State updated - took ${updateTime.toFixed(2)}ms`);
+    if (process.env.NODE_ENV === 'development') logger.dev.log(`[${new Date().toISOString()}] State updated - took ${updateTime.toFixed(2)}ms`);
 
     // Fire and forget: run all background operations asynchronously
     (async () => {
@@ -195,7 +196,7 @@ export function useMessageHandling({
           // Save without the thinking message first
           const messagesToSave = [...filteredMessages, userMessage];
           await chatServiceRef.current?.saveChatSession(messagesToSave, settings.model, titleToUse);
-          if (process.env.NODE_ENV === 'development') console.log(`Successfully saved chat session with ${messagesToSave.length} messages`);
+          if (process.env.NODE_ENV === 'development') logger.dev.log(`Successfully saved chat session with ${messagesToSave.length} messages`);
           
           // Link attachments to message and session if they exist
           if (attachments && attachments.length > 0) {
@@ -211,9 +212,9 @@ export function useMessageHandling({
                   session_id: sessionId,
                 }),
               });
-              if (process.env.NODE_ENV === 'development') console.log(`Linked ${attachments.length} attachments to message`);
+              if (process.env.NODE_ENV === 'development') logger.dev.log(`Linked ${attachments.length} attachments to message`);
             } catch (error) {
-              console.warn('Failed to link attachments to message:', error);
+              logger.dev.log('Failed to link attachments to message:', error);
               // Don't fail the entire operation if linking fails
             }
           }
@@ -226,12 +227,12 @@ export function useMessageHandling({
                 onTitleGenerated(sessionId, generatedTitle);
               }
             } catch (error) {
-              console.warn('Failed to generate title after save:', error);
+              logger.dev.log('Failed to generate title after save:', error);
               // Don't fail the entire operation if title generation fails
             }
           }
         } catch (error) {
-          console.error('❌ CRITICAL: Failed to save chat session:', error);
+          logger.error('❌ CRITICAL: Failed to save chat session:', error);
           
           // Stop the chat flow when session saving fails
           setIsLoading(false);
@@ -240,7 +241,7 @@ export function useMessageHandling({
           if (unlockSession) {
             unlockSession();
             if (process.env.NODE_ENV === 'development') {
-              console.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after save failure`);
+              logger.dev.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after save failure`);
             }
           }
           
@@ -279,14 +280,14 @@ export function useMessageHandling({
                 sessionId
               }),
             });
-            if (process.env.NODE_ENV === 'development') console.log('🧠 Learning preferences updated from full conversation context');
+            if (process.env.NODE_ENV === 'development') logger.dev.log('🧠 Learning preferences updated from full conversation context');
           } catch (error) {
-            console.warn('Failed to extract learning preferences:', error);
+            logger.dev.log('Failed to extract learning preferences:', error);
           }
         }
       }
 
-      if (process.env.NODE_ENV === 'development') console.log('🌐 Starting API call...');
+      if (process.env.NODE_ENV === 'development') logger.dev.log('🌐 Starting API call...');
       const response = await fetch(API_ENDPOINTS.CHAT, {
         method: 'POST',
         headers: {
@@ -328,7 +329,7 @@ export function useMessageHandling({
         throw new Error('No response body');
       }
 
-      if (process.env.NODE_ENV === 'development') console.log('📡 API response received, starting to read stream...');
+      if (process.env.NODE_ENV === 'development') logger.dev.log('📡 API response received, starting to read stream...');
       const decoder = new TextDecoder();
       let buffer = '';
       let hasReceivedFirstChunk = false;
@@ -347,14 +348,14 @@ export function useMessageHandling({
             if (line.startsWith('data: ')) {
               const data = line.slice(6).trim();
               if (data === '[DONE]') {
-                if (process.env.NODE_ENV === 'development') console.log('🏁 Stream complete - setting isLoading to false');
+                if (process.env.NODE_ENV === 'development') logger.dev.log('🏁 Stream complete - setting isLoading to false');
                 setIsLoading(false);
                 
                 // CRITICAL FIX: Unlock session when streaming completes successfully
                 if (unlockSession) {
                   unlockSession();
                   if (process.env.NODE_ENV === 'development') {
-                    console.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after successful streaming`);
+                    logger.dev.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after successful streaming`);
                   }
                 }
                 
@@ -375,17 +376,17 @@ export function useMessageHandling({
                             if (onTitleGenerated) {
                               onTitleGenerated(sessionId, generatedTitle);
                             }
-                            if (process.env.NODE_ENV === 'development') console.log(`Final save with updated title: ${generatedTitle}`);
+                            if (process.env.NODE_ENV === 'development') logger.dev.log(`Final save with updated title: ${generatedTitle}`);
                           } else {
                             // Don't save again - title was already generated and saved earlier
-                            if (process.env.NODE_ENV === 'development') console.log(`Skipping final save - title generation failed, preserving existing title`);
+                            if (process.env.NODE_ENV === 'development') logger.dev.log(`Skipping final save - title generation failed, preserving existing title`);
                           }
                         } else {
                           // First message was already saved with title above - don't save again
-                          if (process.env.NODE_ENV === 'development') console.log(`Skipping final save - first message already saved with generated title`);
+                          if (process.env.NODE_ENV === 'development') logger.dev.log(`Skipping final save - first message already saved with generated title`);
                         }
                       } catch (error) {
-                        console.error('❌ CRITICAL: Failed to save final chat session:', error);
+                        logger.error('❌ CRITICAL: Failed to save final chat session:', error);
                         // Show user that their conversation may not be saved
                         toast({
                           title: "Save Warning",
@@ -425,7 +426,7 @@ export function useMessageHandling({
                         if (thinkingDuration < minimumThinkingTime) {
                           // Delay replacing the thinking message
                           const remainingTime = minimumThinkingTime - thinkingDuration;
-                          if (process.env.NODE_ENV === 'development') console.log(`🎯 Delaying thinking message replacement by ${remainingTime}ms`);
+                          if (process.env.NODE_ENV === 'development') logger.dev.log(`🎯 Delaying thinking message replacement by ${remainingTime}ms`);
                           
                           // Store the content to accumulate
                           accumulatedContent = parsed.content;
@@ -452,7 +453,7 @@ export function useMessageHandling({
                           return prev; // Don't update yet
                         } else {
                           // Enough time has passed, replace immediately
-                          if (process.env.NODE_ENV === 'development') console.log('🎯 First chunk received - replacing thinking message');
+                          if (process.env.NODE_ENV === 'development') logger.dev.log('🎯 First chunk received - replacing thinking message');
                           hasReceivedFirstChunk = true;
                           updated[lastMessageIndex] = {
                             ...lastMessage,
@@ -481,7 +482,7 @@ export function useMessageHandling({
                   });
                 }
               } catch (parseError) {
-                console.warn('Failed to parse streaming data:', data, parseError);
+                logger.dev.log('Failed to parse streaming data:', data, parseError);
                 continue;
               }
             }
@@ -492,13 +493,13 @@ export function useMessageHandling({
       }
     } catch (error) {
       setIsLoading(false);
-      console.error("Error sending message:", error);
+      logger.error("Error sending message:", error);
       
       // CRITICAL FIX: Unlock session on error to prevent permanent lock
       if (unlockSession) {
         unlockSession();
         if (process.env.NODE_ENV === 'development') {
-          console.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after error`);
+          logger.dev.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after error`);
         }
       }
       

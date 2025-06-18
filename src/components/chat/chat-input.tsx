@@ -13,6 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { logger } from "@/lib/logger";
 
 interface ChatInputProps {
   onSendMessage: (message: string, attachments?: FileUpload[]) => void;
@@ -32,9 +33,7 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
     e.preventDefault();
     
     if ((message.trim() || attachments.length > 0) && !disabled) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🎯 [${new Date().toISOString()}] ChatInput sending message:`, message, 'with', attachments.length, 'attachments');
-      }
+      logger.dev.log(`🎯 [${new Date().toISOString()}] ChatInput sending message:`, message, 'with', attachments.length, 'attachments');
       onSendMessage(message, attachments.length > 0 ? attachments : undefined);
       setMessage("");
       setAttachments([]);

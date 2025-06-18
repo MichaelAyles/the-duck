@@ -5,6 +5,7 @@ import { ChatService } from '@/lib/chat-service';
 import { Message } from '@/types/chat';
 import { CHAT_CONFIG } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 interface UseChatSessionProps {
   initialSessionId?: string | null;
@@ -59,31 +60,23 @@ export function useChatSession({
   const loadSessionMessages = useCallback(async (sessionId: string) => {
     try {
       if (!userId || !chatServiceRef.current) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Skipping session load: missing userId or chatService');
-        }
+        logger.dev.log('Skipping session load: missing userId or chatService');
         return;
       }
       
       // Prevent duplicate loads of the same session
       if (lastLoadedSessionId.current === sessionId) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Session ${sessionId} already loaded, skipping duplicate request`);
-        }
+        logger.dev.log(`Session ${sessionId} already loaded, skipping duplicate request`);
         return;
       }
       
       // Prevent overlapping load requests using the ref instead of state
       if (lastLoadedSessionId.current === `loading-${sessionId}`) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Session load already in progress, skipping request for ${sessionId}`);
-        }
+        logger.dev.log(`Session load already in progress, skipping request for ${sessionId}`);
         return;
       }
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔄 Loading session messages for: ${sessionId}`);
-      }
+      logger.dev.log(`🔄 Loading session messages for: ${sessionId}`);
       lastLoadedSessionId.current = `loading-${sessionId}`;
       
       // Load messages using ChatService (now with retry logic)
@@ -97,20 +90,16 @@ export function useChatSession({
         }));
         
         setMessages(formattedMessages);
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
-        }
+        logger.dev.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
         lastLoadedSessionId.current = sessionId;
       } else {
         // If no messages found, show welcome message
         setMessages([welcomeMessage]);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('📝 No messages found, showing welcome message');
-        }
+        logger.dev.log('📝 No messages found, showing welcome message');
         lastLoadedSessionId.current = sessionId;
       }
     } catch (error) {
-      console.error('Error loading session messages:', error);
+      logger.error('Error loading session messages:', error);
       
       // Reset the loaded session tracking on error to allow retries
       lastLoadedSessionId.current = null;
@@ -131,15 +120,13 @@ export function useChatSession({
   const createNewSession = useCallback((): string => {
     // CRITICAL FIX: Don't create new session if operation is in progress
     if (isOperationInProgress.current) {
-      console.warn('🚨 [RACE CONDITION PREVENTION] Blocked new session creation during operation');
+      logger.dev.log('🚨 [RACE CONDITION PREVENTION] Blocked new session creation during operation');
       // Return the locked session ID to prevent race condition
       return lockedSessionId.current || sessionId || crypto.randomUUID();
     }
     
     const newSessionId = crypto.randomUUID();
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🆕 Creating new session: ${newSessionId} (previous: ${sessionId})`);
-    }
+    logger.dev.log(`🆕 Creating new session: ${newSessionId} (previous: ${sessionId})`);
     
     setSessionId(newSessionId);
     chatServiceRef.current = new ChatService(newSessionId, userId);
@@ -179,17 +166,13 @@ export function useChatSession({
     
     // CRITICAL FIX: Don't change session ID if operation is in progress
     if (isOperationInProgress.current && lockedSessionId.current) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔒 [RACE CONDITION PREVENTION] Session locked during operation: ${lockedSessionId.current}`);
-      }
+      logger.dev.log(`🔒 [RACE CONDITION PREVENTION] Session locked during operation: ${lockedSessionId.current}`);
       return; // Prevent session changes during critical operations
     }
     
     // Only update session ID if it actually changed
     if (currentSessionId !== sessionId) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔄 Session ID changing from ${sessionId} to ${currentSessionId}`);
-      }
+      logger.dev.log(`🔄 Session ID changing from ${sessionId} to ${currentSessionId}`);
       setSessionId(currentSessionId);
       // Reset loading state when session changes
       lastLoadedSessionId.current = null;
@@ -198,9 +181,7 @@ export function useChatSession({
     // Always ensure we have a chat service
     if (!chatServiceRef.current || chatServiceRef.current.getSessionId() !== currentSessionId) {
       chatServiceRef.current = new ChatService(currentSessionId, userId);
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🔧 Created ChatService for session ${currentSessionId}`);
-      }
+      logger.dev.log(`🔧 Created ChatService for session ${currentSessionId}`);
     }
 
     return () => {
@@ -216,9 +197,7 @@ export function useChatSession({
     if (userId && initialSessionId && (!initialMessages || initialMessages.length === 0)) {
       // Only load if we haven't already loaded this session
       if (lastLoadedSessionId.current !== initialSessionId && lastLoadedSessionId.current !== `loading-${initialSessionId}`) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Loading messages for existing session ${initialSessionId}`);
-        }
+        logger.dev.log(`Loading messages for existing session ${initialSessionId}`);
         loadSessionMessages(initialSessionId);
       }
     } else if (!initialSessionId || !userId) {
@@ -248,9 +227,7 @@ export function useChatSession({
         setMessages(current => {
           // Only add if still empty and no welcome message exists
           if (current.length === 0 && !current.some(msg => msg.id === 'welcome-message')) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('Adding welcome message to empty chat');
-            }
+            logger.dev.log('Adding welcome message to empty chat');
             return [welcomeMessage];
           }
           return current;
@@ -264,18 +241,14 @@ export function useChatSession({
   // CRITICAL FIX: Operation locking functions to prevent race conditions
   const lockSession = useCallback(() => {
     const currentSessionId = sessionId; // Capture current session ID
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔒 Locking session: ${currentSessionId}`);
-    }
+    logger.dev.log(`🔒 Locking session: ${currentSessionId}`);
     isOperationInProgress.current = true;
     lockedSessionId.current = currentSessionId;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // sessionId intentionally captured in closure to prevent unnecessary recreations
 
   const unlockSession = useCallback(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`🔓 Unlocking session: ${lockedSessionId.current}`);
-    }
+    logger.dev.log(`🔓 Unlocking session: ${lockedSessionId.current}`);
     isOperationInProgress.current = false;
     lockedSessionId.current = null;
   }, []);
