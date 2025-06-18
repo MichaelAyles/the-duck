@@ -19,7 +19,7 @@ export function getRedis(): Redis {
         setex: async () => 'OK',
         del: async () => 0,
         keys: async () => [],
-      } as any;
+      } as Redis;
     }
 
     // Clean environment variables (remove quotes)
@@ -48,7 +48,7 @@ export function createRateLimiter(options: {
     return {
       limit: async () => ({ success: true, limit: options.requests, remaining: options.requests, reset: Date.now() + 60000 }),
       reset: async () => ({ success: true }),
-    } as any;
+    } as Ratelimit;
   }
   
   return new Ratelimit({
