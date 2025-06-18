@@ -44,6 +44,13 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
   const [isDeleteHistoryOpen, setIsDeleteHistoryOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isPreloading, setIsPreloading] = useState(false);
+  const [preloadComplete, setPreloadComplete] = useState(false);
+  const [preloadedData, setPreloadedData] = useState<{
+    models: boolean;
+    learning: boolean;
+    usage: boolean;
+  }>({ models: false, learning: false, usage: false });
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   // Lazy load models - only when user opens the dropdown
@@ -99,6 +106,44 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
   const handleModelChange = useCallback((value: string) => {
     onSettingsChange({ model: value });
   }, [onSettingsChange]);
+
+  // Preload all data for preferences tabs
+  const preloadAllData = useCallback(async () => {
+    if (preloadComplete) return;
+    
+    setIsPreloading(true);
+    
+    try {
+      // Preload models data
+      if (!preloadedData.models) {
+        await handleModelDropdownOpen();
+        if (allModels.length === 0) {
+          await fetchAllModels?.();
+        }
+        setPreloadedData(prev => ({ ...prev, models: true }));
+      }
+      
+      // Preload learning preferences data
+      if (!preloadedData.learning) {
+        // The LearningPreferencesTab component will handle its own data loading
+        // We just mark it as "preloaded" to indicate we've initiated the process
+        setPreloadedData(prev => ({ ...prev, learning: true }));
+      }
+      
+      // Preload usage data
+      if (!preloadedData.usage) {
+        // The UsageSummary component will handle its own data loading
+        // We just mark it as "preloaded" to indicate we've initiated the process
+        setPreloadedData(prev => ({ ...prev, usage: true }));
+      }
+      
+      setPreloadComplete(true);
+    } catch (error) {
+      console.error('Failed to preload data:', error);
+    } finally {
+      setIsPreloading(false);
+    }
+  }, [preloadComplete, preloadedData, handleModelDropdownOpen, allModels.length, fetchAllModels]);
 
   // CRITICAL FIX: Stable reference to prevent Select re-rendering
   const handleModelDropdownOpenChange = useCallback((open: boolean) => {
@@ -341,7 +386,12 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
             </Button>
           )}
 
-          <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+          <Dialog open={isSettingsOpen} onOpenChange={(open) => {
+            setIsSettingsOpen(open);
+            if (open && !preloadComplete) {
+              preloadAllData();
+            }
+          }}>
             <DialogTrigger asChild>
               <Button variant="ghost" size="sm" className="bg-background/30 hover:bg-background/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300 rounded-lg">
                 <Settings className="h-4 w-4" />
@@ -349,15 +399,40 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
               <DialogHeader>
-                <DialogTitle>Preferences</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  Preferences
+                  {isPreloading && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  {preloadComplete && !isPreloading && (
+                    <span className="text-xs text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
+                      Ready
+                    </span>
+                  )}
+                </DialogTitle>
               </DialogHeader>
               
               <Tabs defaultValue="models" className="w-full flex-1 flex flex-col min-h-0">
                 <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
-                  <TabsTrigger value="models">Models</TabsTrigger>
-                  <TabsTrigger value="learning">Learning</TabsTrigger>
+                  <TabsTrigger value="models" className="relative">
+                    Models
+                    {!preloadedData.models && isPreloading && (
+                      <div className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full animate-pulse" />
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="learning" className="relative">
+                    Learning
+                    {!preloadedData.learning && isPreloading && (
+                      <div className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full animate-pulse" />
+                    )}
+                  </TabsTrigger>
                   <TabsTrigger value="behavior">Behavior</TabsTrigger>
-                  <TabsTrigger value="usage">Usage</TabsTrigger>
+                  <TabsTrigger value="usage" className="relative">
+                    Usage
+                    {!preloadedData.usage && isPreloading && (
+                      <div className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full animate-pulse" />
+                    )}
+                  </TabsTrigger>
                   <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
                 
@@ -548,7 +623,16 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                 </TabsContent>
                 
                 <TabsContent value="learning" className="flex-1 overflow-y-auto p-1">
-                  <LearningPreferencesTab />
+                  {isPreloading && !preloadedData.learning ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading learning preferences...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <LearningPreferencesTab />
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="behavior" className="flex-1 overflow-y-auto">
@@ -588,7 +672,16 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                 </TabsContent>
                 
                 <TabsContent value="usage" className="flex-1 overflow-y-auto p-1">
-                  <UsageSummary />
+                  {isPreloading && !preloadedData.usage ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Loading usage data...</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <UsageSummary />
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="settings" className="flex-1 overflow-y-auto">
