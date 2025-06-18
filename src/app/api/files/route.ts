@@ -16,7 +16,8 @@ const fileUploadSchema = z.object({
   message_id: z.string().optional(),
 });
 
-const rateLimiter = createRateLimiter({
+// Lazy rate limiter creation to avoid build-time issues
+const getRateLimiter = () => createRateLimiter({
   requests: 50,
   window: '15m',
   prefix: 'rl:files',
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limiting
+    const rateLimiter = getRateLimiter();
     const { success, limit, reset, remaining } = await rateLimiter.limit(user.id);
     if (!success) {
       return NextResponse.json(
