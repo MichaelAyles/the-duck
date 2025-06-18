@@ -30,7 +30,7 @@ export async function GET() {
         .from('user_credits')
         .upsert({
           user_id: user.id,
-          total_credits: 10000, // 10,000 credits default
+          total_credits: 100, // £1.00 limit (100 pence)
           used_credits: 0,
           credit_limit_period: 'monthly'
         }, {

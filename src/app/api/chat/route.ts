@@ -106,17 +106,21 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
         .single()
       
       if (credits) {
-        const remainingCredits = credits.credit_limit - credits.credits_used
+        const remainingCredits = credits.total_credits - credits.used_credits
         if (remainingCredits <= 0) {
           return NextResponse.json(
-            { error: 'Credit limit exceeded. Please update your credit limit in settings.' },
+            { 
+              error: 'Credit limit exceeded (£1.00 limit reached). Billing system coming soon!',
+              code: 'CREDIT_LIMIT_EXCEEDED',
+              billingNotice: 'We are currently working on our billing system. For now, users have a £1.00 monthly limit.'
+            },
             { status: 402 } // Payment Required
           )
         }
         
         // Warn if running low on credits (less than 10% remaining)
-        if (remainingCredits < credits.credit_limit * 0.1) {
-          console.warn(`User ${user.id} running low on credits: $${remainingCredits.toFixed(2)} remaining`)
+        if (remainingCredits < credits.total_credits * 0.1) {
+          console.warn(`User ${user.id} running low on credits: ${remainingCredits} pence remaining out of £${(credits.total_credits / 100).toFixed(2)}`)
         }
       }
     }

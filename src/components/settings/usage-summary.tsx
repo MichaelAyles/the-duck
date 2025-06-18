@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, DollarSign, Activity, TrendingUp, Settings } from 'lucide-react'
+import { RefreshCw, PoundSterling, Activity, TrendingUp, Settings } from 'lucide-react'
 
 interface CreditInfo {
   user_id: string
@@ -36,6 +36,8 @@ export function UsageSummary() {
   const [usageData, setUsageData] = useState<UsageData | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  // Acknowledge unused variable during beta period
+  void updating
   const { toast } = useToast()
 
   const fetchUsageData = useCallback(async () => {
@@ -155,11 +157,11 @@ export function UsageSummary() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+            <PoundSterling className="h-5 w-5" />
             Credit Overview
           </CardTitle>
           <CardDescription>
-            Your current usage for this {credits.credit_limit_period} period
+            Your current usage for this {credits.credit_limit_period} period (Beta: £1.00 limit)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -167,13 +169,13 @@ export function UsageSummary() {
             <div className="space-y-2">
               <div className="text-sm font-medium">Used</div>
               <div className="text-2xl font-bold text-primary">
-                ${credits.used_credits.toFixed(2)}
+                £{(credits.used_credits / 100).toFixed(2)}
               </div>
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium">Remaining</div>
               <div className={`text-2xl font-bold ${isLowCredit ? 'text-destructive' : 'text-green-600'}`}>
-                ${remainingCredits.toFixed(2)}
+                £{(remainingCredits / 100).toFixed(2)}
               </div>
             </div>
           </div>
@@ -181,7 +183,7 @@ export function UsageSummary() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Usage</span>
-              <span>{usagePercent.toFixed(1)}% of ${credits.total_credits.toFixed(2)} limit</span>
+              <span>{usagePercent.toFixed(1)}% of £{(credits.total_credits / 100).toFixed(2)} limit</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
@@ -200,7 +202,7 @@ export function UsageSummary() {
                 ⚠️ Low Credit Warning
               </div>
               <div className="text-sm text-destructive/80">
-                You&apos;re running low on credits. Consider increasing your limit.
+                You&apos;re running low on credits. The billing system is coming soon!
               </div>
             </div>
           )}
@@ -215,13 +217,13 @@ export function UsageSummary() {
             Credit Settings
           </CardTitle>
           <CardDescription>
-            Manage your spending limits and reset periods
+            During beta, all users have a £1.00 monthly limit. Full billing options coming soon!
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
             <label className="text-sm font-medium">
-              Credit Limit: ${credits.total_credits.toFixed(2)}
+              Credit Limit: £{(credits.total_credits / 100).toFixed(2)}
             </label>
             <Slider
               value={[credits.total_credits]}
@@ -229,12 +231,12 @@ export function UsageSummary() {
               max={100}
               min={1}
               step={1}
-              disabled={updating}
-              className="py-4"
+              disabled={true}
+              className="py-4 opacity-50"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>$1</span>
-              <span>$100</span>
+              <span>£0.01</span>
+              <span>£1.00</span>
             </div>
           </div>
 
@@ -243,7 +245,7 @@ export function UsageSummary() {
             <Select
               value={credits.credit_limit_period}
               onValueChange={(value) => updateCreditSettings({ credit_limit_period: value })}
-              disabled={updating}
+              disabled={true}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -258,6 +260,9 @@ export function UsageSummary() {
             </Select>
             <div className="text-xs text-muted-foreground">
               Last reset: {new Date(credits.last_reset_at).toLocaleDateString()}
+            </div>
+            <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+              💡 Credit settings are fixed during the beta period. Full billing options will be available soon!
             </div>
           </div>
         </CardContent>
@@ -286,9 +291,9 @@ export function UsageSummary() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-medium">${data.cost.toFixed(3)}</div>
+                    <div className="font-medium">£{(data.cost / 100).toFixed(3)}</div>
                     <div className="text-xs text-muted-foreground">
-                      ${(data.cost / data.count).toFixed(4)}/req
+                      £{(data.cost / data.count / 100).toFixed(4)}/req
                     </div>
                   </div>
                 </div>
