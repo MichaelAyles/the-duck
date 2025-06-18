@@ -125,6 +125,10 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
     if (user) {
       try {
         learningPreferences = await getUserLearningPreferences(user.id)
+        console.log('🧠 Chat API: Loaded learning preferences for user:', user.id, 'Count:', learningPreferences.length)
+        if (learningPreferences.length > 0) {
+          console.log('🎯 Learning preferences loaded:', learningPreferences.map(p => `${p.category}/${p.preference_key} (${p.weight})`))
+        }
       } catch (error) {
         console.warn('Failed to fetch learning preferences:', error)
         // Continue without preferences rather than fail the chat
@@ -133,6 +137,7 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
 
     // Create personalized system prompt that incorporates user preferences
     const systemPrompt = createPersonalizedSystemPrompt(learningPreferences, tone);
+    console.log('📝 Chat API: System prompt length:', systemPrompt.length, 'characters');
 
     // Sanitize messages content and ensure proper format
     const sanitizedMessages = [

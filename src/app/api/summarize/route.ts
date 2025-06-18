@@ -219,15 +219,16 @@ Assign weights based on:
           if (summary.learningPreferences && Array.isArray(summary.learningPreferences)) {
             for (const pref of summary.learningPreferences) {
               try {
-                // Use the upsert function to add/update learning preferences
+                // Use the optimized v2 upsert function to add/update learning preferences
                 const { error: prefError } = await supabase
-                  .rpc('upsert_learning_preference', {
+                  .rpc('upsert_learning_preference_v2', {
                     target_user_id: userId,
                     pref_category: pref.category,
                     pref_key: pref.preference_key,
                     pref_value: pref.preference_value || null,
                     pref_weight: Math.max(-10, Math.min(10, Math.round(pref.weight || 0))), // Ensure valid range
-                    pref_source: 'chat_summary'
+                    pref_source: 'chat_summary',
+                    pref_confidence: 0.8 // Default confidence for AI-generated preferences
                   })
 
                 if (prefError) {

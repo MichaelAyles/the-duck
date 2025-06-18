@@ -123,11 +123,16 @@ export async function DELETE(
 
     const { sessionId } = await params
 
-    // Delete associated summary first (if exists)
-    await supabase
+    // Delete associated summary first (if exists) with proper error handling
+    const { error: summaryError } = await supabase
       .from('chat_summaries')
       .delete()
       .eq('session_id', sessionId)
+
+    if (summaryError) {
+      // Log error but don't fail the operation if summary deletion fails
+      console.warn('Failed to delete chat summary:', summaryError)
+    }
 
     // Delete the session
     const { error } = await supabase
@@ -137,6 +142,19 @@ export async function DELETE(
       .eq('user_id', user.id)
 
     if (error) {
+      // Handle specific constraint errors
+      if (error.code === '23503') {
+        return NextResponse.json(
+          { error: 'Cannot delete session: foreign key constraint violation' },
+          { status: 409 }
+        )
+      } else if (error.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Session not found or access denied' },
+          { status: 404 }
+        )
+      }
+      
       console.error('Failed to delete chat session:', error)
       return NextResponse.json(
         { error: 'Failed to delete chat session' },

@@ -24,25 +24,40 @@ export async function GET() {
       .eq('user_id', user.id)
       .single()
 
-    // If no credits record exists, create one with defaults
+    // If no credits record exists, create one with defaults using upsert to prevent race conditions
     if (!credits) {
-      const { data: newCredits, error: insertError } = await supabase
+      const { data: newCredits, error: upsertError } = await supabase
         .from('user_credits')
-        .insert({
+        .upsert({
           user_id: user.id,
           total_credits: 10000, // 10,000 credits default
           used_credits: 0,
           credit_limit_period: 'monthly'
+        }, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
         })
         .select()
         .single()
 
-      if (insertError) {
-        console.error('Failed to create credits record:', insertError)
-        return NextResponse.json({ error: 'Failed to initialize credits' }, { status: 500 })
+      if (upsertError) {
+        // Handle unique constraint violation gracefully
+        if (upsertError.code === '23505') {
+          // Duplicate key error, try to fetch again
+          const { data: existingCredits } = await supabase
+            .from('user_credits')
+            .select('*')
+            .eq('user_id', user.id)
+            .single()
+          
+          credits = existingCredits
+        } else {
+          console.error('Failed to create credits record:', upsertError)
+          return NextResponse.json({ error: 'Failed to initialize credits' }, { status: 500 })
+        }
+      } else {
+        credits = newCredits
       }
-
-      credits = newCredits
     }
 
     // Check if credits need to be reset based on period

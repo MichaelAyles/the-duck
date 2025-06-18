@@ -142,32 +142,41 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
  */
 export async function createUserPreferencesWithDynamicDefaults(userId: string): Promise<UserPreferencesData> {
   try {
-    // Get dynamic top 5 models from OpenRouter
-    // Clean the API key (remove surrounding quotes if present)
-    const cleanApiKey = process.env.OPENROUTER_API_KEY?.replace(/^["']|["']$/g, '')
-    const response = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: {
-        'Authorization': `Bearer ${cleanApiKey}`,
-        'Content-Type': 'application/json'
-      }
-    })
-
+    // Create defaults first, then enhance with external API if available
     const dynamicDefaults = { ...DEFAULT_USER_PREFERENCES }
 
-    if (response.ok) {
-      const { data: allModels } = await response.json()
-      if (Array.isArray(allModels) && allModels.length > 0) {
-        const top5Models = getTop5Models(allModels)
-        console.log('Selected top 5 models:', top5Models)
-        
-        if (top5Models.length > 0) {
-          dynamicDefaults.starredModels = top5Models
-          dynamicDefaults.primaryModel = top5Models[0]
-          console.log('✨ Using dynamic top 5 models for new user:', top5Models)
+    // Separate the external API call from the database transaction
+    // to avoid transaction isolation issues
+    try {
+      // Get dynamic top 5 models from OpenRouter
+      // Clean the API key (remove surrounding quotes if present)
+      const cleanApiKey = process.env.OPENROUTER_API_KEY?.replace(/^["']|["']$/g, '')
+      const response = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: {
+          'Authorization': `Bearer ${cleanApiKey}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const { data: allModels } = await response.json()
+        if (Array.isArray(allModels) && allModels.length > 0) {
+          const top5Models = getTop5Models(allModels)
+          console.log('Selected top 5 models:', top5Models)
+          
+          if (top5Models.length > 0) {
+            dynamicDefaults.starredModels = top5Models
+            dynamicDefaults.primaryModel = top5Models[0]
+            console.log('✨ Using dynamic top 5 models for new user:', top5Models)
+          }
         }
       }
+    } catch (apiError) {
+      console.warn('Failed to fetch dynamic models, using static defaults:', apiError)
+      // Continue with static defaults if API call fails
     }
 
+    // Create preferences with the determined defaults
     return await createUserPreferences(userId, dynamicDefaults)
   } catch (error) {
     console.error('Error creating user preferences with dynamic defaults:', error)

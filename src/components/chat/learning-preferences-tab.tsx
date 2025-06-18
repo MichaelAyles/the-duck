@@ -88,7 +88,7 @@ export function LearningPreferencesTab() {
   });
 
   // Filter preferences based on category and search
-  const filteredPreferences = (preferences || []).filter(pref => {
+  const filteredPreferences = (Array.isArray(preferences) ? preferences : []).filter(pref => {
     const matchesCategory = selectedCategory === "all" || pref.category === selectedCategory;
     const matchesSearch = !searchTerm || 
       pref.preference_key.toLowerCase().includes(searchTerm.toLowerCase()) ||

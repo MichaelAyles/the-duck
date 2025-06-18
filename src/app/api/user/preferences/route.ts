@@ -151,8 +151,19 @@ export async function GET() {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
+      console.log('🔒 User preferences GET: No authenticated user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    console.log('👤 User preferences GET: Fetching for user:', user.id)
+
+    // First check if the table exists and its structure
+    const { error: tableError } = await supabase
+      .from('user_preferences')
+      .select('*')
+      .limit(0)
+
+    console.log('🗃️ Table structure check:', { tableExists: !tableError, error: tableError?.message })
 
     // Try to get existing preferences
     const { data, error } = await supabase
@@ -161,24 +172,57 @@ export async function GET() {
       .eq('user_id', user.id)
       .single()
 
+    console.log('🔍 Database query result:', { data, error: error?.code || 'none' })
+
     if (error) {
       if (error.code === 'PGRST116') {
         // No preferences found, create defaults
+        console.log('📝 No preferences found, creating defaults for user:', user.id)
         const defaultPrefs = await createUserPreferencesWithDynamicDefaults()
+        console.log('🎯 Default preferences generated:', defaultPrefs)
+        
+        const insertData = {
+          user_id: user.id,
+          starred_models: defaultPrefs.starredModels,
+          theme: defaultPrefs.theme,
+          default_model: defaultPrefs.primaryModel
+        }
+        console.log('💾 Inserting to database:', insertData)
         
         const { data: newData, error: createError } = await supabase
           .from('user_preferences')
-          .insert([{
-            user_id: user.id,
-            starred_models: defaultPrefs.starredModels,
-            theme: defaultPrefs.theme,
-            default_model: defaultPrefs.primaryModel
-          }])
+          .insert([insertData])
           .select('starred_models, theme, default_model')
           .single()
 
+        console.log('✅ Insert result:', { newData, error: createError?.code || 'none' })
+
         if (createError) {
-          console.error('Failed to create user preferences:', createError)
+          // Handle unique constraint violation for user preferences
+          if (createError.code === '23505') {
+            console.log('🔄 Race condition detected, fetching existing preferences')
+            // Race condition - another request created preferences, fetch them
+            const { data: existingData } = await supabase
+              .from('user_preferences')
+              .select('starred_models, theme, default_model')
+              .eq('user_id', user.id)
+              .single()
+            
+            console.log('🔍 Existing data after race condition:', existingData)
+            
+            if (existingData) {
+              const apiPreferences = {
+                ...defaultPrefs,
+                starredModels: existingData.starred_models || [],
+                theme: existingData.theme || 'system',
+                primaryModel: existingData.default_model || defaultPrefs.primaryModel
+              }
+              console.log('📤 Returning preferences after race condition:', apiPreferences)
+              return NextResponse.json({ preferences: apiPreferences })
+            }
+          }
+          
+          console.error('❌ Failed to create user preferences:', createError)
           return NextResponse.json(
             { error: 'Failed to create user preferences' },
             { status: 500 }
@@ -193,6 +237,7 @@ export async function GET() {
           primaryModel: newData.default_model || defaultPrefs.primaryModel
         }
         
+        console.log('📤 Returning newly created preferences:', apiPreferences)
         return NextResponse.json({ preferences: apiPreferences })
       }
       
@@ -204,6 +249,7 @@ export async function GET() {
     }
 
     // Transform SQL columns to API format
+    console.log('🔄 Transforming existing data to API format')
     const defaultPrefs = await createUserPreferencesWithDynamicDefaults()
     const apiPreferences = {
       ...defaultPrefs,
@@ -212,6 +258,7 @@ export async function GET() {
       primaryModel: data.default_model || defaultPrefs.primaryModel
     }
     
+    console.log('📤 Returning existing preferences:', apiPreferences)
     return NextResponse.json({ preferences: apiPreferences })
   } catch (error) {
     console.error('Error in GET /api/user/preferences:', error)
@@ -230,11 +277,13 @@ export async function PUT(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
+      console.log('🔒 User preferences PUT: No authenticated user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
     const updates = body as Partial<UserPreferencesData>
+    console.log('📝 User preferences PUT: Updates for user:', user.id, updates)
 
     // Get current preferences first
     const { data: currentData, error: fetchError } = await supabase
@@ -269,20 +318,38 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update or insert preferences using individual columns
+    const upsertData = {
+      user_id: user.id,
+      starred_models: updatedPrefs.starredModels,
+      theme: updatedPrefs.theme,
+      default_model: updatedPrefs.primaryModel
+    }
+    console.log('💾 Upserting preferences to database:', upsertData)
+    
     const { data, error } = await supabase
       .from('user_preferences')
-      .upsert([{
-        user_id: user.id,
-        starred_models: updatedPrefs.starredModels,
-        theme: updatedPrefs.theme,
-        default_model: updatedPrefs.primaryModel
-      }], {
+      .upsert([upsertData], {
         onConflict: 'user_id'
       })
       .select('starred_models, theme, default_model')
       .single()
 
+    console.log('✅ Upsert result:', { data, error: error?.code || 'none' })
+
     if (error) {
+      // Handle specific constraint errors
+      if (error.code === '23505') {
+        return NextResponse.json(
+          { error: 'Preferences update conflict - please try again' },
+          { status: 409 }
+        )
+      } else if (error.code === '23503') {
+        return NextResponse.json(
+          { error: 'Invalid user reference' },
+          { status: 400 }
+        )
+      }
+      
       console.error('Failed to update user preferences:', error)
       return NextResponse.json(
         { error: 'Failed to update user preferences' },
@@ -298,6 +365,7 @@ export async function PUT(request: NextRequest) {
       primaryModel: data.default_model || updatedPrefs.primaryModel
     }
     
+    console.log('📤 Returning updated preferences (PUT):', apiPreferences)
     return NextResponse.json({ preferences: apiPreferences })
   } catch (error) {
     console.error('Error in PUT /api/user/preferences:', error)
@@ -421,6 +489,19 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      // Handle specific constraint errors
+      if (error.code === '23505') {
+        return NextResponse.json(
+          { error: 'Preferences update conflict - please try again' },
+          { status: 409 }
+        )
+      } else if (error.code === '23503') {
+        return NextResponse.json(
+          { error: 'Invalid user reference' },
+          { status: 400 }
+        )
+      }
+      
       console.error('Failed to update user preferences:', error)
       return NextResponse.json(
         { error: 'Failed to update user preferences' },
