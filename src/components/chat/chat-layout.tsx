@@ -74,6 +74,13 @@ export function ChatLayout() {
     setRefreshTrigger(prev => prev + 1); // Refresh history to update timestamp
   }, []);
 
+  const handleTitleGenerated = useCallback((sessionId: string, title: string) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🏷️ Title generated for session ${sessionId}: ${title}`);
+    }
+    setRefreshTrigger(prev => prev + 1); // Refresh sidebar to show new title
+  }, []);
+
   const handleToggleSidebar = useCallback(() => {
     setIsSidebarCollapsed(prev => !prev);
   }, []);
@@ -138,12 +145,12 @@ export function ChatLayout() {
       {/* Chat Container - Single instance managing all chat UI */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <ChatContainer
-          key={currentSessionId || 'new'}
           sessionId={currentSessionId}
           initialMessages={messages}
           isLoading={isLoading}
           onSessionUpdate={handleSessionUpdate}
           onToggleMobileSidebar={handleToggleMobileSidebar}
+          onTitleGenerated={handleTitleGenerated}
         />
       </div>
     </div>

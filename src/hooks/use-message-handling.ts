@@ -14,7 +14,10 @@ interface UseMessageHandlingProps {
   settings: ChatSettings;
   chatServiceRef: React.MutableRefObject<ChatService | null>;
   userId?: string;
-  onSessionUpdate?: (sessionId: string, newMessages: Message[]) => void;
+  onTitleGenerated?: (sessionId: string, title: string) => void;
+  // CRITICAL FIX: Add session locking functions to prevent race conditions
+  lockSession?: () => void;
+  unlockSession?: () => void;
 }
 
 interface UseMessageHandlingReturn {
@@ -31,7 +34,9 @@ export function useMessageHandling({
   settings,
   chatServiceRef,
   userId,
-  onSessionUpdate,
+  onTitleGenerated,
+  lockSession,
+  unlockSession,
 }: UseMessageHandlingProps): UseMessageHandlingReturn {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -97,6 +102,14 @@ export function useMessageHandling({
       if (process.env.NODE_ENV === 'development') console.log(`🚀 [${new Date().toISOString()}] handleSendMessage called`);
     }
     if (!content.trim() || isLoading) return;
+
+    // CRITICAL FIX: Lock session at the very beginning of message handling
+    if (lockSession) {
+      lockSession();
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔒 [RACE CONDITION PREVENTION] Session locked for message handling`);
+      }
+    }
 
     if (process.env.NODE_ENV === 'development') {
       if (process.env.NODE_ENV === 'development') console.log(`🚀 [${new Date().toISOString()}] Creating user and thinking messages`);
@@ -171,7 +184,10 @@ export function useMessageHandling({
           // Generate title after saving for first message
           if (userMessages.length === 1) {
             try {
-              await generateTitleIfNeeded(messagesToSave, sessionId);
+              const generatedTitle = await generateTitleIfNeeded(messagesToSave, sessionId);
+              if (generatedTitle && onTitleGenerated) {
+                onTitleGenerated(sessionId, generatedTitle);
+              }
             } catch (error) {
               console.warn('Failed to generate title after save:', error);
               // Don't fail the entire operation if title generation fails
@@ -182,6 +198,14 @@ export function useMessageHandling({
           
           // Stop the chat flow when session saving fails
           setIsLoading(false);
+          
+          // CRITICAL FIX: Unlock session when save fails and we exit early
+          if (unlockSession) {
+            unlockSession();
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after save failure`);
+            }
+          }
           
           // Remove the thinking message since we're stopping
           setMessages(currentMessages => 
@@ -288,6 +312,14 @@ export function useMessageHandling({
                 if (process.env.NODE_ENV === 'development') console.log('🏁 Stream complete - setting isLoading to false');
                 setIsLoading(false);
                 
+                // CRITICAL FIX: Unlock session when streaming completes successfully
+                if (unlockSession) {
+                  unlockSession();
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after successful streaming`);
+                  }
+                }
+                
                 // Save final session and update title when response is complete
                 if (sessionId && userId && settings.storageEnabled) {
                   setMessages(currentMessages => {
@@ -302,15 +334,17 @@ export function useMessageHandling({
                           // Only save with new title if generation succeeded
                           if (generatedTitle) {
                             await chatServiceRef.current?.saveChatSession(currentMessages, settings.model, generatedTitle);
+                            if (onTitleGenerated) {
+                              onTitleGenerated(sessionId, generatedTitle);
+                            }
                             if (process.env.NODE_ENV === 'development') console.log(`Final save with updated title: ${generatedTitle}`);
                           } else {
-                            await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
-                            if (process.env.NODE_ENV === 'development') console.log(`Final save: chat session with ${currentMessages.length} messages (title preserved)`);
+                            // Don't save again - title was already generated and saved earlier
+                            if (process.env.NODE_ENV === 'development') console.log(`Skipping final save - title generation failed, preserving existing title`);
                           }
                         } else {
-                          // First message was already saved with title above
-                          await chatServiceRef.current?.saveChatSession(currentMessages, settings.model);
-                          if (process.env.NODE_ENV === 'development') console.log(`Final save: chat session with ${currentMessages.length} messages`);
+                          // First message was already saved with title above - don't save again
+                          if (process.env.NODE_ENV === 'development') console.log(`Skipping final save - first message already saved with generated title`);
                         }
                       } catch (error) {
                         console.error('❌ CRITICAL: Failed to save final chat session:', error);
@@ -326,13 +360,8 @@ export function useMessageHandling({
                   });
                 }
                 
-                // Notify parent of session update when streaming completes
-                if (onSessionUpdate && sessionId) {
-                  setMessages(currentMessages => {
-                    setTimeout(() => onSessionUpdate(sessionId, currentMessages), 0);
-                    return currentMessages;
-                  });
-                }
+                // Session update notification removed - not needed since session ID doesn't change
+                // The parent component already manages the session through the ChatContainer
                 return;
               }
 
@@ -427,6 +456,14 @@ export function useMessageHandling({
       setIsLoading(false);
       console.error("Error sending message:", error);
       
+      // CRITICAL FIX: Unlock session on error to prevent permanent lock
+      if (unlockSession) {
+        unlockSession();
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after error`);
+        }
+      }
+      
       // Show user-friendly error toast
       toast({
         title: "Message Failed",
@@ -460,9 +497,11 @@ export function useMessageHandling({
     sessionId,
     chatServiceRef,
     generateTitleIfNeeded,
-    onSessionUpdate,
+    onTitleGenerated,
     setMessages,
     toast,
+    lockSession,
+    unlockSession,
   ]);
 
   return {

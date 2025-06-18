@@ -19,6 +19,7 @@ interface ChatContainerProps {
   isLoading?: boolean;
   onSessionUpdate?: (sessionId: string, newMessages: Message[]) => void;
   onToggleMobileSidebar?: () => void;
+  onTitleGenerated?: (sessionId: string, title: string) => void;
 }
 
 export const ChatContainer = React.memo(({ 
@@ -26,7 +27,8 @@ export const ChatContainer = React.memo(({
   initialMessages,
   isLoading: _isPageLoading,
   onSessionUpdate,
-  onToggleMobileSidebar
+  onToggleMobileSidebar,
+  onTitleGenerated
 }: ChatContainerProps = {}) => {
   const { user } = useAuth();
   
@@ -34,7 +36,7 @@ export const ChatContainer = React.memo(({
   void _isPageLoading;
 
   // Use custom hooks for different aspects of chat functionality
-  const { sessionId, messages, setMessages, chatServiceRef, createNewSession } = useChatSession({
+  const { sessionId, messages, setMessages, chatServiceRef, createNewSession, lockSession, unlockSession } = useChatSession({
     initialSessionId,
     initialMessages,
     userId: user?.id,
@@ -61,7 +63,9 @@ export const ChatContainer = React.memo(({
     settings,
     chatServiceRef,
     userId: user?.id,
-    onSessionUpdate,
+    onTitleGenerated,
+    lockSession,
+    unlockSession,
   });
 
   return (

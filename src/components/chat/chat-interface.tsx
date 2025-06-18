@@ -47,7 +47,7 @@ export const ChatInterface = React.memo(({
   void _isPageLoading;
 
   // Use custom hooks for different aspects of chat functionality
-  const { sessionId, messages, setMessages, chatServiceRef, createNewSession } = useChatSession({
+  const { sessionId, messages, setMessages, chatServiceRef, createNewSession, lockSession, unlockSession } = useChatSession({
     initialSessionId,
     initialMessages,
     userId: user?.id,
@@ -74,7 +74,8 @@ export const ChatInterface = React.memo(({
     settings,
     chatServiceRef,
     userId: user?.id,
-    onSessionUpdate,
+    lockSession,
+    unlockSession,
   });
 
   // Render only header
