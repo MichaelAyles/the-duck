@@ -3,21 +3,19 @@
  * Only logs in development mode, silent in production
  */
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-
 export const logger = {
   /**
    * Development-only logging - completely silent in production
    */
   dev: {
     log: (...args: unknown[]) => {
-      if (isDevelopment) console.log(...args);
+      if (process.env.NODE_ENV === 'development') console.log(...args);
     },
     warn: (...args: unknown[]) => {
-      if (isDevelopment) console.warn(...args);
+      if (process.env.NODE_ENV === 'development') console.warn(...args);
     },
     info: (...args: unknown[]) => {
-      if (isDevelopment) console.info(...args);
+      if (process.env.NODE_ENV === 'development') console.info(...args);
     },
   },
 
