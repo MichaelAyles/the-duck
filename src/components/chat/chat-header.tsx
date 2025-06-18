@@ -34,7 +34,7 @@ const TONE_OPTIONS = [
   { value: "casual", label: "Casual", description: "Friendly and relaxed" },
   { value: "concise", label: "Concise", description: "Brief and to the point" },
   { value: "detailed", label: "Detailed", description: "Comprehensive explanations" },
-  { value: "duck", label: "Duck Mode", description: "Quack quack quack quack quack!" },
+  { value: "duck", label: "Duck Mode", description: "Your personal duck responds in quacks!" },
 ];
 
 export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount, onToggleMobileSidebar }: ChatHeaderProps) {

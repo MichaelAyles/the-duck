@@ -87,7 +87,7 @@ export function LoginForm() {
             </div>
           </div>
           <p className="text-muted-foreground text-center">
-            Your AI chat companion with a splash of personality
+            Your personal duck that quacks back
           </p>
         </div>
 

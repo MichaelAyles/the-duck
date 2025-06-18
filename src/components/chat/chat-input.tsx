@@ -94,7 +94,7 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
               onKeyDown={handleKeyDown}
               placeholder={
                 storageEnabled
-                  ? "Quack away! Tell me what's on your mind... (Learning from our chat)"
+                  ? "Tell me what you're curious about... (Learning from our chat)"
                   : "What's on your mind? (Private mode - no data saved)"
               }
               disabled={disabled}

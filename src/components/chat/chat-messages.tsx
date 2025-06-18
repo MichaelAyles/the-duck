@@ -116,7 +116,7 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
               {shouldShowThinking ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">Thinking quack-tastically...</span>
+                  <span className="text-sm text-muted-foreground">Working on your response...</span>
                 </div>
               ) : (
                 <>

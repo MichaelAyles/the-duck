@@ -1,6 +1,6 @@
-# 🦆 The Duck - Quack-tastic AI Conversations
+# 🦆 The Duck - Natural AI Conversations
 
-A modern, secure, and performant LLM chat interface with authentication, personalized experiences, and modular architecture.
+**Your personal duck that quacks back** - A modern, secure, and performant LLM chat interface with authentication, personalized experiences, and modular architecture.
 
 ![The Duck Logo](public/images/logos/theduckchatfull.png)
 
@@ -318,7 +318,7 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 
 The Duck started as "Aura Chat" and evolved into a friendly, approachable AI assistant that makes conversations feel natural and fun. With secure authentication, persistent chat history, and cross-device synchronization, The Duck provides a complete AI chat experience.
 
-Whether you're tackling complex problems, brainstorming ideas, or just want to chat, The Duck is here to help you navigate the waters of AI interaction with style and security.
+Whether you're tackling complex problems, brainstorming ideas, or just want to chat, The Duck is your personal AI assistant that engages in natural conversations with style and security.
 
 **Features that make The Duck special:**
 - 🔐 **Secure Authentication**: Your conversations are private and persistent

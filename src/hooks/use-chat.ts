@@ -13,7 +13,7 @@ export function useChat({ model, onError, onFinish }: UseChatOptions) {
     {
       id: nanoid(),
       role: 'assistant',
-      content: "Hello! I'm The Duck, your friendly AI assistant. Ready to dive into some quack-tastic conversations? Whether you need help with questions, creative projects, or just want to chat, I'm here to make waves! What can I assist you with today?",
+      content: "Hello! I'm The Duck, your friendly AI assistant. I'm here to help with anything you need! Whether you have questions, need creative assistance, or just want to chat, I'm your personal duck that quacks back. What can I assist you with today?",
       timestamp: new Date(),
     },
   ])
@@ -170,7 +170,7 @@ export function useChat({ model, onError, onFinish }: UseChatOptions) {
       {
         id: nanoid(),
         role: 'assistant',
-        content: "Hello! I'm The Duck, your friendly AI assistant. Ready to dive into some quack-tastic conversations? Whether you need help with questions, creative projects, or just want to chat, I'm here to make waves! What can I assist you with today?",
+        content: "Hello! I'm The Duck, your friendly AI assistant. I'm here to help with anything you need! Whether you have questions, need creative assistance, or just want to chat, I'm your personal duck that quacks back. What can I assist you with today?",
         timestamp: new Date(),
       },
     ])

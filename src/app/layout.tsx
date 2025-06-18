@@ -21,8 +21,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "The Duck - Quack-tastic AI Conversations",
-  description: "A modern, friendly, and performant LLM chat interface with personalized experiences and model flexibility.",
+  title: "The Duck - Natural AI Conversations",
+  description: "Your personal duck that quacks back - a friendly AI chat assistant with personalized experiences and model flexibility.",
   keywords: ["AI", "chat", "LLM", "OpenRouter", "Ollama", "conversation", "duck"],
   authors: [{ name: "The Duck Team" }],
   icons: {
