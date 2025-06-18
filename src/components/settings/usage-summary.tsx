@@ -10,10 +10,10 @@ import { RefreshCw, DollarSign, Activity, TrendingUp, Settings } from 'lucide-re
 
 interface CreditInfo {
   user_id: string
-  credit_limit: number
-  credits_used: number
-  reset_period: 'daily' | 'weekly' | 'monthly' | 'never'
-  last_reset: string
+  total_credits: number
+  used_credits: number
+  credit_limit_period: 'daily' | 'weekly' | 'monthly'
+  last_reset_at: string
   created_at: string
   updated_at: string
 }
@@ -58,7 +58,7 @@ export function UsageSummary() {
     }
   }, [toast])
 
-  const updateCreditSettings = async (updates: { credit_limit?: number; reset_period?: string }) => {
+  const updateCreditSettings = async (updates: { total_credits?: number; credit_limit_period?: string }) => {
     setUpdating(true)
     try {
       const response = await fetch('/api/credits', {
@@ -136,8 +136,8 @@ export function UsageSummary() {
   }
 
   const { credits, usageByModel, remainingCredits } = usageData
-  const usagePercent = (credits.credits_used / credits.credit_limit) * 100
-  const isLowCredit = remainingCredits < credits.credit_limit * 0.1
+  const usagePercent = (credits.used_credits / credits.total_credits) * 100
+  const isLowCredit = remainingCredits < credits.total_credits * 0.1
 
   const topModels = Object.entries(usageByModel)
     .sort(([, a], [, b]) => b.cost - a.cost)
@@ -147,7 +147,6 @@ export function UsageSummary() {
     { value: 'daily', label: 'Daily' },
     { value: 'weekly', label: 'Weekly' },
     { value: 'monthly', label: 'Monthly' },
-    { value: 'never', label: 'Never' },
   ]
 
   return (
@@ -160,7 +159,7 @@ export function UsageSummary() {
             Credit Overview
           </CardTitle>
           <CardDescription>
-            Your current usage for this {credits.reset_period === 'never' ? 'period' : credits.reset_period} period
+            Your current usage for this {credits.credit_limit_period} period
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -168,7 +167,7 @@ export function UsageSummary() {
             <div className="space-y-2">
               <div className="text-sm font-medium">Used</div>
               <div className="text-2xl font-bold text-primary">
-                ${credits.credits_used.toFixed(2)}
+                ${credits.used_credits.toFixed(2)}
               </div>
             </div>
             <div className="space-y-2">
@@ -182,7 +181,7 @@ export function UsageSummary() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Usage</span>
-              <span>{usagePercent.toFixed(1)}% of ${credits.credit_limit.toFixed(2)} limit</span>
+              <span>{usagePercent.toFixed(1)}% of ${credits.total_credits.toFixed(2)} limit</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
@@ -222,11 +221,11 @@ export function UsageSummary() {
         <CardContent className="space-y-6">
           <div className="space-y-3">
             <label className="text-sm font-medium">
-              Credit Limit: ${credits.credit_limit.toFixed(2)}
+              Credit Limit: ${credits.total_credits.toFixed(2)}
             </label>
             <Slider
-              value={[credits.credit_limit]}
-              onValueChange={([value]) => updateCreditSettings({ credit_limit: value })}
+              value={[credits.total_credits]}
+              onValueChange={([value]) => updateCreditSettings({ total_credits: value })}
               max={100}
               min={1}
               step={1}
@@ -242,8 +241,8 @@ export function UsageSummary() {
           <div className="space-y-3">
             <label className="text-sm font-medium">Reset Period</label>
             <Select
-              value={credits.reset_period}
-              onValueChange={(value) => updateCreditSettings({ reset_period: value })}
+              value={credits.credit_limit_period}
+              onValueChange={(value) => updateCreditSettings({ credit_limit_period: value })}
               disabled={updating}
             >
               <SelectTrigger>
@@ -258,9 +257,7 @@ export function UsageSummary() {
               </SelectContent>
             </Select>
             <div className="text-xs text-muted-foreground">
-              {credits.reset_period !== 'never' && (
-                <>Last reset: {new Date(credits.last_reset).toLocaleDateString()}</>
-              )}
+              Last reset: {new Date(credits.last_reset_at).toLocaleDateString()}
             </div>
           </div>
         </CardContent>

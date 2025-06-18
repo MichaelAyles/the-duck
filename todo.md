@@ -6,6 +6,19 @@
 
 **PRIORITY**: Focus on reliability, performance, and user experience before adding new features.
 
+## 🔴 URGENT DATABASE SCHEMA FIX - **RESOLVED**
+
+**Issue**: Missing `chat_summaries` table causing API failures
+**Status**: ✅ FIXED - Created migration files and documentation
+**Action Required**: Apply `/sql/create_chat_summaries_table.sql` migration to Supabase
+
+**What was fixed**:
+- Created missing `chat_summaries` table schema with proper constraints
+- Added UNIQUE constraint on `session_id` for upsert operations
+- Added proper RLS policies for security
+- Created verification script to check schema integrity
+- Added comprehensive SQL migration documentation
+
 ---
 
 ## 📊 CODE REVIEW FINDINGS

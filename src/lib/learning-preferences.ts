@@ -12,9 +12,7 @@ export interface LearningPreferenceItem {
 }
 
 export interface LearningPreferencesData {
-  [category: string]: {
-    [key: string]: LearningPreferenceItem
-  }
+  [fullKey: string]: LearningPreferenceItem
 }
 
 // Legacy interface for backward compatibility
@@ -101,21 +99,28 @@ async function getUserLearningPreferencesLegacy(userId: string): Promise<Learnin
 function convertJSONToLegacyFormat(preferencesData: LearningPreferencesData): LearningPreference[] {
   const legacyPreferences: LearningPreference[] = []
   
-  for (const [category, categoryPrefs] of Object.entries(preferencesData)) {
-    for (const [key, pref] of Object.entries(categoryPrefs)) {
-      legacyPreferences.push({
-        id: `${category}.${key}`, // Generate ID from category and key
-        category,
-        preference_key: key,
-        preference_value: pref.value,
-        weight: pref.weight,
-        source: pref.source,
-        confidence: pref.confidence,
-        last_reinforced_at: pref.last_reinforced_at,
-        created_at: pref.created_at,
-        updated_at: pref.updated_at
-      })
+  for (const [fullKey, pref] of Object.entries(preferencesData)) {
+    // Parse the full key (e.g., "topic/AI and machine learning")
+    const [category, ...keyParts] = fullKey.split('/')
+    const preferenceKey = keyParts.join('/') // Rejoin in case there are multiple slashes
+    
+    // Handle the case where pref might be null or missing properties
+    if (!pref || typeof pref !== 'object') {
+      continue
     }
+    
+    legacyPreferences.push({
+      id: `${category}.${preferenceKey}`, // Generate ID from category and key
+      category,
+      preference_key: preferenceKey,
+      preference_value: pref.value || '',
+      weight: pref.weight || 0,
+      source: (pref.source as 'manual' | 'chat_summary' | 'implicit' | 'feedback') || 'manual',
+      confidence: pref.confidence || 0.5,
+      last_reinforced_at: pref.last_reinforced_at || new Date().toISOString(),
+      created_at: pref.created_at || new Date().toISOString(),
+      updated_at: pref.updated_at || new Date().toISOString()
+    })
   }
   
   // Sort by weight (descending) then by updated_at (descending) to match legacy behavior

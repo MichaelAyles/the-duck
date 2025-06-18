@@ -12,33 +12,33 @@ export interface Database {
       chat_sessions: {
         Row: {
           id: string
+          user_id: string
           title: string
           messages: Json
           model: string
           created_at: string
           updated_at: string
           is_active: boolean
-          user_id: string | null
         }
         Insert: {
           id?: string
-          title: string
-          messages: Json
-          model: string
-          created_at?: string
-          updated_at?: string
-          is_active?: boolean
-          user_id?: string | null
-        }
-        Update: {
-          id?: string
+          user_id: string
           title?: string
           messages?: Json
           model?: string
           created_at?: string
           updated_at?: string
           is_active?: boolean
-          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          messages?: Json
+          model?: string
+          created_at?: string
+          updated_at?: string
+          is_active?: boolean
         }
       }
       chat_summaries: {
@@ -72,46 +72,61 @@ export interface Database {
       }
       user_preferences: {
         Row: {
+          id: string
           user_id: string
-          preferences: Json
+          starred_models: string[]
+          theme: string
+          default_model: string
+          created_at: string
           updated_at: string
         }
         Insert: {
+          id?: string
           user_id: string
-          preferences: Json
+          starred_models?: string[]
+          theme?: string
+          default_model?: string
+          created_at?: string
           updated_at?: string
         }
         Update: {
+          id?: string
           user_id?: string
-          preferences?: Json
+          starred_models?: string[]
+          theme?: string
+          default_model?: string
+          created_at?: string
           updated_at?: string
         }
       }
       user_credits: {
         Row: {
+          id: string
           user_id: string
-          credit_limit: number
-          credits_used: number
-          reset_period: 'daily' | 'weekly' | 'monthly' | 'never'
-          last_reset: string
+          total_credits: number
+          used_credits: number
+          credit_limit_period: 'daily' | 'weekly' | 'monthly'
+          last_reset_at: string
           created_at: string
           updated_at: string
         }
         Insert: {
+          id?: string
           user_id: string
-          credit_limit?: number
-          credits_used?: number
-          reset_period?: 'daily' | 'weekly' | 'monthly' | 'never'
-          last_reset?: string
+          total_credits?: number
+          used_credits?: number
+          credit_limit_period?: 'daily' | 'weekly' | 'monthly'
+          last_reset_at?: string
           created_at?: string
           updated_at?: string
         }
         Update: {
+          id?: string
           user_id?: string
-          credit_limit?: number
-          credits_used?: number
-          reset_period?: 'daily' | 'weekly' | 'monthly' | 'never'
-          last_reset?: string
+          total_credits?: number
+          used_credits?: number
+          credit_limit_period?: 'daily' | 'weekly' | 'monthly'
+          last_reset_at?: string
           created_at?: string
           updated_at?: string
         }
@@ -120,41 +135,52 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          session_id: string | null
-          model: string
-          prompt_tokens: number
-          completion_tokens: number
-          total_tokens: number
-          prompt_cost: number
-          completion_cost: number
-          total_cost: number
-          created_at: string
+          endpoint: string
+          model: string | null
+          token_count: number
+          timestamp: string
+          metadata: Json
         }
         Insert: {
           id?: string
           user_id: string
-          session_id?: string | null
-          model: string
-          prompt_tokens: number
-          completion_tokens: number
-          total_tokens: number
-          prompt_cost: number
-          completion_cost: number
-          total_cost: number
-          created_at?: string
+          endpoint: string
+          model?: string | null
+          token_count?: number
+          timestamp?: string
+          metadata?: Json
         }
         Update: {
           id?: string
           user_id?: string
-          session_id?: string | null
-          model?: string
-          prompt_tokens?: number
-          completion_tokens?: number
-          total_tokens?: number
-          prompt_cost?: number
-          completion_cost?: number
-          total_cost?: number
+          endpoint?: string
+          model?: string | null
+          token_count?: number
+          timestamp?: string
+          metadata?: Json
+        }
+      }
+      user_learning_preferences_v2: {
+        Row: {
+          id: string
+          user_id: string
+          preferences: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          preferences?: Json
           created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          preferences?: Json
+          created_at?: string
+          updated_at?: string
         }
       }
     }

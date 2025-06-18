@@ -7,6 +7,22 @@ import { createClient } from '@/lib/supabase/server'
  * GET: Fetches detailed usage statistics with filtering options
  */
 
+// Type for user_usage metadata structure
+interface UsageMetadata {
+  total_cost?: number
+  totalCost?: number
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
+  prompt_cost?: number
+  completion_cost?: number
+  session_id?: string | null
+  model_pricing?: {
+    prompt: number
+    completion: number
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient()
@@ -43,8 +59,8 @@ export async function GET(req: NextRequest) {
       .from('user_usage')
       .select('*')
       .eq('user_id', user.id)
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: false })
+      .gte('timestamp', startDate.toISOString())
+      .order('timestamp', { ascending: false })
 
     if (usageError) {
       console.error('Failed to fetch usage:', usageError)
@@ -53,11 +69,17 @@ export async function GET(req: NextRequest) {
 
     // Calculate aggregated statistics
     const stats = {
-      totalCost: usage.reduce((sum, record) => sum + record.total_cost, 0),
-      totalTokens: usage.reduce((sum, record) => sum + record.total_tokens, 0),
+      totalCost: usage.reduce((sum, record) => {
+        const metadata = record.metadata as UsageMetadata
+        return sum + (metadata?.total_cost || metadata?.totalCost || 0)
+      }, 0),
+      totalTokens: usage.reduce((sum, record) => sum + (record.token_count || 0), 0),
       totalRequests: usage.length,
-      averageCostPerRequest: usage.length > 0 ? usage.reduce((sum, record) => sum + record.total_cost, 0) / usage.length : 0,
-      averageTokensPerRequest: usage.length > 0 ? usage.reduce((sum, record) => sum + record.total_tokens, 0) / usage.length : 0
+      averageCostPerRequest: usage.length > 0 ? usage.reduce((sum, record) => {
+        const metadata = record.metadata as UsageMetadata
+        return sum + (metadata?.total_cost || metadata?.totalCost || 0)
+      }, 0) / usage.length : 0,
+      averageTokensPerRequest: usage.length > 0 ? usage.reduce((sum, record) => sum + (record.token_count || 0), 0) / usage.length : 0
     }
 
     // Group data based on groupBy parameter
@@ -66,7 +88,7 @@ export async function GET(req: NextRequest) {
     if (groupBy === 'day') {
       // Group by day
       groupedData = usage.reduce((acc, record) => {
-        const date = new Date(record.created_at).toISOString().split('T')[0]
+        const date = new Date(record.timestamp).toISOString().split('T')[0]
         if (!acc[date]) {
           acc[date] = {
             cost: 0,
@@ -74,16 +96,18 @@ export async function GET(req: NextRequest) {
             requests: 0
           }
         }
-        acc[date].cost += record.total_cost
-        acc[date].tokens += record.total_tokens
+        const metadata = record.metadata as UsageMetadata
+        acc[date].cost += metadata?.total_cost || metadata?.totalCost || 0
+        acc[date].tokens += record.token_count || 0
         acc[date].requests += 1
         return acc
       }, {} as Record<string, { cost: number; tokens: number; requests: number }>)
     } else if (groupBy === 'model') {
       // Group by model
       groupedData = usage.reduce((acc, record) => {
-        if (!acc[record.model]) {
-          acc[record.model] = {
+        const modelKey = record.model || 'unknown'
+        if (!acc[modelKey]) {
+          acc[modelKey] = {
             cost: 0,
             tokens: 0,
             requests: 0,
@@ -91,9 +115,10 @@ export async function GET(req: NextRequest) {
             avgTokensPerRequest: 0
           }
         }
-        acc[record.model].cost += record.total_cost
-        acc[record.model].tokens += record.total_tokens
-        acc[record.model].requests += 1
+        const metadata = record.metadata as UsageMetadata
+        acc[modelKey].cost += metadata?.total_cost || metadata?.totalCost || 0
+        acc[modelKey].tokens += record.token_count || 0
+        acc[modelKey].requests += 1
         return acc
       }, {} as Record<string, Record<string, number>>)
 

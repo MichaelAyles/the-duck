@@ -30,9 +30,9 @@ export async function GET() {
         .from('user_credits')
         .insert({
           user_id: user.id,
-          credit_limit: 10.00, // $10 default
-          credits_used: 0.00,
-          reset_period: 'monthly'
+          total_credits: 10000, // 10,000 credits default
+          used_credits: 0,
+          credit_limit_period: 'monthly'
         })
         .select()
         .single()
@@ -47,11 +47,11 @@ export async function GET() {
 
     // Check if credits need to be reset based on period
     if (credits) {
-      const lastReset = new Date(credits.last_reset)
+      const lastReset = new Date(credits.last_reset_at)
       const now = new Date()
       let shouldReset = false
 
-      switch (credits.reset_period) {
+      switch (credits.credit_limit_period) {
         case 'daily':
           shouldReset = now.getTime() - lastReset.getTime() > 24 * 60 * 60 * 1000
           break
@@ -69,8 +69,8 @@ export async function GET() {
         const { data: updatedCredits, error: updateError } = await supabase
           .from('user_credits')
           .update({
-            credits_used: 0.00,
-            last_reset: now.toISOString()
+            used_credits: 0,
+            last_reset_at: now.toISOString()
           })
           .eq('user_id', user.id)
           .select()
@@ -83,14 +83,14 @@ export async function GET() {
     }
 
     // Get usage summary for current period
-    const periodStart = credits?.last_reset || new Date().toISOString()
+    const periodStart = credits?.last_reset_at || new Date().toISOString()
     
     const { data: usage, error: usageError } = await supabase
       .from('user_usage')
-      .select('model, total_tokens, total_cost, created_at')
+      .select('model, token_count, timestamp, metadata')
       .eq('user_id', user.id)
-      .gte('created_at', periodStart)
-      .order('created_at', { ascending: false })
+      .gte('timestamp', periodStart)
+      .order('timestamp', { ascending: false })
 
     if (usageError) {
       console.error('Failed to fetch usage:', usageError)
@@ -105,8 +105,11 @@ export async function GET() {
           count: 0
         }
       }
-      acc[record.model].tokens += record.total_tokens
-      acc[record.model].cost += record.total_cost
+      acc[record.model].tokens += record.token_count || 0
+      // Extract cost from metadata if available
+      const metadata = record.metadata as { total_cost?: number; totalCost?: number }
+      const totalCost = metadata?.total_cost || metadata?.totalCost || 0
+      acc[record.model].cost += totalCost
       acc[record.model].count += 1
       return acc
     }, {} as Record<string, { tokens: number; cost: number; count: number }>)
@@ -115,7 +118,7 @@ export async function GET() {
       credits,
       usage: usage || [],
       usageByModel: usageByModel || {},
-      remainingCredits: credits ? Math.max(0, credits.credit_limit - credits.credits_used) : 0
+      remainingCredits: credits ? Math.max(0, credits.total_credits - credits.used_credits) : 0
     })
   } catch (error) {
     console.error('Credits API error:', error)
@@ -136,21 +139,21 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { credit_limit, reset_period } = body
+    const { total_credits, credit_limit_period } = body
 
     // Validate input
-    if (credit_limit !== undefined && (typeof credit_limit !== 'number' || credit_limit < 0)) {
+    if (total_credits !== undefined && (typeof total_credits !== 'number' || total_credits < 0)) {
       return NextResponse.json({ error: 'Invalid credit limit' }, { status: 400 })
     }
 
-    if (reset_period !== undefined && !['daily', 'weekly', 'monthly', 'never'].includes(reset_period)) {
+    if (credit_limit_period !== undefined && !['daily', 'weekly', 'monthly'].includes(credit_limit_period)) {
       return NextResponse.json({ error: 'Invalid reset period' }, { status: 400 })
     }
 
     // Update user credits
     const updateData: Record<string, number | string> = {}
-    if (credit_limit !== undefined) updateData.credit_limit = credit_limit
-    if (reset_period !== undefined) updateData.reset_period = reset_period
+    if (total_credits !== undefined) updateData.total_credits = total_credits
+    if (credit_limit_period !== undefined) updateData.credit_limit_period = credit_limit_period
 
     const { data: credits, error: updateError } = await supabase
       .from('user_credits')

@@ -49,31 +49,36 @@ async function trackUsage(
   const completionCost = (completionTokens / 1_000_000) * modelPricing.completion
   const totalCost = promptCost + completionCost
   
-  // Record the usage
+  // Record the usage using new schema structure
   await supabase.from('user_usage').insert({
     user_id: userId,
-    session_id: sessionId || null,
+    endpoint: '/api/chat',
     model,
-    prompt_tokens: promptTokens,
-    completion_tokens: completionTokens,
-    total_tokens: promptTokens + completionTokens,
-    prompt_cost: promptCost,
-    completion_cost: completionCost,
-    total_cost: totalCost
+    token_count: promptTokens + completionTokens,
+    metadata: {
+      session_id: sessionId || null,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: promptTokens + completionTokens,
+      prompt_cost: promptCost,
+      completion_cost: completionCost,
+      total_cost: totalCost,
+      model_pricing: modelPricing
+    }
   })
   
-  // Update user credits - use regular update since RPC might not be available
+  // Update user credits using correct column names
   try {
     const { data: credits } = await supabase
       .from('user_credits')
-      .select('credits_used')
+      .select('used_credits')
       .eq('user_id', userId)
       .single()
     
     if (credits) {
       await supabase
         .from('user_credits')
-        .update({ credits_used: credits.credits_used + totalCost })
+        .update({ used_credits: credits.used_credits + totalCost })
         .eq('user_id', userId)
     }
   } catch (error) {

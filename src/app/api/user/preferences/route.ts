@@ -157,7 +157,7 @@ export async function GET() {
     // Try to get existing preferences
     const { data, error } = await supabase
       .from('user_preferences')
-      .select('preferences')
+      .select('starred_models, theme, default_model')
       .eq('user_id', user.id)
       .single()
 
@@ -170,9 +170,11 @@ export async function GET() {
           .from('user_preferences')
           .insert([{
             user_id: user.id,
-            preferences: defaultPrefs
+            starred_models: defaultPrefs.starredModels,
+            theme: defaultPrefs.theme,
+            default_model: defaultPrefs.primaryModel
           }])
-          .select('preferences')
+          .select('starred_models, theme, default_model')
           .single()
 
         if (createError) {
@@ -183,7 +185,15 @@ export async function GET() {
           )
         }
 
-        return NextResponse.json({ preferences: newData.preferences })
+        // Transform SQL columns back to API format
+        const apiPreferences = {
+          ...defaultPrefs,
+          starredModels: newData.starred_models || [],
+          theme: newData.theme || 'system',
+          primaryModel: newData.default_model || defaultPrefs.primaryModel
+        }
+        
+        return NextResponse.json({ preferences: apiPreferences })
       }
       
       console.error('Failed to fetch user preferences:', error)
@@ -193,7 +203,16 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json({ preferences: data.preferences })
+    // Transform SQL columns to API format
+    const defaultPrefs = await createUserPreferencesWithDynamicDefaults()
+    const apiPreferences = {
+      ...defaultPrefs,
+      starredModels: data.starred_models || [],
+      theme: data.theme || 'system',
+      primaryModel: data.default_model || defaultPrefs.primaryModel
+    }
+    
+    return NextResponse.json({ preferences: apiPreferences })
   } catch (error) {
     console.error('Error in GET /api/user/preferences:', error)
     return NextResponse.json(
@@ -220,7 +239,7 @@ export async function PUT(request: NextRequest) {
     // Get current preferences first
     const { data: currentData, error: fetchError } = await supabase
       .from('user_preferences')
-      .select('preferences')
+      .select('starred_models, theme, default_model')
       .eq('user_id', user.id)
       .single()
 
@@ -232,8 +251,14 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Merge preferences
-    const currentPrefs = currentData?.preferences as UserPreferencesData || DEFAULT_USER_PREFERENCES
+    // Merge preferences with SQL column structure
+    const currentPrefs: UserPreferencesData = currentData ? {
+      ...DEFAULT_USER_PREFERENCES,
+      starredModels: currentData.starred_models || [],
+      theme: currentData.theme || 'system',
+      primaryModel: currentData.default_model || DEFAULT_USER_PREFERENCES.primaryModel
+    } : DEFAULT_USER_PREFERENCES
+    
     const updatedPrefs = {
       ...currentPrefs,
       ...updates,
@@ -243,17 +268,18 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Update or insert preferences
+    // Update or insert preferences using individual columns
     const { data, error } = await supabase
       .from('user_preferences')
       .upsert([{
         user_id: user.id,
-        preferences: updatedPrefs,
-        updated_at: new Date().toISOString()
+        starred_models: updatedPrefs.starredModels,
+        theme: updatedPrefs.theme,
+        default_model: updatedPrefs.primaryModel
       }], {
         onConflict: 'user_id'
       })
-      .select('preferences')
+      .select('starred_models, theme, default_model')
       .single()
 
     if (error) {
@@ -264,7 +290,15 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ preferences: data.preferences })
+    // Transform back to API format
+    const apiPreferences = {
+      ...updatedPrefs,
+      starredModels: data.starred_models || [],
+      theme: data.theme || 'system',
+      primaryModel: data.default_model || updatedPrefs.primaryModel
+    }
+    
+    return NextResponse.json({ preferences: apiPreferences })
   } catch (error) {
     console.error('Error in PUT /api/user/preferences:', error)
     return NextResponse.json(
@@ -298,7 +332,7 @@ export async function POST(request: NextRequest) {
     // Get current preferences
     const { data: currentData, error: fetchError } = await supabase
       .from('user_preferences')
-      .select('preferences')
+      .select('starred_models, theme, default_model')
       .eq('user_id', user.id)
       .single()
 
@@ -310,7 +344,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const currentPrefs = currentData?.preferences as UserPreferencesData || await createUserPreferencesWithDynamicDefaults()
+    // Transform SQL columns to API format
+    const currentPrefs: UserPreferencesData = currentData ? {
+      ...await createUserPreferencesWithDynamicDefaults(),
+      starredModels: currentData.starred_models || [],
+      theme: currentData.theme || 'system',
+      primaryModel: currentData.default_model || DEFAULT_USER_PREFERENCES.primaryModel
+    } : await createUserPreferencesWithDynamicDefaults()
 
     const updatedPrefs = { ...currentPrefs }
 
@@ -366,17 +406,18 @@ export async function POST(request: NextRequest) {
         )
     }
 
-    // Save updated preferences
+    // Save updated preferences using individual columns
     const { data, error } = await supabase
       .from('user_preferences')
       .upsert([{
         user_id: user.id,
-        preferences: updatedPrefs,
-        updated_at: new Date().toISOString()
+        starred_models: updatedPrefs.starredModels,
+        theme: updatedPrefs.theme,
+        default_model: updatedPrefs.primaryModel
       }], {
         onConflict: 'user_id'
       })
-      .select('preferences')
+      .select('starred_models, theme, default_model')
       .single()
 
     if (error) {
@@ -387,7 +428,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ preferences: data.preferences })
+    // Transform back to API format
+    const apiPreferences = {
+      ...updatedPrefs,
+      starredModels: data.starred_models || [],
+      theme: data.theme || 'system',
+      primaryModel: data.default_model || updatedPrefs.primaryModel
+    }
+    
+    return NextResponse.json({ preferences: apiPreferences })
   } catch (error) {
     console.error('Error in POST /api/user/preferences:', error)
     return NextResponse.json(

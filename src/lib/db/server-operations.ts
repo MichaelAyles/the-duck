@@ -105,7 +105,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
 
     const { data, error } = await supabase
       .from('user_preferences')
-      .select('preferences')
+      .select('starred_models, theme, default_model')
       .eq('user_id', userId)
       .single()
 
@@ -118,7 +118,13 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
       return await createUserPreferencesWithDynamicDefaults(userId)
     }
 
-    const preferences = data.preferences as UserPreferencesData;
+    // Transform SQL columns to API format
+    const preferences: UserPreferencesData = {
+      ...DEFAULT_USER_PREFERENCES,
+      starredModels: data.starred_models || [],
+      theme: data.theme || 'system',
+      primaryModel: data.default_model || DEFAULT_USER_PREFERENCES.primaryModel
+    };
     
     // Cache the preferences
     await cache.set(cacheKey, preferences, CACHE_TTL.USER_PREFERENCES);
@@ -192,12 +198,14 @@ export async function createUserPreferences(
       .from('user_preferences')
       .upsert({
         user_id: userId,
-        preferences: preferences as unknown
+        starred_models: preferences.starredModels,
+        theme: preferences.theme,
+        default_model: preferences.primaryModel
       }, {
         onConflict: 'user_id',
         ignoreDuplicates: false
       })
-      .select('preferences')
+      .select('starred_models, theme, default_model')
       .single()
 
     if (error) {
@@ -205,8 +213,16 @@ export async function createUserPreferences(
       return preferences // Return the preferences without saving
     }
 
+    // Transform SQL result back to API format
+    const apiPreferences: UserPreferencesData = {
+      ...preferences,
+      starredModels: data.starred_models || [],
+      theme: data.theme || 'system',
+      primaryModel: data.default_model || preferences.primaryModel
+    }
+    
     console.log('Created user preferences for user:', userId)
-    return data.preferences as UserPreferencesData
+    return apiPreferences
   } catch (error) {
     console.error('Error creating user preferences:', error)
     return preferences // Return the preferences without saving
@@ -236,9 +252,13 @@ export async function updateUserPreferences(
 
     const { data, error } = await supabase
       .from('user_preferences')
-      .update({ preferences: updated as unknown })
+      .update({
+        starred_models: updated.starredModels,
+        theme: updated.theme,
+        default_model: updated.primaryModel
+      })
       .eq('user_id', userId)
-      .select('preferences')
+      .select('starred_models, theme, default_model')
       .single()
 
     if (error) {
@@ -246,7 +266,13 @@ export async function updateUserPreferences(
       return updated
     }
 
-    const newPreferences = data.preferences as UserPreferencesData;
+    // Transform SQL result back to API format
+    const newPreferences: UserPreferencesData = {
+      ...updated,
+      starredModels: data.starred_models || [],
+      theme: data.theme || 'system',
+      primaryModel: data.default_model || updated.primaryModel
+    };
     
     // Invalidate the cache
     const cacheKey = cacheKeys.userPreferences(userId);

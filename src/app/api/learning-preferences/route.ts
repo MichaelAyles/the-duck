@@ -13,9 +13,7 @@ export interface LearningPreferenceItem {
 }
 
 export interface LearningPreferencesData {
-  [category: string]: {
-    [key: string]: LearningPreferenceItem
-  }
+  [fullKey: string]: LearningPreferenceItem
 }
 
 // Legacy interface for backward compatibility with existing components
@@ -391,15 +389,25 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Also delete all chat summaries
-    const { error: summaryError } = await supabase
-      .from('chat_summaries')
-      .delete()
+    // Also delete all chat summaries for user's sessions
+    // Since chat_summaries doesn't have user_id, we need to delete by session_id
+    // where the session belongs to the user
+    const { data: userSessions } = await supabase
+      .from('chat_sessions')
+      .select('id')
       .eq('user_id', user.id)
-
-    if (summaryError) {
-      console.error('Failed to delete chat summaries:', summaryError)
-      // Don't fail the request if summaries can't be deleted
+    
+    if (userSessions && userSessions.length > 0) {
+      const sessionIds = userSessions.map(session => session.id)
+      const { error: summaryError } = await supabase
+        .from('chat_summaries')
+        .delete()
+        .in('session_id', sessionIds)
+      
+      if (summaryError) {
+        console.error('Failed to delete chat summaries:', summaryError)
+        // Don't fail the request if summaries can't be deleted
+      }
     }
 
     return NextResponse.json({ 
@@ -418,21 +426,28 @@ export async function DELETE(request: NextRequest) {
 function convertJSONToLegacyFormat(preferencesData: LearningPreferencesData): LearningPreference[] {
   const legacyPreferences: LearningPreference[] = []
   
-  for (const [category, categoryPrefs] of Object.entries(preferencesData)) {
-    for (const [key, pref] of Object.entries(categoryPrefs)) {
-      legacyPreferences.push({
-        id: `${category}.${key}`, // Generate ID from category and key
-        category,
-        preference_key: key,
-        preference_value: pref.value,
-        weight: pref.weight,
-        source: pref.source,
-        confidence: pref.confidence,
-        last_reinforced_at: pref.last_reinforced_at,
-        created_at: pref.created_at,
-        updated_at: pref.updated_at
-      })
+  for (const [fullKey, pref] of Object.entries(preferencesData)) {
+    // Parse the full key (e.g., "topic/AI and machine learning")
+    const [category, ...keyParts] = fullKey.split('/')
+    const preferenceKey = keyParts.join('/') // Rejoin in case there are multiple slashes
+    
+    // Handle the case where pref might be null or missing properties
+    if (!pref || typeof pref !== 'object') {
+      continue
     }
+    
+    legacyPreferences.push({
+      id: `${category}.${preferenceKey}`, // Generate ID from category and key
+      category,
+      preference_key: preferenceKey,
+      preference_value: pref.value || '',
+      weight: pref.weight || 0,
+      source: (pref.source as 'manual' | 'chat_summary' | 'implicit' | 'feedback') || 'manual',
+      confidence: pref.confidence || 0.5,
+      last_reinforced_at: pref.last_reinforced_at || new Date().toISOString(),
+      created_at: pref.created_at || new Date().toISOString(),
+      updated_at: pref.updated_at || new Date().toISOString()
+    })
   }
   
   // Sort by weight (descending) then by updated_at (descending) to match legacy behavior
