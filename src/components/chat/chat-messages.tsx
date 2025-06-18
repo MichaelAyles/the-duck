@@ -8,6 +8,8 @@ import { Message } from "@/types/chat";
 import { MessageContent } from "./message-content";
 import { DuckLogo } from "@/components/duck-logo";
 import { cn } from "@/lib/utils";
+import { FilePreview } from "./file-preview";
+import type { FileUpload } from "@/types/file-upload";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -117,7 +119,21 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
                   <span className="text-sm text-muted-foreground">Thinking quack-tastically...</span>
                 </div>
               ) : (
-                <MessageContent content={message.content} />
+                <>
+                  <MessageContent content={message.content} />
+                  {message.attachments && message.attachments.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {message.attachments.map((attachment) => (
+                        <FilePreview
+                          key={attachment.id}
+                          file={attachment as FileUpload}
+                          url={attachment.url}
+                          compact
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
               
               {message.metadata && (

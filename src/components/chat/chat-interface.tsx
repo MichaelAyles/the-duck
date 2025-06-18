@@ -100,6 +100,8 @@ export const ChatInterface = React.memo(({
             onSendMessage={handleSendMessage}
             disabled={isLoading}
             storageEnabled={settings.storageEnabled}
+            sessionId={sessionId || undefined}
+            userId={user?.id}
           />
         </div>
         
@@ -183,6 +185,8 @@ export const ChatInterface = React.memo(({
             onSendMessage={handleSendMessage}
             disabled={isLoading}
             storageEnabled={settings.storageEnabled}
+            sessionId={sessionId || undefined}
+            userId={user?.id}
           />
         </ErrorBoundary>
         

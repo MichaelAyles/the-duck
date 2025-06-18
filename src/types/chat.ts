@@ -9,6 +9,14 @@ export interface ChatMessage {
     processingTime?: number
     isThinking?: boolean
   }
+  attachments?: {
+    id: string
+    file_name: string
+    file_type: string
+    file_size: number
+    mime_type: string
+    url?: string
+  }[]
 }
 
 // Alias for backwards compatibility

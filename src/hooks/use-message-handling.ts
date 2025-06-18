@@ -6,6 +6,7 @@ import { Message } from '@/types/chat';
 import { ChatSettings } from '@/components/chat/chat-interface';
 import { useToast } from '@/hooks/use-toast';
 import { API_ENDPOINTS } from '@/lib/config';
+import type { FileUpload } from '@/types/file-upload';
 
 interface UseMessageHandlingProps {
   sessionId: string | null;
@@ -23,7 +24,7 @@ interface UseMessageHandlingProps {
 interface UseMessageHandlingReturn {
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  handleSendMessage: (content: string) => void;
+  handleSendMessage: (content: string, attachments?: FileUpload[]) => void;
   generateTitleIfNeeded: (messages: Message[], sessionId: string) => Promise<string | null>;
 }
 
@@ -96,12 +97,12 @@ export function useMessageHandling({
     return null; // No title generated
   }, []);
 
-  const handleSendMessage = useCallback((content: string) => {
+  const handleSendMessage = useCallback((content: string, attachments?: FileUpload[]) => {
     const startTime = performance.now();
     if (process.env.NODE_ENV === 'development') {
       if (process.env.NODE_ENV === 'development') console.log(`🚀 [${new Date().toISOString()}] handleSendMessage called`);
     }
-    if (!content.trim() || isLoading) return;
+    if ((!content.trim() && (!attachments || attachments.length === 0)) || isLoading) return;
 
     // CRITICAL FIX: Lock session at the very beginning of message handling
     if (lockSession) {
@@ -114,11 +115,26 @@ export function useMessageHandling({
     if (process.env.NODE_ENV === 'development') {
       if (process.env.NODE_ENV === 'development') console.log(`🚀 [${new Date().toISOString()}] Creating user and thinking messages`);
     }
+    
+    // Format content with attachments info if present
+    let messageContent = content.trim();
+    if (!messageContent && attachments && attachments.length > 0) {
+      messageContent = `[Attached ${attachments.length} file${attachments.length > 1 ? 's' : ''}]`;
+    }
+    
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
-      content: content.trim(),
+      content: messageContent,
       timestamp: new Date(),
+      attachments: attachments?.map(file => ({
+        id: file.id,
+        file_name: file.file_name,
+        file_type: file.file_type,
+        file_size: file.file_size,
+        mime_type: file.mime_type, // Add mime_type for FilePreview component
+        url: (file as FileUpload & { url?: string }).url,
+      })),
     };
 
     const thinkingMessage: Message = {
@@ -180,6 +196,27 @@ export function useMessageHandling({
           const messagesToSave = [...filteredMessages, userMessage];
           await chatServiceRef.current?.saveChatSession(messagesToSave, settings.model, titleToUse);
           if (process.env.NODE_ENV === 'development') console.log(`Successfully saved chat session with ${messagesToSave.length} messages`);
+          
+          // Link attachments to message and session if they exist
+          if (attachments && attachments.length > 0) {
+            try {
+              await fetch('/api/files/link-message', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  file_ids: attachments.map(file => file.id),
+                  message_id: userMessage.id,
+                  session_id: sessionId,
+                }),
+              });
+              if (process.env.NODE_ENV === 'development') console.log(`Linked ${attachments.length} attachments to message`);
+            } catch (error) {
+              console.warn('Failed to link attachments to message:', error);
+              // Don't fail the entire operation if linking fails
+            }
+          }
           
           // Generate title after saving for first message
           if (userMessages.length === 1) {
@@ -265,6 +302,7 @@ export function useMessageHandling({
               .map(msg => ({
                 role: msg.role,
                 content: msg.content,
+                attachments: msg.attachments,
               }));
             
             // Safety check: ensure we have at least one message

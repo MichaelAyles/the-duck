@@ -101,6 +101,14 @@ export const InputValidation = {
     messages: z.array(z.object({
       role: z.enum(['user', 'assistant', 'system']),
       content: z.string().min(1).max(SECURITY_CONFIG.INPUT_LIMITS.MESSAGE_LENGTH),
+      attachments: z.array(z.object({
+        id: z.string().uuid(),
+        file_name: z.string().min(1).max(255),
+        file_type: z.string().min(1).max(50),
+        file_size: z.number().int().positive().max(10485760), // 10MB limit
+        mime_type: z.string().min(1).max(100),
+        url: z.string().url().optional(),
+      })).optional(),
     })).min(1).max(SECURITY_CONFIG.INPUT_LIMITS.MESSAGES_COUNT),
     
     model: z.string()

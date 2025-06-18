@@ -129,10 +129,49 @@ export class OpenRouterClient {
         },
         body: JSON.stringify({
           model,
-          messages: messages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-          })),
+          messages: messages.map(msg => {
+            // Handle messages with attachments for vision models
+            if (msg.attachments && msg.attachments.length > 0) {
+              const content = [];
+              
+              // Add text content if present
+              if (msg.content && msg.content.trim()) {
+                content.push({
+                  type: "text",
+                  text: msg.content
+                });
+              }
+              
+              // Add image attachments
+              const imageAttachments = msg.attachments.filter(attachment => 
+                attachment.mime_type?.startsWith('image/') && attachment.url
+              );
+              
+              imageAttachments.forEach(attachment => {
+                content.push({
+                  type: "image_url",
+                  image_url: {
+                    url: attachment.url
+                  }
+                });
+              });
+              
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`🖼️ Sending ${imageAttachments.length} image(s) to OpenRouter for vision processing`);
+              }
+              
+              return {
+                role: msg.role,
+                content: content
+              };
+            } else {
+              // Standard text-only message
+              return {
+                role: msg.role,
+                content: msg.content,
+              };
+            }
+          }),
           stream: true,
           temperature: options.temperature ?? 0.7,
           max_tokens: options.max_tokens ?? 2048,
@@ -208,10 +247,49 @@ export class OpenRouterClient {
         },
         body: JSON.stringify({
           model,
-          messages: messages.map(msg => ({
-            role: msg.role,
-            content: msg.content,
-          })),
+          messages: messages.map(msg => {
+            // Handle messages with attachments for vision models
+            if (msg.attachments && msg.attachments.length > 0) {
+              const content = [];
+              
+              // Add text content if present
+              if (msg.content && msg.content.trim()) {
+                content.push({
+                  type: "text",
+                  text: msg.content
+                });
+              }
+              
+              // Add image attachments
+              const imageAttachments = msg.attachments.filter(attachment => 
+                attachment.mime_type?.startsWith('image/') && attachment.url
+              );
+              
+              imageAttachments.forEach(attachment => {
+                content.push({
+                  type: "image_url",
+                  image_url: {
+                    url: attachment.url
+                  }
+                });
+              });
+              
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`🖼️ Sending ${imageAttachments.length} image(s) to OpenRouter for vision processing`);
+              }
+              
+              return {
+                role: msg.role,
+                content: content
+              };
+            } else {
+              // Standard text-only message
+              return {
+                role: msg.role,
+                content: msg.content,
+              };
+            }
+          }),
           stream: false,
           temperature: options.temperature ?? 0.7,
           max_tokens: options.max_tokens ?? 2048,

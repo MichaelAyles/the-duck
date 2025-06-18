@@ -20,7 +20,18 @@ function convertToDuckSpeak(text: string): string {
 
 // Define interface for validated chat request data
 interface ChatRequestData {
-  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  messages: Array<{ 
+    role: 'user' | 'assistant' | 'system'; 
+    content: string;
+    attachments?: Array<{
+      id: string;
+      file_name: string;
+      file_type: string;
+      file_size: number;
+      mime_type: string;
+      url?: string;
+    }>;
+  }>;
   model: string;
   sessionId?: string;
   stream?: boolean;
@@ -151,12 +162,24 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
         content: systemPrompt,
         timestamp: new Date()
       },
-      ...messages.map((message, index) => ({
-        id: `msg-${index}`, // Add required id field
-        role: message.role as 'user' | 'assistant' | 'system',
-        content: InputValidation.sanitizeInput(message.content),
-        timestamp: new Date() // Add required timestamp field
-      }))
+      ...messages.map((message, index) => {
+        const sanitized = {
+          id: `msg-${index}`, // Add required id field
+          role: message.role as 'user' | 'assistant' | 'system',
+          content: InputValidation.sanitizeInput(message.content),
+          timestamp: new Date(), // Add required timestamp field
+          attachments: message.attachments // Preserve attachments for vision models
+        };
+        
+        // Debug logging for attachments
+        if (message.attachments && message.attachments.length > 0) {
+          console.log(`📎 Chat API: Message ${index} has ${message.attachments.length} attachments:`, 
+            message.attachments.map(a => ({ name: a.file_name, type: a.mime_type, hasUrl: !!a.url }))
+          );
+        }
+        
+        return sanitized;
+      })
     ];
 
     const apiKey = process.env.OPENROUTER_API_KEY!; // API key validated by middleware
@@ -171,6 +194,12 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
         async start(controller) {
           try {
             let completionTokens = 0;
+            
+            // Debug logging before sending to OpenRouter
+            const messagesWithAttachments = sanitizedMessages.filter(msg => 'attachments' in msg && msg.attachments && msg.attachments.length > 0);
+            if (messagesWithAttachments.length > 0) {
+              console.log(`🔍 Chat API: About to send ${messagesWithAttachments.length} messages with attachments to OpenRouter`);
+            }
             
             for await (const chunk of client.streamChat(sanitizedMessages, model, options)) {
               const processedChunk = tone === "duck" ? convertToDuckSpeak(chunk) : chunk;

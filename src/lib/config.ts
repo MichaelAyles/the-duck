@@ -64,3 +64,34 @@ export const RESPONSE_TONES = {
 } as const;
 
 export type ResponseTone = typeof RESPONSE_TONES[keyof typeof RESPONSE_TONES];
+
+// Performance thresholds
+export const PERFORMANCE_THRESHOLDS = {
+  API_TIMEOUT: 30000, // 30 seconds
+  STREAM_TIMEOUT: 120000, // 2 minutes
+  MAX_RETRIES: 3,
+  RETRY_DELAY: 1000, // 1 second
+  MAX_MESSAGE_LENGTH: 10000, // characters
+} as const;
+
+// File upload settings
+export const FILE_UPLOAD = {
+  MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
+  MAX_TOTAL_STORAGE: 1024 * 1024 * 1024, // 1GB per user
+  ALLOWED_MIME_TYPES: [
+    // Images
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    // Documents
+    'application/pdf', 
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    // Text
+    'text/plain', 'text/csv', 'text/markdown',
+    // Code
+    'text/javascript', 'application/json', 'text/html', 'text/css',
+    // Archives
+    'application/zip', 'application/x-tar', 'application/x-gzip',
+  ],
+  COST_PER_UPLOAD: 0.001, // $0.001 per file upload
+} as const;
