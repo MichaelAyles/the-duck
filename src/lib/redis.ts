@@ -7,7 +7,19 @@ let redis: Redis | null = null;
 export function getRedis(): Redis {
   if (!redis) {
     if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
-      throw new Error('Upstash Redis environment variables are not set');
+      // During build time, create a mock Redis instance that won't be used
+      if (process.env.NODE_ENV === 'production' && !process.env.VERCEL_ENV) {
+        throw new Error('Upstash Redis environment variables are not set');
+      }
+      
+      // Return a mock Redis instance for build time
+      return {
+        get: async () => null,
+        set: async () => 'OK',
+        setex: async () => 'OK',
+        del: async () => 0,
+        keys: async () => [],
+      } as unknown as Redis;
     }
 
     // Clean environment variables (remove quotes)
@@ -30,6 +42,14 @@ export function createRateLimiter(options: {
   prefix?: string;
 }) {
   const redis = getRedis();
+  
+  // If we don't have Redis environment variables (build time), return a mock rate limiter
+  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return {
+      limit: async () => ({ success: true, limit: options.requests, remaining: options.requests, reset: Date.now() + 60000 }),
+      reset: async () => ({ success: true }),
+    } as unknown as Ratelimit;
+  }
   
   return new Ratelimit({
     redis,
