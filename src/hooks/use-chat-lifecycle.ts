@@ -12,7 +12,7 @@ interface UseChatLifecycleProps {
   settings: ChatSettings;
   chatServiceRef: React.MutableRefObject<ChatService | null>;
   userId?: string;
-  createNewSession: () => string;
+  createNewSession: () => Promise<string>;
   setIsProcessingStorage: React.Dispatch<React.SetStateAction<boolean>>;
   onSessionUpdate?: (sessionId: string, newMessages: Message[]) => void;
 }
@@ -53,7 +53,7 @@ export function useChatLifecycle({
       
       // Reset chat
       setMessages([]);
-      const newSessionId = createNewSession();
+      const newSessionId = await createNewSession();
       
       // Notify parent about session change
       if (onSessionUpdate) {

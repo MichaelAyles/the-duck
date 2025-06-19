@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ChatService } from '@/lib/chat-service';
 import { Message } from '@/types/chat';
-import { CHAT_CONFIG } from '@/lib/config';
+import { CHAT_CONFIG, DEFAULT_AI_MODEL } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 
@@ -20,7 +20,7 @@ interface UseChatSessionReturn {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   chatServiceRef: React.MutableRefObject<ChatService | null>;
   loadSessionMessages: (sessionId: string) => Promise<void>;
-  createNewSession: () => string;
+  createNewSession: () => Promise<string>;
   // CRITICAL FIX: Add operation locking functions to prevent race conditions
   lockSession: () => void;
   unlockSession: () => void;
@@ -116,8 +116,8 @@ export function useChatSession({
     }
   }, [userId, welcomeMessage, toast]);
 
-  // Create a new session with operation locking safety
-  const createNewSession = useCallback((): string => {
+  // Create a new session with operation locking safety and immediate persistence
+  const createNewSession = useCallback(async (): Promise<string> => {
     // CRITICAL FIX: Don't create new session if operation is in progress
     if (isOperationInProgress.current) {
       logger.dev.log('🚨 [RACE CONDITION PREVENTION] Blocked new session creation during operation');
@@ -130,10 +130,22 @@ export function useChatSession({
     
     setSessionId(newSessionId);
     chatServiceRef.current = new ChatService(newSessionId, userId);
+    
+    // CRITICAL FIX: Immediately save empty session to database so it appears in sidebar
+    if (userId) {
+      try {
+        await chatServiceRef.current.saveChatSession([], DEFAULT_AI_MODEL, 'New Chat');
+        logger.dev.log(`✅ Empty session ${newSessionId} saved to database for sidebar display`);
+      } catch (error) {
+        logger.error(`❌ Failed to save new empty session ${newSessionId}:`, error);
+        // Continue anyway - the session will be saved when first message is sent
+      }
+    }
+    
     // Reset loading state for fresh session
     lastLoadedSessionId.current = null;
     return newSessionId;
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId, sessionId]);  
   // sessionId intentionally omitted to prevent unnecessary recreations
 
   // When initialMessages changes, update our state

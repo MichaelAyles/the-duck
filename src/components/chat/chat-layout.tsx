@@ -65,10 +65,46 @@ export function ChatLayout() {
     }
   }, [currentSessionId, toast]);
 
-  const handleNewChat = useCallback(() => {
-    setCurrentSessionId(null);
-    setMessages([]);
-    setRefreshTrigger(prev => prev + 1); // Refresh history to show new chat
+  const handleNewChat = useCallback(async () => {
+    try {
+      // Create and persist new session immediately
+      const newSessionId = crypto.randomUUID();
+      
+      // Save empty session to database so it appears in sidebar
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: newSessionId,
+          title: 'New Chat',
+          messages: [],
+          model: 'google/gemini-2.5-flash-preview-05-20', // Default model
+        }),
+      });
+      
+      if (response.ok) {
+        console.log(`✅ New empty session ${newSessionId} created and saved to database`);
+        
+        // Update local state
+        setCurrentSessionId(newSessionId);
+        setMessages([]);
+        setRefreshTrigger(prev => prev + 1); // Refresh history to show new chat
+      } else {
+        console.error('Failed to create new session:', await response.text());
+        // Fallback to old behavior
+        setCurrentSessionId(null);
+        setMessages([]);
+        setRefreshTrigger(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error creating new chat session:', error);
+      // Fallback to old behavior
+      setCurrentSessionId(null);
+      setMessages([]);
+      setRefreshTrigger(prev => prev + 1);
+    }
   }, []);
 
   const handleSessionUpdate = useCallback((sessionId: string, newMessages: Message[]) => {
