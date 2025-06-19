@@ -30,26 +30,65 @@ function createFallbackTitle(messages: Message[]): string {
     
     if (nonSystemMessages.length === 0) return 'New Chat'
     
-    // Use the first non-system message as fallback
+    // Use the first non-system message as fallback with smarter extraction
     const firstMessage = nonSystemMessages[0]
-    const words = firstMessage.content.trim().split(' ').slice(0, 4)
-    let title = words.join(' ')
-    
-    if (title.length > 30) {
-      title = title.slice(0, 27) + '...'
-    }
-    
-    return title || 'New Chat'
+    return extractSmartTitle(firstMessage.content)
   }
   
-  // Use the first user message
+  // Use the first user message with smarter title extraction
   const firstUserMessage = userMessages[0]
-  const words = firstUserMessage.content.trim().split(' ').slice(0, 4)
-  let title = words.join(' ')
+  return extractSmartTitle(firstUserMessage.content)
+}
+
+function extractSmartTitle(content: string): string {
+  const text = content.trim()
+  
+  // Try to extract meaningful keywords and create a better title
+  const words = text.split(/\s+/)
+  
+  // Look for question words and key topics
+  const questionWords = ['how', 'what', 'why', 'when', 'where', 'who', 'which']
+  const actionWords = ['create', 'build', 'make', 'write', 'develop', 'implement', 'fix', 'solve', 'explain']
+  const techWords = ['react', 'python', 'javascript', 'typescript', 'node', 'api', 'database', 'css', 'html']
+  
+  // Filter out common stop words but keep important ones
+  const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them']
+  
+  // Get important words (prioritize tech terms, action words, and capitalized words)
+  const importantWords = words.filter((word, index) => {
+    const lowerWord = word.toLowerCase()
+    
+    // Always include if it's a tech term or action word
+    if (techWords.includes(lowerWord) || actionWords.includes(lowerWord)) return true
+    
+    // Include question words if they're at the beginning
+    if (index < 3 && questionWords.includes(lowerWord)) return true
+    
+    // Include capitalized words (likely proper nouns/important terms)
+    if (word[0] && word[0] === word[0].toUpperCase() && word.length > 2) return true
+    
+    // Include if not a stop word and has reasonable length
+    if (!stopWords.includes(lowerWord) && word.length > 2) return true
+    
+    return false
+  })
+  
+  // Take up to 5 important words, or fall back to first 6 words if no important ones found
+  const titleWords = importantWords.length > 0 
+    ? importantWords.slice(0, 5)
+    : words.slice(0, 6)
+  
+  let title = titleWords.join(' ')
+  
+  // Clean up the title
+  title = title
+    .replace(/[^\w\s-]/g, '') // Remove special characters except hyphens
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim()
   
   // Truncate if too long
-  if (title.length > 30) {
-    title = title.slice(0, 27) + '...'
+  if (title.length > 40) {
+    title = title.slice(0, 37) + '...'
   }
   
   return title || 'New Chat'
@@ -96,13 +135,22 @@ export async function POST(req: NextRequest) {
         // Clean the API key (remove surrounding quotes if present)
         const cleanApiKey = process.env.OPENROUTER_API_KEY.replace(/^["']|["']$/g, '')
         
-        // Use all messages for title generation (2.0 flash lite is very cheap)
-        const relevantMessages = messages
+        // Use ALL messages for comprehensive title generation
+        const relevantMessages = messages.filter(msg => 
+          msg.content && 
+          msg.content.trim().length > 0 &&
+          msg.id !== "welcome-message"
+        )
+        
         if (process.env.NODE_ENV === 'development') {
-          logger.dev.log('📝 Sending messages to OpenRouter:', relevantMessages.length, 'messages')
+          logger.dev.log('📝 Sending messages to OpenRouter for title generation:', {
+            messageCount: relevantMessages.length,
+            totalChars: relevantMessages.reduce((acc, msg) => acc + msg.content.length, 0),
+            preview: relevantMessages.slice(0, 2).map(m => ({ role: m.role, preview: m.content.slice(0, 50) + '...' }))
+          })
         }
 
-        // Use Gemini Flash Lite for cost-effective title generation
+        // Use Gemini Flash 2.5 for high-quality, fast title generation
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -111,30 +159,30 @@ export async function POST(req: NextRequest) {
             'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.0-flash-lite-001',
+            model: 'google/gemini-2.5-flash-lite-preview-06-17',
             messages: [
               {
                 role: 'system',
-                content: `You are a title generator. Create a short, descriptive title (2-5 words max) for this conversation. 
+                content: `Create a short descriptive title for this conversation. Read all messages and identify the main topic.
 
-Rules:
-- Maximum 5 words
-- Be specific and descriptive
-- Avoid generic words like "chat", "conversation", "help"
-- Focus on the main topic or question
+Guidelines:
+- 2-5 words maximum
+- Use key terms from the conversation
+- Be specific about the topic
 - Use title case
-- No quotes or special characters
-- Examples: "Python Data Analysis", "Recipe for Pasta", "React Hooks Guide", "Travel to Japan"
+- No quotes or punctuation
 
-Respond with ONLY the title, nothing else.`
+Examples: "React Component Guide", "Python Data Analysis", "CSS Animation Tutorial"
+
+Return only the title.`
               },
               ...relevantMessages.map((msg: Message) => ({
                 role: msg.role === 'system' ? 'assistant' : msg.role,
                 content: msg.content // Use full content for better context
               }))
             ],
-            temperature: 0.3, // Lower temperature for more consistent titles
-            max_tokens: 40, // Allow for more descriptive titles
+            temperature: 0.1, // Very low temperature for consistent, focused titles
+            max_tokens: 30, // Enough for 6 words max
           }),
         })
 
@@ -144,7 +192,8 @@ Respond with ONLY the title, nothing else.`
             logger.dev.log('🤖 OpenRouter API response:', JSON.stringify(data, null, 2))
           }
           
-          if (!data.error && data.choices?.[0]?.message?.content) {
+          // Check for successful response with content
+          if (!data.error && data.choices?.[0]?.message?.content && data.choices[0].message.content.trim().length > 0) {
             let aiTitle = data.choices[0].message.content.trim()
             if (process.env.NODE_ENV === 'development') {
               logger.dev.log('🤖 Raw AI title:', aiTitle)
@@ -179,7 +228,54 @@ Respond with ONLY the title, nothing else.`
             }
           } else {
             if (process.env.NODE_ENV === 'development') {
-              logger.dev.log('❌ No valid content in AI response:', data)
+              logger.dev.log('❌ No valid content in AI response, trying fallback model:', data)
+            }
+            
+            // Try with a different model if the first one fails
+            try {
+              const fallbackResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${cleanApiKey}`,
+                  'Content-Type': 'application/json',
+                  'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+                },
+                body: JSON.stringify({
+                  model: 'openai/gpt-4o-mini', // Reliable fallback
+                  messages: [
+                    {
+                      role: 'system',
+                      content: 'Create a 2-5 word title for this conversation. Use the main topic discussed. Return only the title.'
+                    },
+                    ...relevantMessages.map((msg: Message) => ({
+                      role: msg.role === 'system' ? 'assistant' : msg.role,
+                      content: msg.content
+                    }))
+                  ],
+                  temperature: 0.1,
+                  max_tokens: 20,
+                }),
+              })
+              
+              if (fallbackResponse.ok) {
+                const fallbackData = await fallbackResponse.json()
+                if (fallbackData.choices?.[0]?.message?.content?.trim()) {
+                  let fallbackTitle = fallbackData.choices[0].message.content.trim()
+                  fallbackTitle = fallbackTitle.replace(/[\"']/g, '').trim()
+                  
+                  if (fallbackTitle.length >= 3 && fallbackTitle.length <= 50) {
+                    generatedTitle = fallbackTitle
+                    method = 'ai-generated-fallback'
+                    if (process.env.NODE_ENV === 'development') {
+                      logger.dev.log('✅ Using fallback AI-generated title:', fallbackTitle)
+                    }
+                  }
+                }
+              }
+            } catch (fallbackError) {
+              if (process.env.NODE_ENV === 'development') {
+                logger.dev.log('❌ Fallback model also failed:', fallbackError)
+              }
             }
           }
         } else {
