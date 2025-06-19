@@ -892,9 +892,9 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label>Memory Mode</Label>
+                        <Label>Flow Mode</Label>
                         <p className="text-sm text-muted-foreground">
-                          Use context from previous conversations for personalized responses
+                          Continue on the user's conversation flow with context from previous chats
                         </p>
                       </div>
                       <Switch

@@ -21,7 +21,7 @@ export const DEFAULT_CHAT_SETTINGS = {
   tone: "match-user" as const,
   storageEnabled: true,
   model: DEFAULT_AI_MODEL,
-  memoryEnabled: true,
+  memoryEnabled: false,
   memorySummaryCount: 3,
 };
 
