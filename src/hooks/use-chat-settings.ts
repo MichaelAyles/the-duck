@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ChatSettings } from '@/components/chat/chat-interface';
 import { useStarredModels } from '@/hooks/use-starred-models';
 import { useToast } from '@/hooks/use-toast';
 import { DEFAULT_CHAT_SETTINGS } from '@/lib/config';
+import { preferencesCache } from '@/lib/local-preferences-cache';
 
 interface UseChatSettingsReturn {
   settings: ChatSettings;
@@ -17,16 +18,55 @@ export function useChatSettings(): UseChatSettingsReturn {
   const { activeModel, setActive, isStarred } = useStarredModels();
   const { toast } = useToast();
   
-  // Initialize settings with active model (this doesn't trigger API calls)
-  const [settings, setSettings] = useState<ChatSettings>({
-    ...DEFAULT_CHAT_SETTINGS,
-    model: activeModel || DEFAULT_CHAT_SETTINGS.model,
+  // Initialize settings with cached preferences or defaults
+  const [settings, setSettings] = useState<ChatSettings>(() => {
+    const cached = preferencesCache.get()
+    if (cached) {
+      return {
+        model: cached.defaultModel,
+        tone: cached.tone,
+        memoryEnabled: cached.memoryEnabled,
+        memorySummaryCount: cached.memorySummaryCount,
+        storageEnabled: cached.storageEnabled,
+      }
+    }
+    return {
+      ...DEFAULT_CHAT_SETTINGS,
+      model: activeModel || DEFAULT_CHAT_SETTINGS.model,
+    }
   });
   
   const [isProcessingStorage, setIsProcessingStorage] = useState(false);
 
+  // Sync with cached preferences when they change
+  useEffect(() => {
+    const cached = preferencesCache.get()
+    if (cached) {
+      setSettings(prev => ({
+        ...prev,
+        model: cached.defaultModel,
+        tone: cached.tone,
+        memoryEnabled: cached.memoryEnabled,
+        memorySummaryCount: cached.memorySummaryCount,
+        storageEnabled: cached.storageEnabled,
+      }))
+    }
+  }, [activeModel]) // Re-sync when active model changes
+
   const handleSettingsChange = useCallback(async (newSettings: Partial<ChatSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
+    
+    // Update cache immediately for instant UI updates (only update fields that exist in ChatSettings)
+    const cacheUpdate: Record<string, unknown> = {}
+    if (newSettings.model) cacheUpdate.defaultModel = newSettings.model
+    if (newSettings.tone) cacheUpdate.tone = newSettings.tone
+    if (newSettings.memoryEnabled !== undefined) cacheUpdate.memoryEnabled = newSettings.memoryEnabled
+    if (newSettings.memorySummaryCount !== undefined) cacheUpdate.memorySummaryCount = newSettings.memorySummaryCount
+    if (newSettings.storageEnabled !== undefined) cacheUpdate.storageEnabled = newSettings.storageEnabled
+    
+    if (Object.keys(cacheUpdate).length > 0) {
+      preferencesCache.update(cacheUpdate)
+    }
     
     // If model is being changed, update the active model if it's a starred model
     if (newSettings.model && newSettings.model !== settings.model) {
