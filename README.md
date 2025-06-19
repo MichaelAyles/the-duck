@@ -46,6 +46,28 @@
 -   **AI Vision Support**: Automatic image analysis and description generation
 -   **Secure Storage**: Supabase-powered file storage with signed URLs
 
+### 🦆 **DuckPond Interactive Artifacts**
+-   **Interactive Code Execution**: Run React components, HTML demos, and JavaScript visualizations directly in chat
+-   **Safe Sandboxing**: Secure iframe-based execution environment with proper isolation
+-   **Automatic Detection**: AI automatically creates interactive content when requested
+-   **Side Panel Interface**: Dedicated execution environment with expand/collapse controls
+-   **Multi-Format Support**: React components, HTML, JavaScript, CSS, and JSON artifacts
+-   **Real-time Preview**: Live code execution with instant visual feedback
+-   **Error Handling**: Comprehensive error boundaries and user-friendly error messages
+-   **Download & Export**: Save artifacts as standalone files for external use
+
+![DuckPond Artifact Creation](Screenshots/Screenshot%202025-06-19%20at%2016.06.43.png)
+*Creating interactive React components through natural conversation*
+
+![DuckPond Side Panel](Screenshots/Screenshot%202025-06-19%20at%2016.07.34.png)
+*Interactive execution environment with live preview and code tabs*
+
+![DuckPond Animation Demo](Screenshots/Screenshot%202025-06-19%20at%2016.07.57.png)
+*Real-time animation execution in the DuckPond viewer*
+
+![DuckPond Expanded View](Screenshots/Screenshot%202025-06-19%20at%2016.11.06.png)
+*Expanded side panel for detailed development and testing*
+
 ## 🏗️ Architecture Philosophy
 
 This project is built with a strong, opinionated architectural philosophy that prioritizes **simplicity, type-safety, and developer experience**.
@@ -120,6 +142,38 @@ npm run dev
 ```
 Open [http://localhost:12000](http://localhost:12000) to see The Duck in action!
 
+## 🦆 Using DuckPond Interactive Artifacts
+
+DuckPond is The Duck's revolutionary feature that brings code to life directly in your chat conversations. Simply ask for interactive content and watch as The Duck creates executable demonstrations.
+
+### **How to Use DuckPond:**
+
+1. **Request Interactive Content**: Use natural language to ask for demos, visualizations, or components
+   ```
+   "Create a React animation of a bouncing ball"
+   "Show me an HTML demo of a CSS gradient background"
+   "Build a JavaScript visualization of the Fibonacci sequence"
+   ```
+
+2. **Automatic Detection**: The Duck automatically detects when to create interactive content and wraps it in `<duckpond>` tags
+
+3. **Execute in Side Panel**: Click "Run in DuckPond" to open the interactive execution environment
+
+4. **Explore and Modify**: Switch between Preview and Code tabs, expand the panel, or download the artifact
+
+### **Supported Formats:**
+- **React Components**: Interactive UI components with hooks and state management
+- **HTML Demos**: Complete HTML pages with CSS styling and structure
+- **JavaScript Visualizations**: Dynamic scripts with console output and DOM manipulation
+- **CSS Experiments**: Styling demonstrations and animation showcases
+- **JSON Data**: Structured data visualization and manipulation
+
+### **Security Features:**
+- **Iframe Sandboxing**: All code runs in isolated environments
+- **Content Validation**: Automatic scanning for potentially dangerous patterns
+- **Error Boundaries**: Comprehensive error handling with clear user feedback
+- **Safe Execution**: No access to parent window or sensitive browser APIs
+
 ## 🛠️ Tech Stack
 
 ### **Frontend**
@@ -141,6 +195,7 @@ Open [http://localhost:12000](http://localhost:12000) to see The Duck in action!
 -   **LLM Provider**: OpenRouter API (100+ models)
 -   **Model Management**: Dynamic preferences with OpenRouter rankings
 -   **Chat Features**: Streaming, summaries, title generation
+-   **DuckPond Artifacts**: Interactive code execution with secure sandboxing
 
 ### **Development & Deployment**
 -   **Build System**: Next.js with TypeScript strict mode
@@ -168,6 +223,7 @@ src/
 ├── components/            # React components
 │   ├── auth/              # Authentication components
 │   ├── chat/              # Chat interface components
+│   ├── duckpond/          # Interactive artifact execution components
 │   ├── settings/          # Settings and file management components
 │   └── ui/                # Reusable UI components (shadcn/ui)
 ├── hooks/                 # Custom React hooks
@@ -175,11 +231,14 @@ src/
 │   ├── use-message-handling.ts  # Message processing
 │   ├── use-chat-settings.ts     # Configuration management
 │   ├── use-chat-lifecycle.ts    # Lifecycle management
+│   ├── use-artifacts.ts         # DuckPond artifact management
 │   └── use-models.ts            # Model preferences
 ├── lib/                   # Utilities and services
 │   ├── config.ts          # Centralized configuration
 │   ├── auth.ts            # Authentication utilities
 │   ├── chat-service.ts    # Chat business logic
+│   ├── artifact-parser.ts # DuckPond artifact detection and parsing
+│   ├── artifact-service.ts # DuckPond artifact storage and management
 │   ├── file-upload-service.ts # File upload and storage utilities
 │   ├── redis.ts           # Redis client and caching utilities
 │   ├── security.ts        # Rate limiting and security middleware
@@ -189,6 +248,7 @@ src/
 │   ├── components/        # React component tests
 │   ├── lib/               # Utility and service tests
 │   └── api/               # API route integration tests
+├── contexts/              # React context providers
 └── types/                 # TypeScript type definitions
 ```
 
@@ -356,6 +416,7 @@ Whether you're tackling complex problems, brainstorming ideas, or just want to c
 
 **Features that make The Duck special:**
 - 🔐 **Secure Authentication**: Your conversations are private and persistent
+- 🦆 **DuckPond Interactive Artifacts**: Execute React components, HTML demos, and visualizations directly in chat
 - 📁 **Advanced File System**: Upload files, create drawings, and manage your content
 - 🎨 **Excalidraw Integration**: Native drawing and diagram creation in chat
 - 🌊 **Duck Mode**: Unique quack-tastic conversation experience
