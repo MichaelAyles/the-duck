@@ -189,23 +189,15 @@ export function useMessageHandling({
     (async () => {
 
     try {
+      // SKIP INITIAL SAVE - Only save once at the end to prevent race conditions
       // Save chat session if storage is enabled and user is authenticated
       if (settings.storageEnabled && userId && sessionId) {
         try {
-          // For first message: generate title before saving
-          let titleToUse: string | undefined;
-          const userMessages = newMessages.filter(msg => msg.role === 'user');
-          
-          // Save without the thinking message first
-          const messagesToSave = [...filteredMessages, userMessage];
-          await chatServiceRef.current?.saveChatSession(messagesToSave, settings.model, titleToUse);
-          if (process.env.NODE_ENV === 'development') logger.dev.log(`Successfully saved chat session with ${messagesToSave.length} messages`);
-          
-          // Update cache with new session data
+          // Cache update only - actual save happens at the end
           sessionCache.update(sessionId, {
-            title: titleToUse || 'New Chat',
+            title: 'New Chat',
             updatedAt: new Date().toISOString(),
-            messageCount: messagesToSave.length,
+            messageCount: newMessages.length - 1, // Exclude thinking message
             preview: userMessage.content.substring(0, 100),
             model: settings.model
           });
@@ -231,47 +223,9 @@ export function useMessageHandling({
             }
           }
           
-          // Generate title after saving for first message
-          if (userMessages.length === 1) {
-            try {
-              const generatedTitle = await generateTitleIfNeeded(messagesToSave, sessionId);
-              if (generatedTitle && onTitleGenerated) {
-                onTitleGenerated(sessionId, generatedTitle);
-                // Update cache with new title
-                sessionCache.update(sessionId, { title: generatedTitle });
-              }
-            } catch (error) {
-              logger.dev.log('Failed to generate title after save:', error);
-              // Don't fail the entire operation if title generation fails
-            }
-          }
         } catch (error) {
-          logger.error('❌ CRITICAL: Failed to save chat session:', error);
-          
-          // Stop the chat flow when session saving fails
-          setIsLoading(false);
-          
-          // CRITICAL FIX: Unlock session when save fails and we exit early
-          if (unlockSession) {
-            unlockSession();
-            if (process.env.NODE_ENV === 'development') {
-              logger.dev.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after save failure`);
-            }
-          }
-          
-          // Remove the thinking message since we're stopping
-          setMessages(currentMessages => 
-            currentMessages.filter(msg => msg.id !== thinkingMessage.id)
-          );
-          
-          toast({
-            title: "Save Failed",
-            description: "Unable to save your conversation. Please try again or check your connection.",
-            variant: "destructive",
-          });
-          
-          // Exit early - don't continue with API call if we can't save
-          return;
+          logger.error('❌ Failed to update cache:', error);
+          // Continue with API call even if cache update fails
         }
       }
 
@@ -402,36 +356,37 @@ export function useMessageHandling({
                       }
                     }, 100);
 
-                    // Save the completed conversation
+                    // SINGLE SAVE STRATEGY: Save the complete conversation once at the end
                     setTimeout(async () => {
                       try {
                         const userMessages = currentMessages.filter(msg => msg.role === 'user');
                         
-                        // For consecutive messages (after first): try AI, keep existing if fails
-                        if (userMessages.length > 1) {
+                        // Generate title for first message only
+                        let titleToUse: string | undefined;
+                        if (userMessages.length === 1) {
                           const generatedTitle = await generateTitleIfNeeded(currentMessages, sessionId);
-                          // Only save with new title if generation succeeded
-                          if (generatedTitle) {
-                            await chatServiceRef.current?.saveChatSession(currentMessages, settings.model, generatedTitle);
-                            if (onTitleGenerated) {
-                              onTitleGenerated(sessionId, generatedTitle);
-                            }
-                            // Update cache with latest conversation state
-                            sessionCache.update(sessionId, {
-                              title: generatedTitle,
-                              updatedAt: new Date().toISOString(),
-                              messageCount: currentMessages.length,
-                              preview: currentMessages[currentMessages.length - 1]?.content?.substring(0, 100) || '',
-                              model: settings.model
-                            });
-                            if (process.env.NODE_ENV === 'development') logger.dev.log(`Final save with updated title: ${generatedTitle}`);
-                          } else {
-                            // Don't save again - title was already generated and saved earlier
-                            if (process.env.NODE_ENV === 'development') logger.dev.log(`Skipping final save - title generation failed, preserving existing title`);
-                          }
-                        } else {
-                          // First message was already saved with title above - don't save again
-                          if (process.env.NODE_ENV === 'development') logger.dev.log(`Skipping final save - first message already saved with generated title`);
+                          titleToUse = generatedTitle || undefined;
+                        }
+                        
+                        // Always save the complete conversation
+                        await chatServiceRef.current?.saveChatSession(currentMessages, settings.model, titleToUse);
+                        
+                        // Notify about title if generated
+                        if (titleToUse && onTitleGenerated) {
+                          onTitleGenerated(sessionId, titleToUse);
+                        }
+                        
+                        // Update cache with final conversation state
+                        sessionCache.update(sessionId, {
+                          title: titleToUse || 'Chat Session',
+                          updatedAt: new Date().toISOString(),
+                          messageCount: currentMessages.length,
+                          preview: currentMessages[currentMessages.length - 1]?.content?.substring(0, 100) || '',
+                          model: settings.model
+                        });
+                        
+                        if (process.env.NODE_ENV === 'development') {
+                          logger.dev.log(`✅ SINGLE SAVE: Successfully saved complete conversation with ${currentMessages.length} messages`);
                         }
                       } catch (error) {
                         logger.error('❌ CRITICAL: Failed to save final chat session:', error);
