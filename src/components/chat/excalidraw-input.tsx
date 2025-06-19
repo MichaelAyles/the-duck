@@ -5,19 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Pencil, X, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { FileUploadService } from '@/lib/file-upload-service';
+import type { FileUpload } from '@/types/file-upload';
 
 // Import Excalidraw styles
 import '@excalidraw/excalidraw/index.css';
 
 // Configure Excalidraw to use local fonts
 if (typeof window !== 'undefined') {
-  (window as any).EXCALIDRAW_ASSET_PATH = '/';
+  (window as unknown as { EXCALIDRAW_ASSET_PATH: string }).EXCALIDRAW_ASSET_PATH = '/';
 }
 
 // Types will be imported from Excalidraw at runtime - using unknown for type safety
 type ExcalidrawElement = unknown;
 type ExcalidrawAPI = {
-  exportToCanvas: (elements: unknown[], opts?: unknown) => Promise<HTMLCanvasElement>;
+  getSceneElements: () => unknown[];
+  getFiles: () => unknown;
 };
 
 interface ExcalidrawInputProps {
@@ -26,26 +29,31 @@ interface ExcalidrawInputProps {
     elements: ExcalidrawElement[]; 
     mimeType: string;
   }) => void;
+  onFileUploaded?: (file: FileUpload, url: string) => void;
+  userId?: string;
   disabled?: boolean;
 }
 
-export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputProps) {
+export function ExcalidrawInput({ onDrawingCreate, onFileUploaded, userId, disabled }: ExcalidrawInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [ExcalidrawComponent, setExcalidrawComponent] = useState<React.ComponentType<Record<string, unknown>> | null>(null);
+  const [exportToCanvas, setExportToCanvas] = useState<((opts: unknown) => Promise<HTMLCanvasElement>) | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [elements, setElements] = useState<ExcalidrawElement[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const excalidrawAPIRef = useRef<ExcalidrawAPI | null>(null);
+  const fileUploadService = useRef(new FileUploadService());
   const { toast } = useToast();
 
   // Dynamically import Excalidraw when dialog opens
   useEffect(() => {
-    if (isOpen && !ExcalidrawComponent) {
+    if (isOpen && (!ExcalidrawComponent || !exportToCanvas)) {
       setIsLoading(true);
       import('@excalidraw/excalidraw')
         .then((module) => {
           console.log('Excalidraw module loaded:', module);
           setExcalidrawComponent(module.Excalidraw);
+          setExportToCanvas(() => module.exportToCanvas);
           setIsLoading(false);
         })
         .catch((error) => {
@@ -59,7 +67,7 @@ export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputPr
           setIsOpen(false);
         });
     }
-  }, [isOpen, ExcalidrawComponent, toast]);
+  }, [isOpen, ExcalidrawComponent, exportToCanvas, toast]);
 
   const handleExcalidrawChange = useCallback((
     elements: unknown[]
@@ -73,43 +81,88 @@ export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputPr
   }, []);
 
   const exportDrawing = useCallback(async () => {
-    if (!excalidrawAPIRef.current || elements.length === 0) {
+    if (!excalidrawAPIRef.current || !exportToCanvas || !userId) {
       toast({
-        title: "Nothing to export",
-        description: "Please create a drawing first.",
+        title: "Export unavailable",
+        description: "Drawing component not ready or user not signed in.",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      // Export to canvas
-      const canvas = await excalidrawAPIRef.current.exportToCanvas(elements, {
-        exportBackground: true,
-        exportPadding: 20,
-        exportScale: 2, // Higher resolution
+      // Get current elements from the API
+      const currentElements = excalidrawAPIRef.current.getSceneElements();
+      
+      // Check if there are actually elements to export
+      if (!currentElements || currentElements.length === 0) {
+        toast({
+          title: "Nothing to export",
+          description: "Please create a drawing first.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Show uploading state
+      toast({
+        title: "Uploading drawing...",
+        description: "Please wait while we save your drawing.",
+      });
+      
+      // Export to canvas using the proper API
+      const canvas = await exportToCanvas({
+        elements: currentElements,
+        files: excalidrawAPIRef.current.getFiles(),
+        getDimensions: () => ({ width: 800, height: 600 }), // Set reasonable dimensions
       });
 
-      // Convert canvas to blob
+      // Convert canvas to blob and then to File
       return new Promise<void>((resolve) => {
-        canvas.toBlob((blob: Blob | null) => {
+        canvas.toBlob(async (blob: Blob | null) => {
           if (blob) {
-            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
-            const metadata = {
-              name: `drawing-${timestamp}.png`,
-              elements: elements,
-              mimeType: 'image/png' as const,
-            };
-            
-            onDrawingCreate(blob, metadata);
-            setIsOpen(false);
-            setElements([]);
-            setHasChanges(false);
-            
-            toast({
-              title: "Drawing added",
-              description: "Your drawing has been attached to the message.",
-            });
+            try {
+              const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+              const fileName = `drawing-${timestamp}.png`;
+              
+              // Convert blob to File object for upload
+              const file = new File([blob], fileName, { type: 'image/png' });
+              
+              // Upload to Supabase storage
+              const uploadResult = await fileUploadService.current.uploadFile(file, userId);
+              
+              if (uploadResult.success && uploadResult.fileUpload && uploadResult.url) {
+                // Use the onFileUploaded callback if provided, otherwise fall back to onDrawingCreate
+                if (onFileUploaded) {
+                  onFileUploaded(uploadResult.fileUpload, uploadResult.url);
+                } else {
+                  const metadata = {
+                    name: fileName,
+                    elements: currentElements,
+                    mimeType: 'image/png' as const,
+                  };
+                  onDrawingCreate(blob, metadata);
+                }
+                
+                setIsOpen(false);
+                setElements([]);
+                setHasChanges(false);
+                
+                toast({
+                  title: "Drawing uploaded",
+                  description: "Your drawing has been saved and attached to the message.",
+                });
+              } else {
+                throw new Error(uploadResult.error || 'Upload failed');
+              }
+            } catch (uploadError) {
+              console.error('Error uploading drawing:', uploadError);
+              toast({
+                title: "Upload failed",
+                description: "Failed to upload your drawing. Please try again.",
+                variant: "destructive",
+              });
+            }
           }
           resolve();
         }, 'image/png', 0.9);
@@ -122,7 +175,7 @@ export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputPr
         variant: "destructive",
       });
     }
-  }, [elements, onDrawingCreate, toast]);
+  }, [exportToCanvas, onDrawingCreate, onFileUploaded, userId, toast]);
 
   const handleClose = useCallback(() => {
     if (hasChanges) {
@@ -163,7 +216,7 @@ export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputPr
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-[90vw] w-[1200px] h-[85vh] flex flex-col p-0">
+      <DialogContent className="max-w-[90vw] w-[1200px] h-[85vh] flex flex-col p-0" hideClose>
         <DialogHeader className="flex-shrink-0 p-6 pb-4">
           <DialogTitle className="flex items-center justify-between">
             <span>Create Drawing</span>
@@ -182,7 +235,7 @@ export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputPr
                 variant="default"
                 size="sm"
                 onClick={exportDrawing}
-                disabled={!hasChanges}
+                disabled={!hasChanges || !excalidrawAPIRef.current || !userId}
                 className="gap-2"
               >
                 <Check className="h-4 w-4" />

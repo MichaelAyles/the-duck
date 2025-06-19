@@ -59,8 +59,8 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
     mimeType: string;
   }) => {
     try {
-      // Create a partial file upload object for the drawing
-      const drawingFile: Partial<FileUpload> & { url?: string } = {
+      // Create a complete file upload object for the drawing
+      const drawingFile: FileUpload & { url: string } = {
         id: crypto.randomUUID(),
         file_name: metadata.name,
         file_type: 'image',
@@ -68,12 +68,13 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
         mime_type: metadata.mimeType,
         storage_path: '', // Will be set by upload process
         user_id: userId || '',
+        session_id: sessionId || '',
         created_at: new Date().toISOString(),
+        url: URL.createObjectURL(imageData), // Temporary URL for preview
       };
 
-      // Add to attachments immediately with a temporary URL
-      const tempUrl = URL.createObjectURL(imageData);
-      setAttachments([...attachments, { ...drawingFile, url: tempUrl } as FileUpload & { url: string }]);
+      // Add to attachments immediately
+      setAttachments([...attachments, drawingFile]);
 
       logger.dev.log('🎨 Drawing created:', metadata.name, 'Size:', imageData.size);
     } catch (error) {
@@ -107,6 +108,7 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
               <FilePreview
                 key={attachment.id}
                 file={attachment}
+                url={(attachment as FileUpload & { url?: string }).url}
                 compact
                 onDelete={handleRemoveAttachment}
               />
@@ -137,6 +139,8 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
             <div className="absolute bottom-2 right-2 flex items-center gap-1 z-10">
               <ExcalidrawInput
                 onDrawingCreate={handleDrawingCreate}
+                onFileUploaded={handleFileUploaded}
+                userId={userId}
                 disabled={disabled || !userId}
               />
               
