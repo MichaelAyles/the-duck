@@ -35,7 +35,7 @@ export interface ParsedArtifact {
 
 export interface ArtifactExecution {
   artifactId: string;
-  status: 'idle' | 'executing' | 'success' | 'error';
+  status: 'idle' | 'executing' | 'success' | 'error' | 'stopped';
   error?: string;
   lastExecuted?: Date;
 }

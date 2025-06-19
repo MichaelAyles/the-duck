@@ -16,7 +16,9 @@ import {
   Code,
   Eye,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Square,
+  RotateCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -67,7 +69,11 @@ export function DuckPondViewer({
   const handleExecute = useCallback(async () => {
     if (execution.status === 'executing') return;
 
-    setExecution(prev => ({ ...prev, status: 'executing' }));
+    setExecution(prev => ({ 
+      ...prev, 
+      status: 'executing',
+      error: undefined // Clear any previous errors
+    }));
 
     try {
       // Execute the artifact
@@ -91,6 +97,66 @@ export function DuckPondViewer({
     }
   }, [artifact, execution.status, onExecute, executeArtifact]);
 
+  const handleStop = useCallback(() => {
+    if (!iframeRef.current) return;
+    
+    // Stop execution by clearing iframe content
+    const iframe = iframeRef.current;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(`
+        <html>
+          <head><title>DuckPond - Stopped</title></head>
+          <body style="display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: system-ui, sans-serif; color: #666;">
+            <div style="text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 16px;">⏹️</div>
+              <div>Execution stopped</div>
+              <div style="font-size: 12px; margin-top: 8px;">Click Run to restart</div>
+            </div>
+          </body>
+        </html>
+      `);
+      doc.close();
+    }
+    
+    setExecution(prev => ({
+      ...prev,
+      status: 'stopped',
+    }));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    if (!iframeRef.current) return;
+    
+    // Reset iframe to blank state
+    const iframe = iframeRef.current;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(`
+        <html>
+          <head><title>DuckPond - Ready</title></head>
+          <body style="display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: system-ui, sans-serif; color: #666;">
+            <div style="text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 16px;">🦆</div>
+              <div>Ready to run</div>
+              <div style="font-size: 12px; margin-top: 8px;">Click Run to execute</div>
+            </div>
+          </body>
+        </html>
+      `);
+      doc.close();
+    }
+    
+    setExecution(prev => ({
+      ...prev,
+      status: 'idle',
+      error: undefined,
+      lastExecuted: undefined,
+    }));
+  }, []);
+
   const handleDownload = () => {
     const blob = new Blob([artifact.content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -111,6 +177,8 @@ export function DuckPondViewer({
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'error':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 'stopped':
+        return <Square className="h-4 w-4 text-orange-500" />;
       default:
         return <Play className="h-4 w-4" />;
     }
@@ -124,15 +192,22 @@ export function DuckPondViewer({
         return 'bg-green-500';
       case 'error':
         return 'bg-red-500';
+      case 'stopped':
+        return 'bg-orange-500';
       default:
         return 'bg-gray-500';
     }
   };
 
   useEffect(() => {
-    // Auto-execute on mount for React components
+    // Auto-execute on mount for React components, but only once per artifact
     if (artifact.type === 'react-component' && execution.status === 'idle') {
-      handleExecute();
+      // Add a small delay to ensure iframe is ready
+      const timeoutId = setTimeout(() => {
+        handleExecute();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [artifact.id, artifact.type, execution.status, handleExecute]);
 
@@ -157,17 +232,48 @@ export function DuckPondViewer({
           </div>
           
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleExecute}
-              disabled={execution.status === 'executing'}
-            >
+            {/* Run/Stop Button Group */}
+            <div className="flex items-center bg-muted rounded-md">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={execution.status === 'executing' ? handleStop : handleExecute}
+                disabled={false}
+                className="rounded-r-none"
+              >
+                {execution.status === 'executing' ? (
+                  <Square className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+                <span className="ml-1 text-xs">
+                  {execution.status === 'executing' ? 'Stop' : 'Run'}
+                </span>
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReset}
+                disabled={execution.status === 'executing'}
+                className="rounded-l-none border-l px-2"
+                title="Reset to initial state"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Status Indicator */}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {getStatusIcon()}
-              <span className="ml-1 text-xs">
-                {execution.status === 'executing' ? 'Running' : 'Run'}
+              <span>
+                {execution.status === 'executing' && 'Running...'}
+                {execution.status === 'success' && 'Ready'}
+                {execution.status === 'error' && 'Error'}
+                {execution.status === 'stopped' && 'Stopped'}
+                {execution.status === 'idle' && 'Ready'}
               </span>
-            </Button>
+            </div>
             
             {onEdit && (
               <Button
