@@ -71,6 +71,9 @@
 ![DuckPond Expanded View](Screenshots/Screenshot%202025-06-19%20at%2016.11.06.png)
 *Excalidraw input to The Duck*
 
+![DuckPond Code Execution](Screenshots/Screenshot%202025-06-19%20at%2021.02.37.png)
+*Javascript/React code running in a DuckPond (Sandbox)*
+
 ## 🏗️ Architecture Philosophy
 
 This project is built with a strong, opinionated architectural philosophy that prioritizes **simplicity, type-safety, and developer experience**.
