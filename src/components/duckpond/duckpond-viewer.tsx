@@ -434,18 +434,31 @@ function createReactSandbox(content: string): string {
         }
       }
       
+      console.log('Available window properties:', Object.keys(window).filter(key => 
+        typeof window[key] === 'function' && key[0] === key[0].toUpperCase()
+      ));
+      console.log('Found component names:', componentNames);
+      console.log('Selected component:', Component);
+      
       if (Component && typeof Component === 'function') {
         const root = ReactDOM.createRoot(document.getElementById('root'));
         try {
           const element = React.createElement(Component);
           root.render(element);
+          console.log('Component rendered successfully');
         } catch (renderError) {
+          console.error('Render error:', renderError);
           document.getElementById('root').innerHTML = 
             '<div class="error">Render error: ' + renderError.message + '</div>';
         }
       } else {
+        console.log('No component found. Available functions:', 
+          Object.keys(window).filter(key => typeof window[key] === 'function')
+        );
         document.getElementById('root').innerHTML = 
-          '<div class="error">No React component found. Make sure to define and expose a component (e.g., window.MyComponent = MyComponent).</div>';
+          '<div class="error">No React component found. Available functions: ' + 
+          Object.keys(window).filter(key => typeof window[key] === 'function').join(', ') +
+          '</div>';
       }
     } catch (error) {
       document.getElementById('root').innerHTML = 
