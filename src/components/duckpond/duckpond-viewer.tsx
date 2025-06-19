@@ -55,7 +55,18 @@ export function DuckPondViewer({
 
   // Use external execution state when provided
   const currentExecution = externalExecution || execution;
-  const updateExecution = onExecutionChange || setExecution;
+  
+  const updateExecution = useCallback((newExecution: ArtifactExecution | ((prev: ArtifactExecution) => ArtifactExecution)) => {
+    if (onExecutionChange) {
+      if (typeof newExecution === 'function') {
+        onExecutionChange(newExecution(currentExecution));
+      } else {
+        onExecutionChange(newExecution);
+      }
+    } else {
+      setExecution(newExecution);
+    }
+  }, [onExecutionChange, currentExecution]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -77,11 +88,11 @@ export function DuckPondViewer({
   }, [artifact]);
 
   const handleExecute = useCallback(async () => {
-    if (execution.status === 'executing') return;
+    if (currentExecution.status === 'executing') return;
 
-    setExecution(prev => ({ 
+    updateExecution(prev => ({ 
       ...prev, 
-      status: 'executing',
+      status: 'executing' as const,
       error: undefined // Clear any previous errors
     }));
 
@@ -93,19 +104,19 @@ export function DuckPondViewer({
         await executeArtifact();
       }
 
-      setExecution(prev => ({
+      updateExecution(prev => ({
         ...prev,
-        status: 'success',
+        status: 'success' as const,
         lastExecuted: new Date(),
       }));
     } catch (error) {
-      setExecution(prev => ({
+      updateExecution(prev => ({
         ...prev,
-        status: 'error',
+        status: 'error' as const,
         error: error instanceof Error ? error.message : 'Execution failed',
       }));
     }
-  }, [artifact, execution.status, onExecute, executeArtifact]);
+  }, [artifact, currentExecution.status, onExecute, executeArtifact, updateExecution]);
 
   const handleStop = useCallback(() => {
     if (!iframeRef.current) return;
@@ -130,11 +141,11 @@ export function DuckPondViewer({
       doc.close();
     }
     
-    setExecution(prev => ({
+    updateExecution(prev => ({
       ...prev,
-      status: 'stopped',
+      status: 'stopped' as const,
     }));
-  }, []);
+  }, [updateExecution]);
 
   const handleReset = useCallback(() => {
     if (!iframeRef.current) return;
@@ -159,13 +170,13 @@ export function DuckPondViewer({
       doc.close();
     }
     
-    setExecution(prev => ({
+    updateExecution(prev => ({
       ...prev,
-      status: 'idle',
+      status: 'idle' as const,
       error: undefined,
       lastExecuted: undefined,
     }));
-  }, []);
+  }, [updateExecution]);
 
   const handleDownload = () => {
     const blob = new Blob([artifact.content], { type: 'text/plain' });
@@ -180,7 +191,7 @@ export function DuckPondViewer({
   };
 
   const getStatusIcon = () => {
-    switch (execution.status) {
+    switch (currentExecution.status) {
       case 'executing':
         return <RefreshCw className="h-4 w-4 animate-spin" />;
       case 'success':
@@ -195,7 +206,7 @@ export function DuckPondViewer({
   };
 
   const getStatusColor = () => {
-    switch (execution.status) {
+    switch (currentExecution.status) {
       case 'executing':
         return 'bg-blue-500';
       case 'success':
@@ -211,7 +222,7 @@ export function DuckPondViewer({
 
   useEffect(() => {
     // Auto-execute on mount for React components, but only once per artifact
-    if (artifact.type === 'react-component' && execution.status === 'idle') {
+    if (artifact.type === 'react-component' && currentExecution.status === 'idle') {
       // Add a small delay to ensure iframe is ready
       const timeoutId = setTimeout(() => {
         handleExecute();
@@ -219,7 +230,7 @@ export function DuckPondViewer({
       
       return () => clearTimeout(timeoutId);
     }
-  }, [artifact.id, artifact.type, execution.status, handleExecute]);
+  }, [artifact.id, artifact.type, currentExecution.status, handleExecute]);
 
   return (
     <Card className={cn(
@@ -247,17 +258,17 @@ export function DuckPondViewer({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={execution.status === 'executing' ? handleStop : handleExecute}
+                onClick={currentExecution.status === 'executing' ? handleStop : handleExecute}
                 disabled={false}
                 className="rounded-r-none"
               >
-                {execution.status === 'executing' ? (
+                {currentExecution.status === 'executing' ? (
                   <Square className="h-4 w-4" />
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
                 <span className="ml-1 text-xs">
-                  {execution.status === 'executing' ? 'Stop' : 'Run'}
+                  {currentExecution.status === 'executing' ? 'Stop' : 'Run'}
                 </span>
               </Button>
               
@@ -265,7 +276,7 @@ export function DuckPondViewer({
                 variant="ghost"
                 size="sm"
                 onClick={handleReset}
-                disabled={execution.status === 'executing'}
+                disabled={currentExecution.status === 'executing'}
                 className="rounded-l-none border-l px-2"
                 title="Reset to initial state"
               >
@@ -277,11 +288,11 @@ export function DuckPondViewer({
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {getStatusIcon()}
               <span>
-                {execution.status === 'executing' && 'Running...'}
-                {execution.status === 'success' && 'Ready'}
-                {execution.status === 'error' && 'Error'}
-                {execution.status === 'stopped' && 'Stopped'}
-                {execution.status === 'idle' && 'Ready'}
+                {currentExecution.status === 'executing' && 'Running...'}
+                {currentExecution.status === 'success' && 'Ready'}
+                {currentExecution.status === 'error' && 'Error'}
+                {currentExecution.status === 'stopped' && 'Stopped'}
+                {currentExecution.status === 'idle' && 'Ready'}
               </span>
             </div>
             
@@ -325,13 +336,13 @@ export function DuckPondViewer({
           </p>
         )}
         
-        {execution.error && (
+        {currentExecution.error && (
           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
             <div className="flex items-center gap-1">
               <AlertTriangle className="h-4 w-4" />
               <span className="font-medium">Execution Error:</span>
             </div>
-            <div className="mt-1">{execution.error}</div>
+            <div className="mt-1">{currentExecution.error}</div>
           </div>
         )}
       </CardHeader>

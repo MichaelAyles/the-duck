@@ -32,7 +32,7 @@ export function ArtifactSidePanel({ className }: ArtifactSidePanelProps) {
         error: undefined,
       }));
     }
-  }, [activeArtifact?.id]);
+  }, [activeArtifact]);
 
   const handleExecute = useCallback(() => {
     if (execution.status === 'executing') return;
