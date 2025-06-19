@@ -28,6 +28,7 @@
 -   **Dynamic Model Preferences**: User-configurable primary and starred models
 -   **Chat Persistence**: Automatic conversation history with summaries
 -   **Memory Mode**: Context-aware conversations using chat summaries
+-   **AI Vision**: Advanced image analysis and understanding capabilities
 
 ### 🎨 **User Interface**
 -   **Modern UI**: Polished, responsive design with Tailwind CSS and shadcn/ui
@@ -36,6 +37,14 @@
 -   **Toast Notifications**: User-friendly error and success messages
 -   **Static Sidebar**: Fixed navigation with independent scrolling
 -   **Responsive Layout**: Optimized for desktop and mobile experiences
+
+### 📁 **File System & Drawing**
+-   **File Upload**: Drag-and-drop support for images, documents, PDFs, and more
+-   **Excalidraw Integration**: Native drawing and diagram creation within chat
+-   **File Management**: Comprehensive upload history with search, filter, and bulk operations
+-   **Storage Analytics**: Track usage statistics and file counts
+-   **AI Vision Support**: Automatic image analysis and description generation
+-   **Secure Storage**: Supabase-powered file storage with signed URLs
 
 ## 🏗️ Architecture Philosophy
 
@@ -123,6 +132,7 @@ Open [http://localhost:12000](http://localhost:12000) to see The Duck in action!
 ### **Backend & Database**
 -   **API Routes**: Next.js server-side API with authentication
 -   **Database**: Supabase PostgreSQL with Row-Level Security
+-   **File Storage**: Supabase Storage with secure bucket management
 -   **Caching & Rate Limiting**: Upstash Redis (serverless Redis)
 -   **Authentication**: Supabase Auth (Google/GitHub OAuth)
 -   **Real-time**: Server-Sent Events for streaming responses
@@ -149,12 +159,15 @@ src/
 │   │   ├── chat/          # Chat streaming and processing
 │   │   ├── sessions/      # Chat session management
 │   │   ├── user/          # User preferences and settings
-│   │   └── models/        # Model search and management
+│   │   ├── models/        # Model search and management
+│   │   ├── files/         # File upload and management
+│   │   └── uploads/       # Upload history and bulk operations
 │   ├── auth/              # Authentication pages
 │   └── page.tsx           # Main application page
 ├── components/            # React components
 │   ├── auth/              # Authentication components
 │   ├── chat/              # Chat interface components
+│   ├── settings/          # Settings and file management components
 │   └── ui/                # Reusable UI components (shadcn/ui)
 ├── hooks/                 # Custom React hooks
 │   ├── use-chat-session.ts      # Session management
@@ -166,6 +179,7 @@ src/
 │   ├── config.ts          # Centralized configuration
 │   ├── auth.ts            # Authentication utilities
 │   ├── chat-service.ts    # Chat business logic
+│   ├── file-upload-service.ts # File upload and storage utilities
 │   ├── redis.ts           # Redis client and caching utilities
 │   ├── security.ts        # Rate limiting and security middleware
 │   ├── supabase/          # Database client configuration
@@ -322,6 +336,8 @@ Whether you're tackling complex problems, brainstorming ideas, or just want to c
 
 **Features that make The Duck special:**
 - 🔐 **Secure Authentication**: Your conversations are private and persistent
+- 📁 **Advanced File System**: Upload files, create drawings, and manage your content
+- 🎨 **Excalidraw Integration**: Native drawing and diagram creation in chat
 - 🌊 **Duck Mode**: Unique quack-tastic conversation experience
 - 🎨 **Beautiful Design**: Water-themed UI with smooth animations
 - ⚡ **High Performance**: Optimized for speed and reliability
