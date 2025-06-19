@@ -6,18 +6,23 @@
 
 **PRIORITY**: Focus on reliability, performance, and user experience before adding new features.
 
-## 🔴 URGENT DATABASE SCHEMA FIX - **RESOLVED**
+## 🔴 CRITICAL DATABASE MIGRATIONS - **COMPLETED**
 
-**Issue**: Missing `chat_summaries` table causing API failures
-**Status**: ✅ FIXED - Created migration files and documentation
-**Action Required**: Apply `/sql/create_chat_summaries_table.sql` migration to Supabase
+**Issues Resolved**: 
+1. ✅ Missing `chat_summaries` table - FIXED
+2. ✅ Append-only message storage architecture - IMPLEMENTED  
+3. ✅ PostgreSQL column ambiguity and constraint violations - RESOLVED
 
-**What was fixed**:
-- Created missing `chat_summaries` table schema with proper constraints
-- Added UNIQUE constraint on `session_id` for upsert operations
-- Added proper RLS policies for security
-- Created verification script to check schema integrity
-- Added comprehensive SQL migration documentation
+**Recent Migrations Applied**:
+- ✅ `/sql/create_chat_summaries_table.sql` - Chat summaries table with RLS
+- ✅ `/sql/append-only-messages-migration.sql` - Append-only architecture for data integrity
+- ✅ `/sql/test-append-only-messages.sql` - Migration verification and testing
+
+**Database Architecture Status**: ✅ PRODUCTION READY
+- Append-only message storage prevents data loss
+- Comprehensive foreign key constraints and validation
+- Row-Level Security (RLS) policies for all tables  
+- Robust error handling and retry logic
 
 ---
 
@@ -510,6 +515,37 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **P1.75 Learning Preferences**: Complete AI personalization system implemented
 
 ### ✅ **LATEST COMPLETED (December 2024 - January 2025)**
+
+#### **🚀 MAJOR ARCHITECTURE IMPROVEMENTS (January 2025)**
+- **✅ Append-Only Database Architecture**: Eliminated data loss with robust message persistence (commit 2c51a97)
+  - Implemented PostgreSQL migration for append-only message storage
+  - Fixed foreign key constraints and column ambiguity issues
+  - Added comprehensive test suite for migration validation
+  - Prevents data corruption and ensures message integrity
+- **✅ Enhanced Token Limits**: Increased to 16,000 tokens per request for complex conversations (commit b9ae40a)
+  - Updated security validation limits across application stack
+  - Modified OpenRouter client default max_tokens
+  - Enhanced message length validation for larger contexts
+  - Supports more complex AI interactions and longer documents
+- **✅ Resizable DuckPond Windows**: Intelligent sizing with manual resize controls (commit 22b395a)
+  - Calculates optimal dimensions based on viewport with aesthetic padding
+  - Implements drag handle for manual resizing with mouse event handling
+  - Maintains minimum/maximum size constraints for usability
+  - Provides smooth user experience for interactive content
+- **✅ DuckPond Artifact Detection**: Automatically finds and restores interactive content from saved chats (commit f22b2a4)
+  - Scans loaded messages for DuckPond artifacts using ArtifactParser
+  - Tracks detected artifacts in session state for UI rendering
+  - Handles both initial messages and database-loaded content
+  - Enables seamless access to previously created interactive components
+- **✅ Flow Mode Integration**: Renamed from Memory Mode with improved UX (commit acdfbfe)
+  - Updated terminology throughout application for better user understanding
+  - Enhanced chat sidebar behavior and visual design
+  - Improved context-aware conversation experience
+- **✅ Performance Optimizations**: Fixed race conditions and improved loading animations (commit 0001ccc)
+  - Slowed down thinking message frame breathing animation for better UX
+  - Enhanced title generation with full context and robust fallback
+  - Fixed session preservation when using End Chat button
+  - Implemented immediate session persistence for new chat creation
 - **Model Selector Enhancement**: Comprehensive model management improvements (January 2025)
   - [x] **Advanced Sorting**: Sort models by name, provider, cost, context length, latency, and date added
   - [x] **Provider Filtering**: Clean dropdown interface with multi-select checkboxes for 100+ providers
@@ -568,14 +604,14 @@ This document outlines the development priorities for The Duck, focusing on crit
   - [x] Updated starred models hook to use cached requests
   - [x] Build passes with zero errors and zero lint warnings
 
-### 🎯 **NEXT PRIORITIES**
-1. **Add Loading Skeletons** (P3 UX improvement for smoother page loads)
-2. **Implement Centralized State Management** (Architecture improvement with Zustand/Jotai)
-3. **Component Refactoring** (Split ChatInterface into separate auth/unauth components)
-4. **API Documentation** (OpenAPI/Swagger for developer experience)
-5. **Implement E2E Tests** (Expand testing coverage beyond unit tests)
-6. **Model Discovery Features** (Search models by capabilities, cost filtering, performance metrics)
-7. **Advanced Pricing Analytics** (Cost tracking per conversation, usage statistics)
+### 🎯 **NEXT PRIORITIES** 
+1. **Increase Test Coverage** (Expand from 3% to 50%+ with more unit and integration tests)
+2. **Add Loading Skeletons** (P3 UX improvement for smoother page loads)
+3. **Implement Centralized State Management** (Architecture improvement with Zustand/Jotai)
+4. **Component Refactoring** (Split ChatInterface into separate auth/unauth components)
+5. **Add Virtualization** (Handle long message lists with TanStack Virtual)
+6. **API Documentation** (OpenAPI/Swagger for developer experience)
+7. **Implement E2E Tests** (Comprehensive user flow testing with Playwright)
 
 ### 🏗️ **Current Architecture Status**
 - ✅ **Secure**: Server-side API architecture with proper authentication
@@ -594,11 +630,14 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **Lint Status**: ✅ Clean (0 warnings/errors)
 - **Type Coverage**: ✅ Complete TypeScript coverage
 - **Security**: ✅ No client-side database access
-- **Architecture**: ✅ Modular hook-based design
+- **Architecture**: ✅ Modular hook-based design with major enhancements
+- **Data Integrity**: ✅ Append-only database architecture prevents data loss
+- **Performance**: ✅ Enhanced token limits (16k), optimized animations and race conditions
+- **User Experience**: ✅ Resizable components, artifact detection, Flow Mode integration
 - **Error Handling**: ✅ Comprehensive toast notifications
-- **Documentation**: ✅ Up to date
+- **Documentation**: ✅ Updated with recent improvements
 - **Learning System**: ✅ AI personalization implemented
-- **Runtime Stability**: ✅ Stable - No critical crashes or infinite loops
+- **Runtime Stability**: ✅ Stable - All critical issues resolved
 - **Test Coverage**: ⚠️ Currently ~3% (thresholds lowered to fix CI) - needs improvement
 
 ### 💎 **Future Recommendations (10x Developer Code Review)**
