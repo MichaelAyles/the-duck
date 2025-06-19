@@ -18,7 +18,8 @@ import {
   Maximize2,
   Minimize2,
   Square,
-  RotateCcw
+  RotateCcw,
+  Move
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -68,7 +69,103 @@ export function DuckPondViewer({
     }
   }, [onExecutionChange, currentExecution]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [isResizing, setIsResizing] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
+
+  // Calculate optimal default dimensions based on available space
+  const calculateOptimalDimensions = useCallback(() => {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Aesthetic padding and space for other UI elements
+    const horizontalPadding = 120; // Space for sidebar, margins, etc.
+    const verticalPadding = 200;   // Space for header, footer, nav, etc.
+    
+    // Calculate available space
+    const availableWidth = Math.max(viewportWidth - horizontalPadding, 400);
+    const availableHeight = Math.max(viewportHeight - verticalPadding, 300);
+    
+    // Use 80% of available space for a nice aesthetic balance
+    const optimalWidth = Math.floor(availableWidth * 0.8);
+    const optimalHeight = Math.floor(availableHeight * 0.7);
+    
+    // Ensure minimum and maximum bounds
+    const width = Math.min(Math.max(optimalWidth, 400), 1200);
+    const height = Math.min(Math.max(optimalHeight, 300), 800);
+    
+    return { width, height };
+  }, []);
+
+  // Initialize dimensions on mount
+  useEffect(() => {
+    const optimalDims = calculateOptimalDimensions();
+    setDimensions(optimalDims);
+  }, [calculateOptimalDimensions]);
+
+  // Handle window resize to recalculate optimal dimensions
+  useEffect(() => {
+    const handleWindowResize = () => {
+      if (!isResizing && !isFullscreen) {
+        const optimalDims = calculateOptimalDimensions();
+        setDimensions(optimalDims);
+      }
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
+  }, [calculateOptimalDimensions, isResizing, isFullscreen]);
+
+  // Handle resize start
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    
+    resizeStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      width: dimensions.width,
+      height: dimensions.height
+    };
+    
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'nw-resize';
+  }, [dimensions]);
+
+  // Handle resize move
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return;
+    
+    const deltaX = e.clientX - resizeStartRef.current.x;
+    const deltaY = e.clientY - resizeStartRef.current.y;
+    
+    const newWidth = Math.max(300, resizeStartRef.current.width + deltaX);
+    const newHeight = Math.max(200, resizeStartRef.current.height + deltaY);
+    
+    setDimensions({ width: newWidth, height: newHeight });
+  }, [isResizing]);
+
+  // Handle resize end
+  const handleResizeEnd = useCallback(() => {
+    setIsResizing(false);
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+  }, []);
+
+  // Add global mouse event listeners for resize
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleResizeMove);
+        document.removeEventListener('mouseup', handleResizeEnd);
+      };
+    }
+  }, [isResizing, handleResizeMove, handleResizeEnd]);
 
   const executeArtifact = useCallback(async () => {
     if (!iframeRef.current) return;
@@ -306,11 +403,19 @@ export function DuckPondViewer({
   }, [artifact.id, artifact.type, currentExecution.status, handleExecute]);
 
   return (
-    <Card className={cn(
-      "w-full transition-all duration-200",
-      isFullscreen && "fixed inset-4 z-50 h-[calc(100vh-2rem)]",
-      className
-    )}>
+    <Card 
+      ref={containerRef}
+      className={cn(
+        "transition-all duration-200 relative",
+        isFullscreen && "fixed inset-4 z-50",
+        className
+      )}
+      style={
+        isFullscreen 
+          ? { width: '100%', height: '100%' }
+          : { width: dimensions.width || 'auto', maxWidth: '100%' }
+      }
+    >
       {!hideHeader && (
         <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
@@ -323,6 +428,11 @@ export function DuckPondViewer({
               "w-2 h-2 rounded-full",
               getStatusColor()
             )} />
+            {!isFullscreen && (
+              <div className="text-xs text-muted-foreground">
+                {dimensions.width}×{dimensions.height}
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-1">
@@ -435,27 +545,68 @@ export function DuckPondViewer({
           </TabsList>
           
           <TabsContent value="preview" className="mt-4">
-            <div className="border rounded-lg bg-white dark:bg-gray-950">
+            <div className="border rounded-lg bg-white dark:bg-gray-950 relative">
               <iframe
                 ref={iframeRef}
-                className="w-full h-64 rounded-lg border-0"
+                className="w-full rounded-lg border-0"
                 title={`${artifact.title} Interactive Preview`}
                 sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups"
                 style={{ 
-                  minHeight: isFullscreen ? '60vh' : '20rem',
+                  height: isFullscreen 
+                    ? 'calc(100vh - 200px)' 
+                    : `${Math.max(dimensions.height - 100, 200)}px`,
                   background: 'transparent',
                   pointerEvents: 'auto'
                 }}
                 allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
               />
+              
+              {/* Resize handle */}
+              {!isFullscreen && (
+                <div
+                  className={cn(
+                    "absolute bottom-0 right-0 w-4 h-4 cursor-nw-resize",
+                    "hover:bg-primary/20 transition-colors duration-200",
+                    "flex items-center justify-center",
+                    isResizing && "bg-primary/30"
+                  )}
+                  onMouseDown={handleResizeStart}
+                  title="Drag to resize"
+                >
+                  <Move className="w-3 h-3 text-muted-foreground rotate-45" />
+                </div>
+              )}
             </div>
           </TabsContent>
           
           <TabsContent value="code" className="mt-4">
-            <div className="border rounded-lg bg-gray-50 dark:bg-gray-900">
-              <pre className="p-4 text-sm overflow-auto max-h-64 font-mono">
+            <div className="border rounded-lg bg-gray-50 dark:bg-gray-900 relative">
+              <pre 
+                className="p-4 text-sm overflow-auto font-mono"
+                style={{ 
+                  maxHeight: isFullscreen 
+                    ? 'calc(100vh - 200px)' 
+                    : `${Math.max(dimensions.height - 100, 200)}px`
+                }}
+              >
                 <code>{artifact.content}</code>
               </pre>
+              
+              {/* Resize handle for code view too */}
+              {!isFullscreen && (
+                <div
+                  className={cn(
+                    "absolute bottom-0 right-0 w-4 h-4 cursor-nw-resize",
+                    "hover:bg-primary/20 transition-colors duration-200",
+                    "flex items-center justify-center",
+                    isResizing && "bg-primary/30"
+                  )}
+                  onMouseDown={handleResizeStart}
+                  title="Drag to resize"
+                >
+                  <Move className="w-3 h-3 text-muted-foreground rotate-45" />
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
