@@ -6,6 +6,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Pencil, X, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+// Import Excalidraw styles
+import '@excalidraw/excalidraw/index.css';
+
+// Configure Excalidraw to use local fonts
+if (typeof window !== 'undefined') {
+  (window as any).EXCALIDRAW_ASSET_PATH = '/';
+}
+
 // Types will be imported from Excalidraw at runtime - using unknown for type safety
 type ExcalidrawElement = unknown;
 type ExcalidrawAPI = {
@@ -36,6 +44,7 @@ export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputPr
       setIsLoading(true);
       import('@excalidraw/excalidraw')
         .then((module) => {
+          console.log('Excalidraw module loaded:', module);
           setExcalidrawComponent(module.Excalidraw);
           setIsLoading(false);
         })
@@ -154,8 +163,8 @@ export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputPr
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="max-w-5xl h-[80vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
+      <DialogContent className="max-w-[90vw] w-[1200px] h-[85vh] flex flex-col p-0">
+        <DialogHeader className="flex-shrink-0 p-6 pb-4">
           <DialogTitle className="flex items-center justify-between">
             <span>Create Drawing</span>
             <div className="flex items-center gap-2">
@@ -191,7 +200,7 @@ export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputPr
           </DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 border rounded-lg overflow-hidden bg-white">
+        <div className="flex-1 relative overflow-hidden" style={{ minHeight: '400px' }}>
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
@@ -200,24 +209,24 @@ export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputPr
               </div>
             </div>
           ) : ExcalidrawComponent ? (
-            <div className="h-full">
+            <div className="absolute inset-0 bg-white" style={{ width: '100%', height: '100%' }}>
               <ExcalidrawComponent
                 onChange={(elements: unknown[]) => handleExcalidrawChange(elements)}
                 excalidrawAPI={handleExcalidrawAPI}
-                initialData={{
-                  elements: elements,
-                  appState: {
-                    viewBackgroundColor: "#ffffff",
-                    exportBackground: true,
+                renderTopRightUI={() => null}
+                UIOptions={{
+                  canvasActions: {
+                    loadScene: false,
+                    saveToActiveFile: false,
+                    toggleTheme: false,
                   },
-                  files: {},
                 }}
               />
             </div>
           ) : null}
         </div>
         
-        <div className="flex-shrink-0 text-xs text-muted-foreground text-center pt-2">
+        <div className="flex-shrink-0 text-xs text-muted-foreground text-center p-4">
           Use the drawing tools above to create diagrams, sketches, or visual content for your AI conversation.
         </div>
       </DialogContent>
