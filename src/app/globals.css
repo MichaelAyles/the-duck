@@ -129,6 +129,11 @@
   .animate-gentle-pulse {
     animation: gentlePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+
+  /* Slower spin animation for thinking spinner */
+  .animate-slow-spin {
+    animation: slowSpin 2s linear infinite;
+  }
 }
 
 @keyframes fadeIn {
@@ -168,5 +173,14 @@
   }
   50% {
     opacity: 0.7;
+  }
+}
+
+@keyframes slowSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
