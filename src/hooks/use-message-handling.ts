@@ -316,6 +316,8 @@ export function useMessageHandling({
           model: settings.model,
           stream: true,
           tone: settings.tone,
+          memoryEnabled: settings.memoryEnabled,
+          memorySummaryCount: settings.memorySummaryCount,
         }),
       });
 

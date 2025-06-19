@@ -36,26 +36,31 @@ jobs:
     - name: Run type checking
       run: npm run type-check
     
-    # Optional: Run the complete workflow command if you have it
-    # - name: Run complete workflow
-    #   run: npm run workflow
+    - name: Run tests
+      run: npm run test:ci
 
-  # Optional: Add test job when you have tests
-  # test:
-  #   name: Tests
-  #   runs-on: ubuntu-latest
-  #   
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   
-  #   - name: Setup Node.js
-  #     uses: actions/setup-node@v4
-  #     with:
-  #       node-version: '20'
-  #       cache: 'npm'
-  #   
-  #   - name: Install dependencies
-  #     run: npm ci
-  #   
-  #   - name: Run tests
-  #     run: npm test
+  test:
+    name: Test Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run tests with coverage
+      run: npm run test:ci
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      if: success()
+      with:
+        files: ./coverage/lcov.info
+        fail_ci_if_error: false

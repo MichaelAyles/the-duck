@@ -66,29 +66,67 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Fetch chat history
+  // Fetch chat history with optional search
   const fetchChatHistory = useCallback(async (search = "") => {
     if (!user) return;
 
     try {
       setIsSearching(!!search);
-      const params = new URLSearchParams();
-      params.append('limit', '50');
-      if (search) params.append('search', search);
-
-      const response = await fetch(`/api/chat-history?${params.toString()}`);
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch chat history');
-      }
+      if (search && search.length >= 2) {
+        // Use the new full-text search endpoint
+        const params = new URLSearchParams();
+        params.append('q', search);
+        params.append('limit', '50');
 
-      const data = await response.json();
-      setSessions(data.sessions || []);
+        const response = await fetch(`/api/search-messages?${params.toString()}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to search messages');
+        }
+
+        const data = await response.json();
+        
+        // Convert search results to session format
+        const searchSessions: ChatSession[] = data.results.map((result: {
+          session_id: string;
+          session_title: string;
+          session_created_at: string;
+          session_model: string;
+          matching_messages: Array<{ role: string; content: string; snippet: string }>;
+        }) => ({
+          id: result.session_id,
+          title: result.session_title,
+          createdAt: result.session_created_at,
+          updatedAt: result.session_created_at,
+          isActive: false,
+          messageCount: result.matching_messages.length,
+          lastMessage: result.matching_messages[0]?.snippet || '',
+          firstUserMessage: result.matching_messages.find((m) => m.role === 'user')?.snippet || '',
+          model: result.session_model,
+          preview: result.matching_messages.map((m) => m.snippet).join(' | ')
+        }));
+        
+        setSessions(searchSessions);
+      } else {
+        // Use regular chat history endpoint
+        const params = new URLSearchParams();
+        params.append('limit', '50');
+        
+        const response = await fetch(`/api/chat-history?${params.toString()}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch chat history');
+        }
+
+        const data = await response.json();
+        setSessions(data.sessions || []);
+      }
     } catch (error) {
       console.error('Error fetching chat history:', error);
       toast({
         title: "Error",
-        description: "Failed to load chat history",
+        description: search ? "Failed to search messages" : "Failed to load chat history",
         variant: "destructive",
       });
     } finally {
@@ -223,12 +261,18 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
   }, []);
 
   // Memoize filtered sessions for performance
+  // Note: When searchQuery is present and >= 2 chars, sessions already contain search results
   const filteredSessions = useMemo(() => {
-    if (!searchQuery) return sessions;
-    return sessions.filter(session => 
-      session.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.preview.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    if (!searchQuery || searchQuery.length < 2) return sessions;
+    // For search queries < 2 characters, filter client-side
+    if (searchQuery.length === 1) {
+      return sessions.filter(session => 
+        session.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        session.preview.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    // For search queries >= 2 characters, sessions already contain filtered results from API
+    return sessions;
   }, [sessions, searchQuery]);
 
   if (!user) {
@@ -282,7 +326,7 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search conversations..."
+                placeholder="Search messages and conversations..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-background/50 border-border/30 shadow-sm focus:shadow-md focus:ring-primary/20 transition-all duration-300 rounded-lg"
@@ -291,6 +335,11 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
                 <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
               )}
             </div>
+            {searchQuery && searchQuery.length >= 2 && (
+              <p className="text-xs text-muted-foreground mt-1 px-1">
+                🔍 Full-text search across all messages
+              </p>
+            )}
           </div>
 
           {/* Sessions List */}

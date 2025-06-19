@@ -671,6 +671,45 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       onCheckedChange={handleStorageToggle}
                     />
                   </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>Memory Mode</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Use context from previous conversations for personalized responses
+                        </p>
+                      </div>
+                      <Switch
+                        checked={settings.memoryEnabled}
+                        onCheckedChange={(checked) => onSettingsChange({ memoryEnabled: checked })}
+                      />
+                    </div>
+
+                    {settings.memoryEnabled && (
+                      <div className="space-y-2">
+                        <Label>Memory Conversations: {settings.memorySummaryCount}</Label>
+                        <Slider
+                          value={[settings.memorySummaryCount]}
+                          onValueChange={([value]) => onSettingsChange({ memorySummaryCount: value })}
+                          min={1}
+                          max={10}
+                          step={1}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>1 conversation</span>
+                          <span>5 conversations</span>
+                          <span>10 conversations</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Number of previous conversation summaries to include for context
+                        </p>
+                      </div>
+                    )}
+                  </div>
                   </div>
                 </TabsContent>
                 

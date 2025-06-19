@@ -21,6 +21,8 @@ export const DEFAULT_CHAT_SETTINGS = {
   tone: "match-user" as const,
   storageEnabled: true,
   model: DEFAULT_AI_MODEL,
+  memoryEnabled: true,
+  memorySummaryCount: 3,
 };
 
 // Chat configuration
@@ -41,6 +43,7 @@ export const CHAT_CONFIG = {
 // API endpoints
 export const API_ENDPOINTS = {
   CHAT: "/api/chat",
+  MODELS: "/api/models",
   GENERATE_TITLE: "/api/generate-title",
   USER_PREFERENCES: "/api/user/preferences",
   SESSIONS: "/api/sessions",

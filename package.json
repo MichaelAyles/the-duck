@@ -12,9 +12,14 @@
     "check-env": "node scripts/dev-setup.js",
     "type-check": "tsc --noEmit",
     "analyze": "ANALYZE=true npm run build",
-    "test:ci": "npm run build && npm run lint && npm run type-check",
+    "build-ci": "npm run build && npm run lint && npm run type-check",
     "workflow": "npm run build && npm run lint:fix && npm run type-check",
-    "deploy": "git push origin main"
+    "deploy": "git push origin main",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:coverage:html": "jest --coverage --coverageReporters=html",
+    "test:ci": "jest --ci --coverage --watchAll=false --coverageReporters=text --coverageReporters=lcov"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.0",
@@ -58,6 +63,10 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
@@ -65,8 +74,11 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9.17.0",
     "eslint-config-next": "15.3.3",
+    "jest": "^30.0.1",
+    "jest-environment-jsdom": "^30.0.1",
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
+    "ts-jest": "^29.4.0",
     "typescript": "^5.7.2"
   }
 }

@@ -44,6 +44,8 @@ interface ChatRequestData {
     presence_penalty?: number;
   };
   tone?: string;
+  memoryEnabled?: boolean;
+  memorySummaryCount?: number;
 }
 
 // Helper function to track usage in database
@@ -102,7 +104,16 @@ async function trackUsage(
 // Core handler function
 async function handleChatRequest(request: NextRequest, validatedData: ChatRequestData): Promise<NextResponse> {
   try {
-    const { messages, model, stream = true, options = {}, tone = "match-user", sessionId } = validatedData;
+    const { 
+      messages, 
+      model, 
+      stream = true, 
+      options = {}, 
+      tone = "match-user", 
+      sessionId,
+      memoryEnabled = true,
+      memorySummaryCount = 3
+    } = validatedData;
 
     // Get authenticated user and their learning preferences
     const supabase = await createClient()
@@ -151,9 +162,48 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
       }
     }
 
-    // Create personalized system prompt that incorporates user preferences
-    const systemPrompt = createPersonalizedSystemPrompt(learningPreferences, tone);
+    // Fetch memory context from previous conversations if user is authenticated and memory is enabled
+    let memoryContext = ''
+    if (user && memoryEnabled) {
+      try {
+        const memoryResponse = await fetch(`${request.url.split('/api/chat')[0]}/api/memory-context?limit=${memorySummaryCount}`, {
+          method: 'GET',
+          headers: {
+            'Cookie': request.headers.get('Cookie') || '', // Forward auth cookies
+          },
+        })
+
+        if (memoryResponse.ok) {
+          const memoryData = await memoryResponse.json()
+          if (memoryData.summaries && memoryData.summaries.length > 0) {
+            const memoryParts = memoryData.summaries.map((summary: { summary: string; key_topics: string[] }, index: number) => {
+              const topics = Array.isArray(summary.key_topics) ? summary.key_topics.join(', ') : 'general conversation'
+              return `Previous Conversation ${index + 1}:
+Summary: ${summary.summary}
+Topics: ${topics}`
+            }).join('\n\n')
+
+            memoryContext = `CONVERSATION MEMORY:
+${memoryParts}
+
+---
+
+`
+          }
+        }
+      } catch (error) {
+        logger.dev.log('Failed to fetch memory context:', error)
+        // Continue without memory context rather than fail the chat
+      }
+    }
+
+    // Create personalized system prompt that incorporates user preferences and memory
+    const baseSystemPrompt = createPersonalizedSystemPrompt(learningPreferences, tone);
+    const systemPrompt = memoryContext + baseSystemPrompt;
     logger.dev.log('📝 Chat API: System prompt length:', systemPrompt.length, 'characters');
+    if (memoryContext) {
+      logger.dev.log('🧠 Chat API: Memory context injected with', memoryContext.split('Previous Conversation').length - 1, 'summaries');
+    }
 
     // Sanitize messages content and ensure proper format
     const sanitizedMessages = [

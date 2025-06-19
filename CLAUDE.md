@@ -40,6 +40,7 @@ All constants and configuration managed in `/src/lib/config.ts`:
 - **Authentication**: Supabase Auth (Google/GitHub OAuth)
 - **AI Integration**: OpenRouter API for multi-model LLM support
 - **Real-time**: Server-Sent Events for streaming chat responses
+- **Testing**: Jest, React Testing Library, comprehensive unit test coverage
 
 ## Development Commands
 
@@ -68,6 +69,13 @@ npm run type-check
 # Run complete workflow (build + lint + type-check)
 npm run workflow
 
+# Testing commands
+npm test                    # Run all tests
+npm run test:watch         # Run tests in watch mode
+npm run test:coverage      # Run tests with coverage report
+npm run test:coverage:html # Generate HTML coverage report
+npm run test:ci            # CI-optimized test run
+
 # Database setup (first time only)
 node scripts/dev-setup.js
 ```
@@ -81,10 +89,13 @@ node scripts/dev-setup.js
 npm run build          # Ensure project builds successfully
 npm run lint:fix       # Fix linting errors automatically
 npm run type-check     # Verify TypeScript types are correct
+npm test               # Run comprehensive test suite
 ```
 - **CRITICAL**: If ANY step fails, fix ALL issues before proceeding
 - **MANDATORY**: All lint errors must be resolved before committing
-- **NO EXCEPTIONS**: Do not commit broken code or code with lint errors
+- **MANDATORY**: All tests must pass before committing
+- **AUTOMATED**: GitHub Actions CI runs all validation steps automatically
+- **NO EXCEPTIONS**: Do not commit broken code, code with lint errors, or failing tests
 - Re-run validation commands until all pass with zero errors
 
 ### 2. **Documentation Updates**
@@ -208,6 +219,77 @@ if (!cached) {
   await cache.set(cacheKey, data, CACHE_TTL.USER_PREFERENCES);
 }
 ```
+
+## 🧪 Testing Architecture
+
+The Duck implements a comprehensive testing strategy using Jest and React Testing Library, ensuring code quality and preventing regressions.
+
+### **Testing Infrastructure**
+- **Test Runner**: Jest with Next.js integration and TypeScript support
+- **Component Testing**: React Testing Library for component behavior testing
+- **Mocking Strategy**: Comprehensive mocks for external dependencies
+- **Coverage Reporting**: HTML and LCOV coverage reports for CI/CD integration
+- **CI/CD Integration**: Automated test execution in GitHub Actions with coverage upload
+- **Quality Gates**: Tests must pass before code can be merged
+
+### **Test Organization**
+```
+src/__tests__/
+├── components/          # React component tests
+│   └── duck-logo.test.tsx
+├── lib/                # Core library unit tests
+│   ├── config.test.ts
+│   ├── security.test.ts
+│   ├── utils.test.ts
+│   └── chat-service.test.ts
+└── api/                # API integration tests (future)
+```
+
+### **Testing Commands**
+```bash
+npm test                    # Run all tests
+npm run test:watch         # Development mode with file watching
+npm run test:coverage      # Generate coverage reports
+npm run test:coverage:html # HTML coverage report for detailed analysis
+npm run test:ci            # CI-optimized run with coverage output
+```
+
+### **Coverage Status**
+Current test coverage focuses on critical utilities and core functionality:
+- **config.ts**: 94.44% - Configuration validation and constants
+- **utils.ts**: 100% - Utility functions (className merging, etc.)
+- **security.ts**: 18.29% - Input validation and sanitization
+- **chat-service.ts**: 53.29% - Chat session management and API interactions
+- **Components**: Full coverage of DuckLogo component rendering and behavior
+
+### **Test Writing Guidelines**
+1. **Unit Tests**: Focus on pure functions and isolated components
+2. **Mocking**: Mock external dependencies (Supabase, Redis, OpenRouter)
+3. **Error Cases**: Test both success and failure scenarios
+4. **Async Testing**: Proper handling of promises and async operations
+5. **Type Safety**: Maintain TypeScript compliance in test files
+
+### **Mock Configuration**
+Essential mocks are configured in `jest.setup.js`:
+```typescript
+// Next.js components and navigation
+jest.mock('next/navigation', () => ({ ... }))
+jest.mock('next/image', () => MockImage)
+
+// External services
+jest.mock('@upstash/redis', () => ({ ... }))
+jest.mock('@upstash/ratelimit', () => ({ ... }))
+
+// Environment variables
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
+```
+
+### **Testing Best Practices**
+- **Test Isolation**: Each test is independent and can run in any order
+- **Descriptive Names**: Test names clearly describe what is being tested
+- **Arrange-Act-Assert**: Clear test structure for maintainability
+- **Edge Cases**: Testing boundary conditions and error states
+- **Performance**: Tests complete quickly with appropriate timeouts
 
 ## Hook Development Patterns
 

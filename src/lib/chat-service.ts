@@ -461,4 +461,52 @@ export class ChatService {
       return null
     }
   }
+
+  public async getMemoryContext(userId: string, limit = 5): Promise<string> {
+    try {
+      // Fetch recent chat summaries for memory context
+      const response = await fetch(`/api/memory-context?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          // No summaries found, return empty context
+          return ''
+        }
+        throw new Error('Failed to fetch memory context')
+      }
+
+      const data = await response.json()
+      const summaries = data.summaries || []
+
+      if (summaries.length === 0) {
+        return ''
+      }
+
+      // Build memory context from summaries
+      const memoryContext = summaries.map((summary: { summary: string; key_topics: string[]; user_preferences?: { explicit?: Record<string, unknown> } }, index: number) => {
+        const { summary: text, key_topics, user_preferences } = summary
+        const topics = Array.isArray(key_topics) ? key_topics.join(', ') : 'general conversation'
+        
+        return `Previous Conversation ${index + 1}:
+Summary: ${text}
+Topics discussed: ${topics}
+User preferences noted: ${user_preferences?.explicit ? Object.keys(user_preferences.explicit).join(', ') : 'none'}`
+      }).join('\n\n')
+
+      return `CONVERSATION MEMORY:
+The following is context from your previous conversations with this user. Use this to provide more personalized and contextually aware responses:
+
+${memoryContext}
+
+---`
+    } catch (error) {
+      logger.error('Failed to fetch memory context:', error)
+      return ''
+    }
+  }
 }

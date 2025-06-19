@@ -133,6 +133,9 @@ export const InputValidation = {
     }).optional().default({}),
     
     tone: z.string().optional().default('match-user'),
+    
+    memoryEnabled: z.boolean().optional().default(true),
+    memorySummaryCount: z.number().min(1).max(10).optional().default(3),
   }),
 
   /**
