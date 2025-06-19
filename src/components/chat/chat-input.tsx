@@ -7,6 +7,7 @@ import { Send, Paperclip } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FileUploadComponent } from "./file-upload";
 import { FilePreview } from "./file-preview";
+import { ExcalidrawInput } from "./excalidraw-input";
 import type { FileUpload } from "@/types/file-upload";
 import {
   Popover,
@@ -50,6 +51,34 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
 
   const handleRemoveAttachment = (fileId: string) => {
     setAttachments(attachments.filter(a => a.id !== fileId));
+  };
+
+  const handleDrawingCreate = async (imageData: Blob, metadata: { 
+    name: string; 
+    elements: unknown[]; 
+    mimeType: string;
+  }) => {
+    try {
+      // Create a partial file upload object for the drawing
+      const drawingFile: Partial<FileUpload> & { url?: string } = {
+        id: crypto.randomUUID(),
+        file_name: metadata.name,
+        file_type: 'image',
+        file_size: imageData.size,
+        mime_type: metadata.mimeType,
+        storage_path: '', // Will be set by upload process
+        user_id: userId || '',
+        created_at: new Date().toISOString(),
+      };
+
+      // Add to attachments immediately with a temporary URL
+      const tempUrl = URL.createObjectURL(imageData);
+      setAttachments([...attachments, { ...drawingFile, url: tempUrl } as FileUpload & { url: string }]);
+
+      logger.dev.log('🎨 Drawing created:', metadata.name, 'Size:', imageData.size);
+    } catch (error) {
+      console.error('Error handling drawing creation:', error);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -99,33 +128,40 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
               }
               disabled={disabled}
               className={cn(
-                "min-h-[60px] max-h-[200px] resize-none pr-12 transition-all duration-300 duck-shadow focus:duck-glow",
+                "min-h-[60px] max-h-[200px] resize-none pr-20 transition-all duration-300 duck-shadow focus:duck-glow",
                 !storageEnabled && "bg-muted/50 border-muted"
               )}
               rows={1}
             />
             
-            <Popover open={showFileUpload} onOpenChange={setShowFileUpload}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute bottom-2 right-2 h-8 w-8 p-0 hover:duck-glow transition-all duration-300 z-10"
-                  disabled={disabled || !userId}
-                  title={!userId ? "Sign in to upload files" : "Attach file"}
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 z-50" align="end">
-                <FileUploadComponent
-                  sessionId={sessionId}
-                  userId={userId}
-                  onFileUploaded={handleFileUploaded}
-                />
-              </PopoverContent>
-            </Popover>
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 z-10">
+              <ExcalidrawInput
+                onDrawingCreate={handleDrawingCreate}
+                disabled={disabled || !userId}
+              />
+              
+              <Popover open={showFileUpload} onOpenChange={setShowFileUpload}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:duck-glow transition-all duration-300"
+                    disabled={disabled || !userId}
+                    title={!userId ? "Sign in to upload files" : "Attach file"}
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 z-50" align="end">
+                  <FileUploadComponent
+                    sessionId={sessionId}
+                    userId={userId}
+                    onFileUploaded={handleFileUploaded}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
           
           <Button

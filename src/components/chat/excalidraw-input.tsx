@@ -1,0 +1,226 @@
+"use client";
+
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Pencil, X, Check } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+// Types will be imported from Excalidraw at runtime - using unknown for type safety
+type ExcalidrawElement = unknown;
+type ExcalidrawAPI = {
+  exportToCanvas: (elements: unknown[], opts?: unknown) => Promise<HTMLCanvasElement>;
+};
+
+interface ExcalidrawInputProps {
+  onDrawingCreate: (imageData: Blob, metadata: { 
+    name: string; 
+    elements: ExcalidrawElement[]; 
+    mimeType: string;
+  }) => void;
+  disabled?: boolean;
+}
+
+export function ExcalidrawInput({ onDrawingCreate, disabled }: ExcalidrawInputProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [ExcalidrawComponent, setExcalidrawComponent] = useState<React.ComponentType<Record<string, unknown>> | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [elements, setElements] = useState<ExcalidrawElement[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+  const excalidrawAPIRef = useRef<ExcalidrawAPI | null>(null);
+  const { toast } = useToast();
+
+  // Dynamically import Excalidraw when dialog opens
+  useEffect(() => {
+    if (isOpen && !ExcalidrawComponent) {
+      setIsLoading(true);
+      import('@excalidraw/excalidraw')
+        .then((module) => {
+          setExcalidrawComponent(module.Excalidraw);
+          setIsLoading(false);
+        })
+        .catch((error) => {
+          console.error('Failed to load Excalidraw:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load drawing component. Please try again.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          setIsOpen(false);
+        });
+    }
+  }, [isOpen, ExcalidrawComponent, toast]);
+
+  const handleExcalidrawChange = useCallback((
+    elements: unknown[]
+  ) => {
+    setElements(elements);
+    setHasChanges(elements.length > 0);
+  }, []);
+
+  const handleExcalidrawAPI = useCallback((api: ExcalidrawAPI) => {
+    excalidrawAPIRef.current = api;
+  }, []);
+
+  const exportDrawing = useCallback(async () => {
+    if (!excalidrawAPIRef.current || elements.length === 0) {
+      toast({
+        title: "Nothing to export",
+        description: "Please create a drawing first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Export to canvas
+      const canvas = await excalidrawAPIRef.current.exportToCanvas(elements, {
+        exportBackground: true,
+        exportPadding: 20,
+        exportScale: 2, // Higher resolution
+      });
+
+      // Convert canvas to blob
+      return new Promise<void>((resolve) => {
+        canvas.toBlob((blob: Blob | null) => {
+          if (blob) {
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            const metadata = {
+              name: `drawing-${timestamp}.png`,
+              elements: elements,
+              mimeType: 'image/png' as const,
+            };
+            
+            onDrawingCreate(blob, metadata);
+            setIsOpen(false);
+            setElements([]);
+            setHasChanges(false);
+            
+            toast({
+              title: "Drawing added",
+              description: "Your drawing has been attached to the message.",
+            });
+          }
+          resolve();
+        }, 'image/png', 0.9);
+      });
+    } catch (error) {
+      console.error('Error exporting drawing:', error);
+      toast({
+        title: "Export failed",
+        description: "Failed to export your drawing. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [elements, onDrawingCreate, toast]);
+
+  const handleClose = useCallback(() => {
+    if (hasChanges) {
+      const shouldClose = window.confirm(
+        "You have unsaved changes. Are you sure you want to close without saving?"
+      );
+      if (!shouldClose) return;
+    }
+    
+    setIsOpen(false);
+    setElements([]);
+    setHasChanges(false);
+  }, [hasChanges]);
+
+  const clearDrawing = useCallback(() => {
+    if (elements.length > 0) {
+      const shouldClear = window.confirm(
+        "Are you sure you want to clear your drawing?"
+      );
+      if (shouldClear) {
+        setElements([]);
+        setHasChanges(false);
+      }
+    }
+  }, [elements.length]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={disabled}
+          className="h-8 w-8 p-0"
+          title="Create drawing"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      
+      <DialogContent className="max-w-5xl h-[80vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="flex items-center justify-between">
+            <span>Create Drawing</span>
+            <div className="flex items-center gap-2">
+              {hasChanges && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearDrawing}
+                  className="text-destructive hover:text-destructive"
+                >
+                  Clear
+                </Button>
+              )}
+              <Button
+                variant="default"
+                size="sm"
+                onClick={exportDrawing}
+                disabled={!hasChanges}
+                className="gap-2"
+              >
+                <Check className="h-4 w-4" />
+                Add to Message
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClose}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="flex-1 border rounded-lg overflow-hidden bg-white">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p className="text-sm text-muted-foreground">Loading drawing canvas...</p>
+              </div>
+            </div>
+          ) : ExcalidrawComponent ? (
+            <div className="h-full">
+              <ExcalidrawComponent
+                onChange={(elements: unknown[]) => handleExcalidrawChange(elements)}
+                excalidrawAPI={handleExcalidrawAPI}
+                initialData={{
+                  elements: elements,
+                  appState: {
+                    viewBackgroundColor: "#ffffff",
+                    exportBackground: true,
+                  },
+                  files: {},
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+        
+        <div className="flex-shrink-0 text-xs text-muted-foreground text-center pt-2">
+          Use the drawing tools above to create diagrams, sketches, or visual content for your AI conversation.
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
