@@ -23,7 +23,7 @@ export const SECURITY_CONFIG = {
   
   // Input validation limits
   INPUT_LIMITS: {
-    MESSAGE_LENGTH: 10000,   // Max message length
+    MESSAGE_LENGTH: 32000,   // Max message length (allows ~16k tokens)
     MESSAGES_COUNT: 100,     // Max messages in conversation
     SESSION_ID_LENGTH: 50,   // Max session ID length
     MODEL_ID_LENGTH: 100,    // Max model ID length
@@ -126,7 +126,7 @@ export const InputValidation = {
     
     options: z.object({
       temperature: z.number().min(0).max(2).optional(),
-      max_tokens: z.number().min(1).max(8192).optional(),
+      max_tokens: z.number().min(1).max(16384).optional(),
       top_p: z.number().min(0).max(1).optional(),
       frequency_penalty: z.number().min(-2).max(2).optional(),
       presence_penalty: z.number().min(-2).max(2).optional(),

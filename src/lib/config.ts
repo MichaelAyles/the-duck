@@ -74,7 +74,7 @@ export const PERFORMANCE_THRESHOLDS = {
   STREAM_TIMEOUT: 120000, // 2 minutes
   MAX_RETRIES: 3,
   RETRY_DELAY: 1000, // 1 second
-  MAX_MESSAGE_LENGTH: 10000, // characters
+  MAX_MESSAGE_LENGTH: 32000, // characters (allows for ~16k tokens up/down)
 } as const;
 
 // File upload settings
