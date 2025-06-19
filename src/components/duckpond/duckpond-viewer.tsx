@@ -30,6 +30,8 @@ interface DuckPondViewerProps {
   initialTab?: 'preview' | 'code';
   enableFullscreen?: boolean;
   hideHeader?: boolean;
+  externalExecution?: ArtifactExecution;
+  onExecutionChange?: (execution: ArtifactExecution) => void;
 }
 
 export function DuckPondViewer({
@@ -40,12 +42,20 @@ export function DuckPondViewer({
   initialTab = 'preview',
   enableFullscreen = true,
   hideHeader = false,
+  externalExecution,
+  onExecutionChange,
 }: DuckPondViewerProps) {
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [execution, setExecution] = useState<ArtifactExecution>({
-    artifactId: artifact.id,
-    status: 'idle',
-  });
+  const [execution, setExecution] = useState<ArtifactExecution>(
+    externalExecution || {
+      artifactId: artifact.id,
+      status: 'idle',
+    }
+  );
+
+  // Use external execution state when provided
+  const currentExecution = externalExecution || execution;
+  const updateExecution = onExecutionChange || setExecution;
   const [isFullscreen, setIsFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
