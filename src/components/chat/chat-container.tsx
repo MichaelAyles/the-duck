@@ -80,6 +80,7 @@ export const ChatContainer = React.memo(({
             onEndChat={handleEndChat}
             messageCount={messages.length - 1}
             onToggleMobileSidebar={onToggleMobileSidebar}
+            userId={user?.id}
           />
         </div>
 

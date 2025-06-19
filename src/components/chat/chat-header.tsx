@@ -18,6 +18,7 @@ import { DuckLogo } from "@/components/duck-logo";
 import { UserMenu } from "@/components/auth/user-menu";
 import { LearningPreferencesTab } from "./learning-preferences-tab";
 import { UsageSummary } from "@/components/settings/usage-summary";
+import { UploadHistory } from "@/components/settings/upload-history";
 import { useToast } from "@/hooks/use-toast";
 
 interface ChatHeaderProps {
@@ -26,6 +27,7 @@ interface ChatHeaderProps {
   onEndChat: () => void;
   messageCount: number;
   onToggleMobileSidebar?: () => void;
+  userId?: string;
 }
 
 const TONE_OPTIONS = [
@@ -37,7 +39,7 @@ const TONE_OPTIONS = [
   { value: "duck", label: "Duck Mode", description: "Your personal duck responds in quacks!" },
 ];
 
-export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount, onToggleMobileSidebar }: ChatHeaderProps) {
+export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount, onToggleMobileSidebar, userId }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetKnowledgeOpen, setIsResetKnowledgeOpen] = useState(false);
@@ -413,7 +415,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
               </DialogHeader>
               
               <Tabs defaultValue="models" className="w-full flex-1 flex flex-col min-h-0">
-                <TabsList className="grid w-full grid-cols-5 flex-shrink-0">
+                <TabsList className="grid w-full grid-cols-6 flex-shrink-0">
                   <TabsTrigger value="models" className="relative">
                     Models
                     {!preloadedData.models && isPreloading && (
@@ -434,6 +436,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                     )}
                   </TabsTrigger>
                   <TabsTrigger value="settings">Settings</TabsTrigger>
+                  <TabsTrigger value="uploads">Uploads</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="models" className="flex-1 overflow-y-auto">
@@ -765,6 +768,10 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       </div>
                     </div>
                   </div>
+                </TabsContent>
+                
+                <TabsContent value="uploads" className="flex-1 overflow-y-auto p-1">
+                  <UploadHistory userId={userId} />
                 </TabsContent>
               </Tabs>
             </DialogContent>
