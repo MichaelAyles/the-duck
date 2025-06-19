@@ -8,9 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2, RotateCcw, Menu, Trash2 } from "lucide-react";
+import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2, RotateCcw, Menu, Trash2, ChevronDown, Filter } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ChatSettings } from "./chat-interface";
 import { useModels } from "@/hooks/use-models";
@@ -53,6 +54,12 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
     learning: boolean;
     usage: boolean;
   }>({ models: false, learning: false, usage: false });
+  
+  // Model sorting and filtering state
+  const [modelSortBy, setModelSortBy] = useState<'name' | 'provider' | 'cost' | 'context' | 'latency' | 'date'>('name');
+  const [modelSortOrder, setModelSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [isProviderDropdownOpen, setIsProviderDropdownOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   // Lazy load models - only when user opens the dropdown
@@ -99,10 +106,87 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
     return allModels.filter(model => !curatedModels.some(curated => curated.id === model.id));
   }, [allModels, curatedModels]);
 
-  // CRITICAL FIX: Stable available models list
+  // Model sorting function
+  const sortModels = useCallback((models: typeof allModels) => {
+    return [...models].sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+
+      switch (modelSortBy) {
+        case 'name':
+          aValue = a.name?.toLowerCase() || a.id.toLowerCase();
+          bValue = b.name?.toLowerCase() || b.id.toLowerCase();
+          break;
+        case 'provider':
+          aValue = (a.provider || a.id.split('/')[0]).toLowerCase();
+          bValue = (b.provider || b.id.split('/')[0]).toLowerCase();
+          break;
+        case 'cost':
+          // Sort by combined cost (prompt + completion per 1M tokens)
+          aValue = Number(a.pricing?.prompt || 0) + Number(a.pricing?.completion || 0);
+          bValue = Number(b.pricing?.prompt || 0) + Number(b.pricing?.completion || 0);
+          break;
+        case 'context':
+          aValue = a.context_length || 0;
+          bValue = b.context_length || 0;
+          break;
+        case 'latency':
+          // Sort by p50 latency (50th percentile), fallback to p95, then 0
+          aValue = a.latency?.p50 || a.latency?.p95 || 999999;
+          bValue = b.latency?.p50 || b.latency?.p95 || 999999;
+          break;
+        case 'date':
+          // For "date added", we'll use the order from OpenRouter (models with higher ranks were added earlier)
+          // If no ranking data, sort by ID as fallback
+          aValue = a.id;
+          bValue = b.id;
+          break;
+        default:
+          aValue = a.name?.toLowerCase() || a.id.toLowerCase();
+          bValue = b.name?.toLowerCase() || b.id.toLowerCase();
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        const result = aValue.localeCompare(bValue);
+        return modelSortOrder === 'asc' ? result : -result;
+      } else {
+        const result = (aValue as number) - (bValue as number);
+        return modelSortOrder === 'asc' ? result : -result;
+      }
+    });
+  }, [modelSortBy, modelSortOrder]);
+
+  // Get unique providers from all models
+  const availableProviders = useMemo(() => {
+    const allAvailable = [...curatedModels, ...additionalModels];
+    const providers = new Set<string>();
+    allAvailable.forEach(model => {
+      const provider = model.provider || model.id.split('/')[0];
+      if (provider) providers.add(provider);
+    });
+    return Array.from(providers).sort();
+  }, [curatedModels, additionalModels]);
+
+  // Filter models by selected providers
+  const filterByProvider = useCallback((models: typeof allModels) => {
+    if (selectedProviders.length === 0) return models;
+    return models.filter(model => {
+      const provider = model.provider || model.id.split('/')[0];
+      return selectedProviders.includes(provider);
+    });
+  }, [selectedProviders]);
+
+  // Sorted and filtered models for display
+  const sortedAvailableModels = useMemo(() => {
+    const allAvailable = [...curatedModels, ...additionalModels];
+    const filtered = filterByProvider(allAvailable);
+    return sortModels(filtered);
+  }, [curatedModels, additionalModels, filterByProvider, sortModels]);
+
+  // CRITICAL FIX: Stable available models list (now sorted)
   const availableModels = useMemo(() => {
-    return allModels.length > 0 ? allModels : curatedModels;
-  }, [allModels, curatedModels]);
+    return allModels.length > 0 ? sortedAvailableModels : sortModels(curatedModels);
+  }, [allModels, sortedAvailableModels, curatedModels, sortModels]);
 
   // CRITICAL FIX: Stable model change handler
   const handleModelChange = useCallback((value: string) => {
@@ -553,6 +637,120 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       Click the stars to manage your favorite models. Your curated top 5 models include Google Gemini 2.5, DeepSeek v3, Claude Sonnet 4, and GPT-4o Mini.
                     </p>
                     
+                    {/* Model sorting and filtering controls */}
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border">
+                      <Label className="text-xs font-medium text-muted-foreground">Sort:</Label>
+                      <Select value={modelSortBy} onValueChange={(value: typeof modelSortBy) => setModelSortBy(value)}>
+                        <SelectTrigger className="w-32 h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="name">Name</SelectItem>
+                          <SelectItem value="provider">Provider</SelectItem>
+                          <SelectItem value="cost">Cost</SelectItem>
+                          <SelectItem value="context">Context Length</SelectItem>
+                          <SelectItem value="latency">Latency</SelectItem>
+                          <SelectItem value="date">Date Added</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <button
+                        type="button"
+                        onClick={() => setModelSortOrder(modelSortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded border"
+                        title={`Sort ${modelSortOrder === 'asc' ? 'descending' : 'ascending'}`}
+                      >
+                        {modelSortOrder === 'asc' ? '↑' : '↓'}
+                        {modelSortOrder === 'asc' ? 'Asc' : 'Desc'}
+                      </button>
+                      
+                      <Separator orientation="vertical" className="h-6" />
+                      
+                      <Label className="text-xs font-medium text-muted-foreground">Filter:</Label>
+                      <div className="relative">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-dashed text-xs justify-start"
+                          onClick={() => setIsProviderDropdownOpen(!isProviderDropdownOpen)}
+                        >
+                          <Filter className="mr-2 h-3 w-3" />
+                          {selectedProviders.length === 0
+                            ? "All providers"
+                            : selectedProviders.length === 1
+                            ? selectedProviders[0]
+                            : `${selectedProviders.length} selected`
+                          }
+                          <ChevronDown className="ml-auto h-3 w-3" />
+                        </Button>
+                        
+                        {isProviderDropdownOpen && (
+                          <>
+                            {/* Backdrop */}
+                            <div 
+                              className="fixed inset-0 z-40" 
+                              onClick={() => setIsProviderDropdownOpen(false)}
+                            />
+                            
+                            {/* Dropdown */}
+                            <div className="absolute top-full left-0 z-50 mt-1 w-56 bg-popover border border-border rounded-md shadow-lg">
+                              <div className="p-3 pb-2 border-b">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-sm font-medium">Filter by Provider</h4>
+                                  {selectedProviders.length > 0 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setSelectedProviders([])}
+                                      className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                    >
+                                      Clear
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                              <div 
+                                className="p-3 pt-2 overflow-auto"
+                                style={{
+                                  height: '240px',
+                                  maxHeight: '240px'
+                                }}
+                              >
+                                <div className="space-y-1">
+                                  {availableProviders.length === 0 ? (
+                                    <div className="flex items-center justify-center py-8">
+                                      <span className="text-xs text-muted-foreground">Loading providers...</span>
+                                    </div>
+                                  ) : (
+                                    availableProviders.map((provider) => (
+                                      <div key={provider} className="flex items-center space-x-2 py-1.5 hover:bg-muted/50 rounded px-1">
+                                        <Checkbox
+                                          id={`provider-${provider}`}
+                                          checked={selectedProviders.includes(provider)}
+                                          onCheckedChange={(checked) => {
+                                            if (checked) {
+                                              setSelectedProviders(prev => [...prev, provider]);
+                                            } else {
+                                              setSelectedProviders(prev => prev.filter(p => p !== provider));
+                                            }
+                                          }}
+                                        />
+                                        <Label
+                                          htmlFor={`provider-${provider}`}
+                                          className="text-sm font-normal cursor-pointer flex-1"
+                                        >
+                                          {provider}
+                                        </Label>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {error ? (
                         <div className="p-3 rounded-lg border border-destructive bg-destructive/10">
@@ -579,7 +777,24 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                                   </span>
                                 )}
                               </div>
-                              <span className="text-xs text-muted-foreground truncate">{model.provider || model.id.split('/')[0]}</span>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                <span className="truncate">{model.provider || model.id.split('/')[0]}</span>
+                                {model.context_length && (
+                                  <span className="flex-shrink-0">
+                                    {Math.round(Number(model.context_length) / 1000)}k ctx
+                                  </span>
+                                )}
+                                {model.pricing && (model.pricing.prompt || model.pricing.completion) && (
+                                  <span className="flex-shrink-0">
+                                    £{(Number(model.pricing.prompt || 0) + Number(model.pricing.completion || 0)).toFixed(2)}/1M
+                                  </span>
+                                )}
+                                {model.latency && (model.latency.p50 || model.latency.p95) && (
+                                  <span className="flex-shrink-0">
+                                    {Math.round(model.latency.p50 || model.latency.p95 || 0)}ms
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               {isStarred?.(model.id) && !isActive?.(model.id) && (

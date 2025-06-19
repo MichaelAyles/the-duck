@@ -7,6 +7,17 @@ interface Model {
   provider?: string
   starred?: boolean
   isActive?: boolean
+  pricing?: {
+    prompt?: number
+    completion?: number
+    currency?: string
+  }
+  context_length?: number
+  description?: string
+  latency?: {
+    p50?: number // 50th percentile latency in ms
+    p95?: number // 95th percentile latency in ms
+  }
 }
 
 export function useModels() {

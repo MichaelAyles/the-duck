@@ -41,6 +41,10 @@ export interface OpenRouterModel {
     max_completion_tokens?: number
     is_moderated: boolean
   }
+  latency?: {
+    p50?: number
+    p95?: number
+  }
 }
 
 export interface ChatSession {
