@@ -57,16 +57,16 @@
 -   **Download & Export**: Save artifacts as standalone files for external use
 
 ![DuckPond Artifact Creation](Screenshots/Screenshot%202025-06-19%20at%2016.06.43.png)
-*Creating interactive React components through natural conversation*
+*Tools Available to The Duck*
 
 ![DuckPond Side Panel](Screenshots/Screenshot%202025-06-19%20at%2016.07.34.png)
-*Interactive execution environment with live preview and code tabs*
+*Image handling and classification, generation coming soon*
 
 ![DuckPond Animation Demo](Screenshots/Screenshot%202025-06-19%20at%2016.07.57.png)
-*Real-time animation execution in the DuckPond viewer*
+*User Preferences, determined automatically by The Duck*
 
 ![DuckPond Expanded View](Screenshots/Screenshot%202025-06-19%20at%2016.11.06.png)
-*Expanded side panel for detailed development and testing*
+*Excalidraw input to The Duck*
 
 ## 🏗️ Architecture Philosophy
 
