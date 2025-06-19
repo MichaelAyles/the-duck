@@ -6,6 +6,8 @@ import { Message } from '@/types/chat';
 import { CHAT_CONFIG, DEFAULT_AI_MODEL } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
+import { ArtifactParser } from '@/lib/artifact-parser';
+import { ParsedArtifact } from '@/types/artifact';
 
 interface UseChatSessionProps {
   initialSessionId?: string | null;
@@ -24,6 +26,8 @@ interface UseChatSessionReturn {
   // CRITICAL FIX: Add operation locking functions to prevent race conditions
   lockSession: () => void;
   unlockSession: () => void;
+  // DuckPond artifact tracking
+  detectedArtifacts: ParsedArtifact[];
 }
 
 export function useChatSession({
@@ -34,6 +38,7 @@ export function useChatSession({
 }: UseChatSessionProps): UseChatSessionReturn {
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const [messages, setMessages] = useState<Message[]>(initialMessages || []);
+  const [detectedArtifacts, setDetectedArtifacts] = useState<ParsedArtifact[]>([]);
   const chatServiceRef = useRef<ChatService | null>(null);
   const lastLoadedSessionId = useRef<string | null>(null);
   const { toast } = useToast();
@@ -89,12 +94,35 @@ export function useChatSession({
           timestamp: new Date(msg.timestamp)
         }));
         
+        // Scan messages for DuckPond artifacts
+        const allArtifacts: ParsedArtifact[] = [];
+        for (const message of formattedMessages) {
+          if (message.role === 'assistant' && message.content) {
+            try {
+              const parseResult = ArtifactParser.parseContent(message.content);
+              if (parseResult.hasArtifacts) {
+                allArtifacts.push(...parseResult.artifacts);
+              }
+            } catch (error) {
+              logger.error('Error parsing artifacts from message:', error);
+            }
+          }
+        }
+        
+        if (allArtifacts.length > 0) {
+          logger.dev.log(`🦆 Found ${allArtifacts.length} DuckPond artifact(s) in loaded session`);
+          setDetectedArtifacts(allArtifacts);
+        } else {
+          setDetectedArtifacts([]);
+        }
+        
         setMessages(formattedMessages);
         logger.dev.log(`Loaded ${formattedMessages.length} messages for session ${sessionId}`);
         lastLoadedSessionId.current = sessionId;
       } else {
         // If no messages found, show welcome message
         setMessages([welcomeMessage]);
+        setDetectedArtifacts([]);
         logger.dev.log('📝 No messages found, showing welcome message');
         lastLoadedSessionId.current = sessionId;
       }
@@ -111,8 +139,9 @@ export function useChatSession({
         variant: "destructive",
       });
       
-      // On error, show welcome message
+      // On error, show welcome message and clear artifacts
       setMessages([welcomeMessage]);
+      setDetectedArtifacts([]);
     }
   }, [userId, welcomeMessage, toast]);
 
@@ -131,6 +160,9 @@ export function useChatSession({
     setSessionId(newSessionId);
     chatServiceRef.current = new ChatService(newSessionId, userId);
     
+    // Clear artifacts for new session
+    setDetectedArtifacts([]);
+    
     // CRITICAL FIX: Immediately save empty session to database so it appears in sidebar
     if (userId) {
       try {
@@ -148,10 +180,33 @@ export function useChatSession({
   }, [userId, sessionId]);  
   // sessionId intentionally omitted to prevent unnecessary recreations
 
-  // When initialMessages changes, update our state
+  // When initialMessages changes, update our state and scan for artifacts
   useEffect(() => {
     if (initialMessages && initialMessages.length > 0) {
       setMessages(initialMessages);
+      
+      // Scan initial messages for artifacts
+      const allArtifacts: ParsedArtifact[] = [];
+      for (const message of initialMessages) {
+        if (message.role === 'assistant' && message.content) {
+          try {
+            const parseResult = ArtifactParser.parseContent(message.content);
+            if (parseResult.hasArtifacts) {
+              allArtifacts.push(...parseResult.artifacts);
+            }
+          } catch (error) {
+            logger.error('Error parsing artifacts from initial messages:', error);
+          }
+        }
+      }
+      
+      if (allArtifacts.length > 0) {
+        logger.dev.log(`🦆 Found ${allArtifacts.length} DuckPond artifact(s) in initial messages`);
+        setDetectedArtifacts(allArtifacts);
+      } else {
+        setDetectedArtifacts([]);
+      }
+      
       // Don't need to load from server if we already have messages
       if (initialSessionId) {
         lastLoadedSessionId.current = initialSessionId;
@@ -213,8 +268,9 @@ export function useChatSession({
         loadSessionMessages(initialSessionId);
       }
     } else if (!initialSessionId || !userId) {
-      // New session or no user - clear messages to trigger welcome message
+      // New session or no user - clear messages and artifacts to trigger welcome message
       setMessages([]);
+      setDetectedArtifacts([]);
     }
   }, [userId, initialSessionId, initialMessages]); // eslint-disable-line react-hooks/exhaustive-deps
   // Note: loadSessionMessages intentionally omitted to prevent circular dependency
@@ -274,5 +330,6 @@ export function useChatSession({
     createNewSession,
     lockSession,
     unlockSession,
+    detectedArtifacts,
   };
 }
