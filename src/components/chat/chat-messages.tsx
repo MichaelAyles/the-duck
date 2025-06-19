@@ -112,7 +112,7 @@ export function ChatMessages({ messages, isLoading, userId, sessionId }: ChatMes
                 message.role === "user"
                   ? "duck-gradient text-primary-foreground ml-12 hover:duck-glow"
                   : "bg-card hover:bg-card/80",
-                message.role === "assistant" && !message.content && isLoading && "animate-pulse"
+                message.role === "assistant" && !message.content && isLoading && "animate-gentle-pulse"
               )}
             >
               {shouldShowThinking ? (
