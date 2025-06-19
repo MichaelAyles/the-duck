@@ -14,9 +14,11 @@ import type { FileUpload } from "@/types/file-upload";
 interface ChatMessagesProps {
   messages: Message[];
   isLoading: boolean;
+  userId?: string;
+  sessionId?: string;
 }
 
-export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
+export function ChatMessages({ messages, isLoading, userId, sessionId }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [fadingWelcome, setFadingWelcome] = useState(false);
   const prevMessagesRef = useRef<Message[]>([]);
@@ -120,7 +122,12 @@ export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
                 </div>
               ) : (
                 <>
-                  <MessageContent content={message.content} />
+                  <MessageContent 
+                    content={message.content} 
+                    message={message}
+                    userId={userId}
+                    sessionId={sessionId}
+                  />
                   {message.attachments && message.attachments.length > 0 && (
                     <div className="mt-3 space-y-2">
                       {message.attachments.map((attachment) => (

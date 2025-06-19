@@ -7,9 +7,16 @@ import { Copy, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import React, { useState, Suspense } from "react";
 import dynamic from "next/dynamic";
+import { Message } from "@/types/chat";
+import { useArtifacts } from "@/hooks/use-artifacts";
+import { useArtifactPanel } from "@/contexts/artifact-panel-context";
+import { Play, Code2 } from "lucide-react";
 
 interface MessageContentProps {
   content: string;
+  message?: Message;
+  userId?: string;
+  sessionId?: string;
 }
 
 // Lazy load syntax highlighter to reduce initial bundle size
@@ -96,9 +103,11 @@ const CodeBlock = React.memo(({ language, code, theme, onCopy, isCopied }: CodeB
 
 CodeBlock.displayName = 'CodeBlock';
 
-export function MessageContent({ content }: MessageContentProps) {
+export function MessageContent({ content, message, userId, sessionId }: MessageContentProps) {
   const { theme } = useTheme();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const { getArtifactsFromMessage, loadArtifact } = useArtifacts({ userId, sessionId });
+  const { openArtifact } = useArtifactPanel();
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -110,8 +119,30 @@ export function MessageContent({ content }: MessageContentProps) {
     }
   };
 
+  // Get artifacts from message if available
+  const artifacts = message ? getArtifactsFromMessage(message) : [];
+  
+  // Debug logging for artifact rendering
+  if (process.env.NODE_ENV === 'development' && message) {
+    console.log(`MessageContent for message ${message.id}:`, {
+      hasMessage: !!message,
+      messageArtifacts: message.artifacts,
+      processedArtifacts: artifacts,
+      artifactCount: artifacts.length
+    });
+  }
+
+  const handleOpenArtifact = async (artifactId: string) => {
+    const artifact = await loadArtifact(artifactId);
+    if (artifact) {
+      openArtifact(artifact);
+    }
+  };
+
   return (
-    <div className="prose prose-sm max-w-none dark:prose-invert">
+    <div className="space-y-4">
+      {/* Render markdown content */}
+      <div className="prose prose-sm max-w-none dark:prose-invert">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -209,6 +240,41 @@ export function MessageContent({ content }: MessageContentProps) {
       >
         {content}
       </ReactMarkdown>
+      </div>
+      
+      {/* Render artifact buttons */}
+      {artifacts.length > 0 && (
+        <div className="space-y-3 not-prose">
+          {artifacts.map((artifactRef) => (
+            <div
+              key={artifactRef.id}
+              className="border rounded-lg p-4 bg-muted/50 border-dashed"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-md">
+                    <Code2 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-sm">{artifactRef.title}</h4>
+                    <p className="text-xs text-muted-foreground">
+                      {artifactRef.description || `Interactive ${artifactRef.type} component`}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => handleOpenArtifact(artifactRef.id)}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Play className="h-3 w-3" />
+                  Run in DuckPond
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

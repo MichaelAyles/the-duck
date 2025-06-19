@@ -155,8 +155,10 @@ CREATE TABLE file_uploads (
       -- Text
       'text/plain', 'text/csv', 'text/markdown',
       -- Code
-      'text/javascript', 'application/json', 'text/html', 'text/css',
+      'text/javascript', 'application/json', 'text/html', 'text/css', 'text/typescript',
       'application/x-python-code', 'application/x-ruby', 'application/x-sh',
+      -- DuckPond Artifacts
+      'text/x-react-component', 'text/x-duckpond-artifact',
       -- Archives
       'application/zip', 'application/x-tar', 'application/x-gzip'
     )
@@ -181,8 +183,10 @@ VALUES (
     -- Text
     'text/plain', 'text/csv', 'text/markdown',
     -- Code
-    'text/javascript', 'application/json', 'text/html', 'text/css',
+    'text/javascript', 'application/json', 'text/html', 'text/css', 'text/typescript',
     'application/x-python-code', 'application/x-ruby', 'application/x-sh',
+    -- DuckPond Artifacts
+    'text/x-react-component', 'text/x-duckpond-artifact',
     -- Archives
     'application/zip', 'application/x-tar', 'application/x-gzip'
   ],

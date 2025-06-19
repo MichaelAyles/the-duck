@@ -17,6 +17,13 @@ export interface ChatMessage {
     mime_type: string
     url?: string
   }[]
+  artifacts?: {
+    id: string
+    type: 'react-component' | 'html' | 'javascript' | 'css' | 'json'
+    title: string
+    description?: string
+    fileId?: string
+  }[]
 }
 
 // Alias for backwards compatibility

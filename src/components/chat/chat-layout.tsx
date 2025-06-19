@@ -6,6 +6,8 @@ import { ChatContainer } from "./chat-container";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/hooks/use-toast";
+import { useArtifactPanel } from "@/contexts/artifact-panel-context";
+import { cn } from "@/lib/utils";
 
 export function ChatLayout() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -16,6 +18,7 @@ export function ChatLayout() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { isOpen: isArtifactPanelOpen } = useArtifactPanel();
 
   const handleSessionSelect = useCallback(async (sessionId: string) => {
     if (sessionId === currentSessionId) return;
@@ -143,7 +146,10 @@ export function ChatLayout() {
       </div>
       
       {/* Chat Container - Single instance managing all chat UI */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300",
+        isArtifactPanelOpen && "mr-[40%]" // Make room for artifact panel
+      )}>
         <ChatContainer
           sessionId={currentSessionId}
           initialMessages={messages}

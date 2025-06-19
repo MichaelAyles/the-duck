@@ -140,6 +140,8 @@ export const ChatInterface = React.memo(({
               <ChatMessages
                 messages={messages}
                 isLoading={isLoading}
+                userId={user?.id}
+                sessionId={sessionId || undefined}
               />
             </div>
           </ErrorBoundary>
@@ -180,6 +182,8 @@ export const ChatInterface = React.memo(({
             <ChatMessages
               messages={messages}
               isLoading={isLoading}
+              userId={user?.id}
+              sessionId={sessionId || undefined}
             />
           </div>
         </ErrorBoundary>

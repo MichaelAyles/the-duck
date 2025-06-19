@@ -9,6 +9,7 @@ import { API_ENDPOINTS } from '@/lib/config';
 import type { FileUpload } from '@/types/file-upload';
 import { logger } from '@/lib/logger';
 import { sessionCache } from '@/lib/local-session-cache';
+import { useArtifacts } from '@/hooks/use-artifacts';
 
 interface UseMessageHandlingProps {
   sessionId: string | null;
@@ -45,6 +46,7 @@ export function useMessageHandling({
   const { toast } = useToast();
   const lastSummarizeTime = useRef<number>(0);
   const messagesRef = useRef<Message[]>(messages);
+  const { processMessageForArtifacts } = useArtifacts({ userId, sessionId: sessionId || undefined });
 
   // Keep messages ref up to date
   useEffect(() => {
@@ -376,6 +378,30 @@ export function useMessageHandling({
                 // Save final session and update title when response is complete
                 if (sessionId && userId && settings.storageEnabled) {
                   setMessages(currentMessages => {
+                    // Process artifacts in the completed assistant message
+                    setTimeout(async () => {
+                      // Process the last assistant message for artifacts
+                      const lastMessage = currentMessages[currentMessages.length - 1];
+                      if (lastMessage && lastMessage.role === 'assistant') {
+                        try {
+                          const processedMessage = await processMessageForArtifacts(lastMessage);
+                          if (processedMessage !== lastMessage) {
+                            // Update the message with artifact information
+                            setMessages(prev => {
+                              const updated = [...prev];
+                              updated[updated.length - 1] = processedMessage;
+                              return updated;
+                            });
+                            if (process.env.NODE_ENV === 'development') {
+                              logger.dev.log(`Processed artifacts for message: ${lastMessage.id}`);
+                            }
+                          }
+                        } catch (error) {
+                          logger.error('Failed to process artifacts:', error);
+                        }
+                      }
+                    }, 100);
+
                     // Save the completed conversation
                     setTimeout(async () => {
                       try {
@@ -563,6 +589,7 @@ export function useMessageHandling({
     toast,
     lockSession,
     unlockSession,
+    processMessageForArtifacts,
   ]);
 
   return {

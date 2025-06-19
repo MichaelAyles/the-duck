@@ -4,6 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { ArtifactPanelProvider } from "@/contexts/artifact-panel-context";
+import { ArtifactSidePanel } from "@/components/duckpond/artifact-side-panel";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -47,8 +49,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
-            <Toaster />
+            <ArtifactPanelProvider>
+              {children}
+              <ArtifactSidePanel />
+              <Toaster />
+            </ArtifactPanelProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

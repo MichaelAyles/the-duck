@@ -55,6 +55,10 @@ export const ALLOWED_FILE_TYPES = {
   'application/json': ['.json'],
   'text/html': ['.html'],
   'text/css': ['.css'],
+  'text/typescript': ['.ts', '.tsx'],
+  // DuckPond Artifacts
+  'text/x-react-component': ['.jsx', '.tsx'],
+  'text/x-duckpond-artifact': ['.artifact'],
   // Archives
   'application/zip': ['.zip'],
   'application/x-tar': ['.tar'],
