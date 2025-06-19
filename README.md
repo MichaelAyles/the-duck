@@ -276,6 +276,9 @@ The application follows a **Security-First** design philosophy:
 - ✅ Redis-based rate limiting implemented for production scalability
 - ✅ Comprehensive unit test suite with 93 tests covering critical paths
 - ✅ Performance monitoring and optimization tracking added
+- ✅ Enhanced model selector with sorting, filtering, and realistic pricing (January 2025)
+- ✅ Custom dropdown implementation solving scroll issues with 100+ providers
+- ✅ Advanced pricing estimates based on actual model costs with GBP formatting
 
 **Planned Future Improvements:**
 - Implement centralized state management (Zustand/Jotai)

@@ -484,6 +484,7 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **Configuration Management**: Centralized constants and user preferences
 - **Error Handling**: Comprehensive toast-based user feedback system
 - **Codebase Cleanup**: Removed all redundant files and obsolete dependencies
+- **Model Selector Enhancement**: Comprehensive sorting, filtering, and pricing features
 
 ### ✅ **RESOLVED CRITICAL ISSUES**
 - **State Race Conditions**: Fixed in commit 20e983e
@@ -508,7 +509,17 @@ This document outlines the development priorities for The Duck, focusing on crit
 - **P1.5 Critical Bug Fixes**: All state, memory, and performance issues resolved
 - **P1.75 Learning Preferences**: Complete AI personalization system implemented
 
-### ✅ **LATEST COMPLETED (December 2024)**
+### ✅ **LATEST COMPLETED (December 2024 - January 2025)**
+- **Model Selector Enhancement**: Comprehensive model management improvements (January 2025)
+  - [x] **Advanced Sorting**: Sort models by name, provider, cost, context length, latency, and date added
+  - [x] **Provider Filtering**: Clean dropdown interface with multi-select checkboxes for 100+ providers
+  - [x] **Custom Dropdown Implementation**: Fixed scroll issues by replacing Radix Popover with native dropdown
+  - [x] **Realistic Pricing Display**: Implemented accurate pricing estimates based on actual model costs
+  - [x] **Currency Formatting**: Proper GBP pricing display with per-million-token calculations
+  - [x] **Latency Estimation**: Provider-based latency calculations with model size adjustments
+  - [x] **Enhanced Metadata**: Display pricing, context length, and latency for all models
+  - [x] **Performance Optimization**: Memoized sorting and filtering for smooth UX
+  - [x] **Backward Compatibility**: Maintained existing starred model functionality
 - **Comprehensive Testing Infrastructure**: Jest and React Testing Library setup with full CI/CD integration
   - [x] **Test Suite Setup**: Jest configuration with Next.js integration and TypeScript support
   - [x] **Unit Test Coverage**: 93 tests covering config, security, utils, chat-service, and React components
@@ -563,6 +574,8 @@ This document outlines the development priorities for The Duck, focusing on crit
 3. **Component Refactoring** (Split ChatInterface into separate auth/unauth components)
 4. **API Documentation** (OpenAPI/Swagger for developer experience)
 5. **Implement E2E Tests** (Expand testing coverage beyond unit tests)
+6. **Model Discovery Features** (Search models by capabilities, cost filtering, performance metrics)
+7. **Advanced Pricing Analytics** (Cost tracking per conversation, usage statistics)
 
 ### 🏗️ **Current Architecture Status**
 - ✅ **Secure**: Server-side API architecture with proper authentication
@@ -590,6 +603,15 @@ This document outlines the development priorities for The Duck, focusing on crit
 
 ### 💎 **Future Recommendations (10x Developer Code Review)**
 This section contains forward-looking recommendations from a professional code review. The project is already in a great state; these are suggestions for further refinement and to achieve a "super duper snappy" user experience.
+
+#### **Recent Enhancements Completed**
+-   [x] **Enhanced Model Selection Experience** ✅ COMPLETED (January 2025)
+    -   **Goal**: Make model discovery and selection more intuitive and informative.
+    -   **Action**: Added comprehensive sorting options by provider, cost, context length, latency, and date.
+    -   **Action**: Implemented provider filtering with clean dropdown interface supporting 100+ providers.
+    -   **Action**: Fixed scroll issues with custom dropdown to replace problematic Radix Popover.
+    -   **Action**: Added realistic pricing estimates based on actual model costs and proper currency formatting.
+    -   **Outcome**: Users can now efficiently discover and compare models based on their specific needs.
 
 #### **High-Impact Architecture & UX Refinements**
 -   [ ] **Refactor `ChatLayout` to be the single source of truth**
