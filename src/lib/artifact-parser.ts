@@ -12,6 +12,12 @@ export class ArtifactParser {
     const artifacts: ParsedArtifact[] = [];
     let cleanedContent = content;
 
+    // Debug logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('ArtifactParser.parseContent called with content length:', content.length);
+      console.log('Content preview:', content.substring(0, 200));
+    }
+
     // Check for DuckPond artifacts
     const duckpondArtifacts = this.extractDuckPondArtifacts(content);
     artifacts.push(...duckpondArtifacts.artifacts);
@@ -26,6 +32,11 @@ export class ArtifactParser {
     const htmlArtifacts = this.extractHtmlArtifacts(cleanedContent);
     artifacts.push(...htmlArtifacts.artifacts);
     cleanedContent = htmlArtifacts.cleanedContent;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('ArtifactParser found artifacts:', artifacts.length);
+      artifacts.forEach(a => console.log('- Artifact:', a.type, a.title));
+    }
 
     return {
       hasArtifacts: artifacts.length > 0,
