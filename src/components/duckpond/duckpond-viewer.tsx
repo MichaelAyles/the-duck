@@ -75,17 +75,37 @@ export function DuckPondViewer({
 
     const iframe = iframeRef.current;
     
-    // Create sandbox HTML content
-    const sandboxContent = createSandboxContent(artifact);
-    
-    // Write content to iframe
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(sandboxContent);
-      doc.close();
+    try {
+      // Create sandbox HTML content
+      const sandboxContent = createSandboxContent(artifact);
+      
+      // Write content to iframe with enhanced error handling
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        // Clear any existing content first
+        doc.open();
+        doc.write(sandboxContent);
+        doc.close();
+        
+        // For interactive components, ensure iframe can handle events
+        iframe.style.pointerEvents = 'auto';
+        iframe.style.overflow = 'hidden';
+        
+        console.log('🦆 DuckPond artifact executed:', {
+          type: artifact.type,
+          title: artifact.title,
+          interactive: artifact.type === 'react-component'
+        });
+      }
+    } catch (error) {
+      console.error('DuckPond execution error:', error);
+      updateExecution((prev: ArtifactExecution) => ({
+        ...prev,
+        status: 'error' as const,
+        error: error instanceof Error ? error.message : 'Failed to execute component',
+      }));
     }
-  }, [artifact]);
+  }, [artifact, updateExecution]);
 
   const handleExecute = useCallback(async () => {
     if (currentExecution.status === 'executing') return;
@@ -150,32 +170,85 @@ export function DuckPondViewer({
   const handleReset = useCallback(() => {
     if (!iframeRef.current) return;
     
-    // Reset iframe to blank state
-    const iframe = iframeRef.current;
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (doc) {
-      doc.open();
-      doc.write(`
-        <html>
-          <head><title>DuckPond - Ready</title></head>
-          <body style="display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: system-ui, sans-serif; color: #666;">
-            <div style="text-align: center;">
-              <div style="font-size: 48px; margin-bottom: 16px;">🦆</div>
-              <div>Ready to run</div>
-              <div style="font-size: 12px; margin-top: 8px;">Click Run to execute</div>
-            </div>
-          </body>
-        </html>
-      `);
-      doc.close();
+    try {
+      // Reset iframe and clean up any running animations/timers
+      const iframe = iframeRef.current;
+      const iframeWindow = iframe.contentWindow;
+      
+      // Try to clean up any running timers/animations in the iframe
+      if (iframeWindow) {
+        try {
+          // Clear any active timers - use a safer approach
+          const highestTimeoutId = iframeWindow.setTimeout(() => {}, 0);
+          for (let i = 0; i <= Math.min(highestTimeoutId, 1000); i++) {
+            iframeWindow.clearTimeout(i);
+            iframeWindow.clearInterval(i);
+          }
+        } catch {
+          // Ignore errors in cleanup
+        }
+      }
+      
+      const doc = iframe.contentDocument || iframeWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(`
+          <html>
+            <head>
+              <title>DuckPond - Ready</title>
+              <style>
+                body { 
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: center; 
+                  height: 100vh; 
+                  margin: 0; 
+                  font-family: system-ui, sans-serif; 
+                  color: #666;
+                  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                }
+                .ready-state {
+                  text-align: center;
+                  padding: 2rem;
+                  border-radius: 1rem;
+                  background: rgba(255, 255, 255, 0.8);
+                  backdrop-filter: blur(10px);
+                  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                }
+                .duck-icon {
+                  font-size: 3rem;
+                  margin-bottom: 1rem;
+                  animation: float 2s ease-in-out infinite;
+                }
+                @keyframes float {
+                  0%, 100% { transform: translateY(0px); }
+                  50% { transform: translateY(-10px); }
+                }
+              </style>
+            </head>
+            <body>
+              <div class="ready-state">
+                <div class="duck-icon">🦆</div>
+                <div style="font-size: 1.2rem; font-weight: 500;">Ready to run</div>
+                <div style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.7;">Click Run to execute interactive component</div>
+              </div>
+            </body>
+          </html>
+        `);
+        doc.close();
+      }
+      
+      updateExecution(prev => ({
+        ...prev,
+        status: 'idle' as const,
+        error: undefined,
+        lastExecuted: undefined,
+      }));
+      
+      console.log('🔄 DuckPond reset - ready for new execution');
+    } catch (error) {
+      console.error('Reset error:', error);
     }
-    
-    updateExecution(prev => ({
-      ...prev,
-      status: 'idle' as const,
-      error: undefined,
-      lastExecuted: undefined,
-    }));
   }, [updateExecution]);
 
   const handleDownload = () => {
@@ -365,10 +438,15 @@ export function DuckPondViewer({
             <div className="border rounded-lg bg-white dark:bg-gray-950">
               <iframe
                 ref={iframeRef}
-                className="w-full h-64 rounded-lg"
-                title={`${artifact.title} Preview`}
-                sandbox="allow-scripts allow-same-origin"
-                style={{ minHeight: isFullscreen ? '60vh' : '16rem' }}
+                className="w-full h-64 rounded-lg border-0"
+                title={`${artifact.title} Interactive Preview`}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups"
+                style={{ 
+                  minHeight: isFullscreen ? '60vh' : '20rem',
+                  background: 'transparent',
+                  pointerEvents: 'auto'
+                }}
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
               />
             </div>
           </TabsContent>
@@ -407,84 +485,179 @@ function createReactSandbox(content: string): string {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>DuckPond React Component</title>
+  <title>DuckPond Interactive React Component</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    body { margin: 16px; font-family: system-ui, -apple-system, sans-serif; }
-    .error { color: red; background: #fee; padding: 8px; border-radius: 4px; margin: 8px 0; }
+    body { 
+      margin: 16px; 
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden; /* Prevent iframe scrollbars for animations */
+    }
+    #root {
+      width: 100%;
+      height: calc(100vh - 32px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .error { 
+      color: red; 
+      background: #fee; 
+      padding: 8px; 
+      border-radius: 4px; 
+      margin: 8px 0;
+      max-width: 100%;
+      word-wrap: break-word;
+    }
+    /* Enable smooth animations */
+    * {
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
     try {
-      const { useState, useEffect, useCallback, useMemo } = React;
+      // Provide ALL React hooks for maximum compatibility
+      const { 
+        useState, 
+        useEffect, 
+        useCallback, 
+        useMemo, 
+        useRef,
+        useReducer,
+        useContext,
+        useLayoutEffect,
+        useImperativeHandle,
+        useDeferredValue,
+        useTransition,
+        useId,
+        useSyncExternalStore
+      } = React;
+      
+      // Ensure requestAnimationFrame is available for animations
+      if (!window.requestAnimationFrame) {
+        window.requestAnimationFrame = (callback) => {
+          return setTimeout(callback, 16); // ~60fps fallback
+        };
+      }
+      
+      if (!window.cancelAnimationFrame) {
+        window.cancelAnimationFrame = clearTimeout;
+      }
+      
+      // Provide common animation utilities
+      window.setTimeout = window.setTimeout;
+      window.setInterval = window.setInterval;
+      window.clearTimeout = window.clearTimeout;
+      window.clearInterval = window.clearInterval;
+      
+      // Add performance.now for high-precision timing
+      if (!window.performance) {
+        window.performance = { now: () => Date.now() };
+      }
+      
+      console.log('🦆 DuckPond Interactive Environment Ready');
+      console.log('📦 Available React hooks:', {
+        useState: !!useState,
+        useEffect: !!useEffect,
+        useRef: !!useRef,
+        useCallback: !!useCallback,
+        useMemo: !!useMemo,
+        useReducer: !!useReducer
+      });
+      console.log('🎬 Animation APIs:', {
+        requestAnimationFrame: !!window.requestAnimationFrame,
+        performance: !!window.performance,
+        setTimeout: !!window.setTimeout
+      });
       
       ${content}
       
-      // Try to find and render the main component
-      const componentNames = Object.keys(window).filter(key => 
-        typeof window[key] === 'function' && 
-        key[0] === key[0].toUpperCase() &&
-        key !== 'Component' &&
-        key !== 'React' &&
-        key !== 'ReactDOM'
-      );
+      // Enhanced component detection with better error handling
+      const componentNames = Object.keys(window).filter(key => {
+        try {
+          return typeof window[key] === 'function' && 
+                 key[0] === key[0].toUpperCase() &&
+                 key !== 'Component' &&
+                 key !== 'React' &&
+                 key !== 'ReactDOM' &&
+                 key !== 'Babel' &&
+                 !key.startsWith('_');
+        } catch (e) {
+          return false;
+        }
+      });
       
       let Component = null;
       
-      // First try to find a component by name
+      // Try to find the component with improved detection
       if (componentNames.length > 0) {
-        Component = window[componentNames[0]];
+        // Prefer components with common animation/interactive names
+        const interactiveNames = componentNames.filter(name => 
+          /animation|interactive|bouncing|moving|game|demo|widget/i.test(name)
+        );
+        
+        Component = window[interactiveNames[0]] || window[componentNames[0]];
       }
       
-      // If no component found, try to find any function that might be a component
-      if (!Component) {
-        for (const key of Object.keys(window)) {
-          const value = window[key];
-          if (typeof value === 'function' && 
-              key[0] === key[0].toUpperCase() &&
-              key !== 'Component' &&
-              key !== 'React' &&
-              key !== 'ReactDOM') {
-            Component = value;
-            break;
-          }
-        }
-      }
-      
-      console.log('Available window properties:', Object.keys(window).filter(key => 
-        typeof window[key] === 'function' && key[0] === key[0].toUpperCase()
-      ));
-      console.log('Found component names:', componentNames);
-      console.log('Selected component:', Component);
+      console.log('🔍 Found component names:', componentNames);
+      console.log('🎯 Selected component:', Component?.name || 'unnamed');
       
       if (Component && typeof Component === 'function') {
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        try {
-          const element = React.createElement(Component);
-          root.render(element);
-          console.log('Component rendered successfully');
-        } catch (renderError) {
-          console.error('Render error:', renderError);
-          document.getElementById('root').innerHTML = 
-            '<div class="error">Render error: ' + renderError.message + '</div>';
-        }
+        // Wait a bit to ensure DOM is ready
+        setTimeout(() => {
+          const rootElement = document.getElementById('root');
+          if (rootElement) {
+            try {
+              const root = ReactDOM.createRoot(rootElement);
+              const element = React.createElement(Component);
+              root.render(element);
+              console.log('✅ Interactive component rendered successfully');
+            } catch (renderError) {
+              console.error('❌ Render error:', renderError);
+              rootElement.innerHTML = 
+                '<div class="error">Render error: ' + renderError.message + 
+                '<br><br>💡 Tips for interactive components:' +
+                '<br>• Use React.useState for state' +
+                '<br>• Use React.useEffect for animations' +
+                '<br>• Use React.useRef for DOM access' +
+                '<br>• Export component with window.ComponentName = ComponentName' +
+                '</div>';
+            }
+          }
+        }, 50); // Small delay to ensure everything is ready
       } else {
-        console.log('No component found. Available functions:', 
-          Object.keys(window).filter(key => typeof window[key] === 'function')
-        );
-        document.getElementById('root').innerHTML = 
-          '<div class="error">No React component found. Available functions: ' + 
-          Object.keys(window).filter(key => typeof window[key] === 'function').join(', ') +
-          '</div>';
+        console.log('❌ No component found');
+        const rootElement = document.getElementById('root');
+        if (rootElement) {
+          rootElement.innerHTML = 
+            '<div class="error">' +
+            '🦆 No React component detected<br><br>' +
+            '📋 Available functions: ' + 
+            Object.keys(window).filter(key => typeof window[key] === 'function').slice(0, 10).join(', ') +
+            (Object.keys(window).filter(key => typeof window[key] === 'function').length > 10 ? '...' : '') +
+            '<br><br>💡 Make sure to export your component:<br>' +
+            '<code>window.YourComponentName = YourComponentName;</code>' +
+            '</div>';
+        }
       }
     } catch (error) {
-      document.getElementById('root').innerHTML = 
-        '<div class="error">Error: ' + error.message + '</div>';
-      console.error('DuckPond execution error:', error);
+      console.error('🚨 DuckPond execution error:', error);
+      const rootElement = document.getElementById('root');
+      if (rootElement) {
+        rootElement.innerHTML = 
+          '<div class="error">' +
+          '🚨 Execution Error: ' + error.message +
+          '<br><br>🔧 Debug info:' +
+          '<br>• Check browser console for details' +
+          '<br>• Ensure proper React syntax' +
+          '<br>• Verify component export' +
+          '</div>';
+      }
     }
   </script>
 </body>

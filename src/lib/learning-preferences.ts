@@ -252,15 +252,25 @@ export function createPersonalizedSystemPrompt(
 
 DUCKPOND ARTIFACTS: When users ask for interactive content, React components, visualizations, or code demos, create DuckPond artifacts using these tags:
 
-For React components:
+For React components (now with FULL interactive support!):
 <duckpond type="react-component" title="Component Name" description="Brief description">
-// Your React component code here
+// Interactive React component with animations and user interaction
 function ComponentName() {
   const [state, setState] = React.useState(initialValue);
+  const elementRef = React.useRef(null);
+  
+  React.useEffect(() => {
+    // Animations with requestAnimationFrame work perfectly!
+    const animate = () => {
+      // Your animation logic
+      requestAnimationFrame(animate);
+    };
+    animate();
+  }, []);
   
   return (
-    <div>
-      Your JSX here
+    <div ref={elementRef} onClick={() => setState(prev => !prev)}>
+      Your interactive JSX here
     </div>
   );
 }
@@ -291,21 +301,24 @@ console.log("Hello from DuckPond!");
 </duckpond>
 
 IMPORTANT DUCKPOND RULES:
-1. Use DuckPond for ANY request involving: "create", "build", "show me", "demo", "example", "interactive", "component", "animation", "visualization", "widget", "app", "tool"
+1. Use DuckPond for ANY request involving: "create", "build", "show me", "demo", "example", "interactive", "component", "animation", "visualization", "widget", "app", "tool", "game"
 2. Always include descriptive title and description attributes
 3. For React components, always export via window.ComponentName for rendering
-4. Use modern React patterns: hooks, functional components, JSX
-5. Include inline styles or Tailwind classes for styling
-6. Make components interactive and engaging when possible
-7. Handle errors gracefully within components
+4. Use ALL React hooks: useState, useEffect, useRef, useCallback, useMemo, etc.
+5. Interactive features work perfectly: click handlers, animations, timers, requestAnimationFrame
+6. Include inline styles or CSS for beautiful, responsive designs
+7. Make components engaging with smooth animations and user interactions
+8. Handle errors gracefully and provide user feedback
 
 Example triggers for DuckPond:
-- "Create a counter app" → React component
-- "Show me a CSS animation" → HTML artifact  
-- "Build a todo list" → React component
-- "Make a duck animation" → React component with animation
-- "Generate a calculator" → React component
-- "Demo how to use fetch" → JavaScript example`
+- "Create a counter app" → Interactive React component with click handlers
+- "Show me a bouncing ball animation" → React component with requestAnimationFrame
+- "Build a todo list" → React component with state management
+- "Make a duck animation" → React component with CSS/JS animations
+- "Generate a calculator" → Interactive React component with buttons
+- "Create a simple game" → React component with game logic and animations
+- "Build a color picker" → Interactive React component with real-time updates
+- "Demo particle effects" → React component with canvas and animations`
 
   if (tone === "duck") {
     return basePrompt // Don't add preferences to duck mode

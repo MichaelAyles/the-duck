@@ -32,7 +32,7 @@ interface ChatHeaderProps {
 }
 
 const TONE_OPTIONS = [
-  { value: "match-user", label: "Match User's Style", description: "Adapts to your communication style" },
+  { value: "match-user", label: "Match User&apos;s Style", description: "Adapts to your communication style" },
   { value: "professional", label: "Professional", description: "Formal and business-like" },
   { value: "casual", label: "Casual", description: "Friendly and relaxed" },
   { value: "concise", label: "Concise", description: "Brief and to the point" },
@@ -894,7 +894,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
                       <div className="space-y-0.5">
                         <Label>Flow Mode</Label>
                         <p className="text-sm text-muted-foreground">
-                          Continue on the user's conversation flow with context from previous chats
+                          Continue on the user&apos;s conversation flow with context from previous chats
                         </p>
                       </div>
                       <Switch

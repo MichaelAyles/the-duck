@@ -72,7 +72,7 @@ export const FileUploadComponent: React.FC<FileUploadComponentProps> = ({
     setUploadProgress({ loaded: 0, total: selectedFile.size, percentage: 0 });
 
     try {
-      // Don't pass sessionId during upload if session doesn't exist yet
+      // Don&apos;t pass sessionId during upload if session doesn&apos;t exist yet
       // The session will be linked when the first message is sent
       const result = await fileUploadService.uploadFile(
         selectedFile,
