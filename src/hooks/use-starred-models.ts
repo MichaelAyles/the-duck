@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 import { cachedFetch, invalidateCache } from '@/lib/request-cache'
+import { preferencesCache } from '@/lib/local-preferences-cache'
 
 export interface UseStarredModelsReturn {
   starredModels: string[]
@@ -21,6 +22,16 @@ export function useStarredModels(): UseStarredModelsReturn {
   const [error, setError] = useState<string | null>(null)
   const isLoadingRef = useRef(false)
 
+  // Load from cache immediately
+  const loadCachedData = useCallback(() => {
+    const cached = preferencesCache.get()
+    if (cached) {
+      setStarredModels(cached.starredModels || [...DEFAULT_ACTIVE_MODELS])
+      setActiveModelState(cached.defaultModel || DEFAULT_ACTIVE_MODELS[0])
+      setLoading(false)
+    }
+  }, [])
+
   const loadStarredModels = useCallback(async () => {
     // Prevent infinite loops by checking if already loading
     if (isLoadingRef.current) return
@@ -38,8 +49,17 @@ export function useStarredModels(): UseStarredModelsReturn {
         throw new Error(data.details || data.error)
       }
       
-      setStarredModels(data.starredModels || [])
-      setActiveModelState(data.activeModel || data.primaryModel || DEFAULT_ACTIVE_MODELS[0])
+      const starredModels = data.starredModels || []
+      const activeModel = data.activeModel || data.primaryModel || DEFAULT_ACTIVE_MODELS[0]
+      
+      setStarredModels(starredModels)
+      setActiveModelState(activeModel)
+      
+      // Update cache with fresh data
+      preferencesCache.update({
+        starredModels,
+        defaultModel: activeModel
+      })
       
       if (data.message) {
         if (process.env.NODE_ENV === 'development') console.log('Starred models loaded:', data.message)
@@ -57,9 +77,20 @@ export function useStarredModels(): UseStarredModelsReturn {
 
   // CRITICAL FIX: Load starred models on mount without callback dependency
   // Remove loadStarredModels from dependency array to prevent infinite calls
+  // Load cached data immediately
   useEffect(() => {
-    loadStarredModels()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    loadCachedData()
+  }, [loadCachedData])
+
+  // Load fresh data from server (with stale-while-revalidate pattern)
+  useEffect(() => {
+    const hasCachedData = starredModels.length > 0
+    const isStale = preferencesCache.isStale()
+    
+    if (!hasCachedData || isStale) {
+      loadStarredModels()
+    }
+  }, [starredModels.length]) // eslint-disable-line react-hooks/exhaustive-deps
   // Note: loadStarredModels intentionally omitted to prevent infinite calls
 
   const toggleStar = useCallback(async (modelId: string) => {
@@ -105,9 +136,16 @@ export function useStarredModels(): UseStarredModelsReturn {
       }
       
       // Update with actual response from server
-      setStarredModels(data.starredModels || newStarredModels)
+      const finalStarredModels = data.starredModels || newStarredModels
+      setStarredModels(finalStarredModels)
+      
+      // Update cache with optimistic update
+      preferencesCache.update({ starredModels: finalStarredModels })
+      
       if (data.activeModel || data.primaryModel) {
-        setActiveModelState(data.activeModel || data.primaryModel)
+        const newActiveModel = data.activeModel || data.primaryModel
+        setActiveModelState(newActiveModel)
+        preferencesCache.update({ defaultModel: newActiveModel })
       }
     } catch (err) {
       console.error('Error toggling starred model:', err)

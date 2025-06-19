@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { API_ENDPOINTS } from '@/lib/config';
 import type { FileUpload } from '@/types/file-upload';
 import { logger } from '@/lib/logger';
+import { sessionCache } from '@/lib/local-session-cache';
 
 interface UseMessageHandlingProps {
   sessionId: string | null;
@@ -198,6 +199,15 @@ export function useMessageHandling({
           await chatServiceRef.current?.saveChatSession(messagesToSave, settings.model, titleToUse);
           if (process.env.NODE_ENV === 'development') logger.dev.log(`Successfully saved chat session with ${messagesToSave.length} messages`);
           
+          // Update cache with new session data
+          sessionCache.update(sessionId, {
+            title: titleToUse || 'New Chat',
+            updatedAt: new Date().toISOString(),
+            messageCount: messagesToSave.length,
+            preview: userMessage.content.substring(0, 100),
+            model: settings.model
+          });
+          
           // Link attachments to message and session if they exist
           if (attachments && attachments.length > 0) {
             try {
@@ -225,6 +235,8 @@ export function useMessageHandling({
               const generatedTitle = await generateTitleIfNeeded(messagesToSave, sessionId);
               if (generatedTitle && onTitleGenerated) {
                 onTitleGenerated(sessionId, generatedTitle);
+                // Update cache with new title
+                sessionCache.update(sessionId, { title: generatedTitle });
               }
             } catch (error) {
               logger.dev.log('Failed to generate title after save:', error);
@@ -378,6 +390,14 @@ export function useMessageHandling({
                             if (onTitleGenerated) {
                               onTitleGenerated(sessionId, generatedTitle);
                             }
+                            // Update cache with latest conversation state
+                            sessionCache.update(sessionId, {
+                              title: generatedTitle,
+                              updatedAt: new Date().toISOString(),
+                              messageCount: currentMessages.length,
+                              preview: currentMessages[currentMessages.length - 1]?.content?.substring(0, 100) || '',
+                              model: settings.model
+                            });
                             if (process.env.NODE_ENV === 'development') logger.dev.log(`Final save with updated title: ${generatedTitle}`);
                           } else {
                             // Don't save again - title was already generated and saved earlier

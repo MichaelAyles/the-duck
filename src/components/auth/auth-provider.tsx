@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('Auth loading timeout - proceeding without authentication');
       setDebugInfo('Auth timeout - proceeding without session');
       setLoading(false);
-    }, 3000); // Reduced to 3 second timeout
+    }, 1000); // Reduced to 1 second timeout for faster loading
 
     // Get initial session - only if we have a real Supabase client
     const getInitialSession = async () => {

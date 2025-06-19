@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/hooks/use-toast";
+import { sessionCache, type CachedSession } from "@/lib/local-session-cache";
 
 export interface ChatSession {
   id: string;
@@ -60,18 +61,55 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
 }: ChatHistorySidebarProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingFresh, setIsLoadingFresh] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [isGeneratingTitle, setIsGeneratingTitle] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Fetch chat history with optional search
-  const fetchChatHistory = useCallback(async (search = "") => {
+  // Convert cached session to ChatSession format
+  const convertCachedToSession = (cached: CachedSession): ChatSession => ({
+    id: cached.id,
+    title: cached.title,
+    createdAt: cached.updatedAt,
+    updatedAt: cached.updatedAt,
+    isActive: false,
+    messageCount: cached.messageCount,
+    lastMessage: cached.preview,
+    firstUserMessage: cached.preview,
+    model: cached.model || 'unknown',
+    preview: cached.preview
+  });
+
+  // Load from cache immediately for instant UI
+  const loadCachedSessions = useCallback(() => {
+    if (!user) return;
+
+    // Check if cache is valid for current user
+    if (!sessionCache.isValidForUser(user.id)) {
+      sessionCache.clear();
+      return;
+    }
+
+    const cached = sessionCache.get();
+    if (cached.length > 0) {
+      const convertedSessions = cached.map(convertCachedToSession);
+      setSessions(convertedSessions);
+      setIsLoading(false); // Show cached content immediately
+    }
+  }, [user]);
+
+  // Fetch fresh data from server
+  const fetchChatHistory = useCallback(async (search = "", forceRefresh = false) => {
     if (!user) return;
 
     try {
-      setIsSearching(!!search);
+      if (search) {
+        setIsSearching(true);
+      } else if (forceRefresh) {
+        setIsLoadingFresh(true);
+      }
       
       if (search && search.length >= 2) {
         // Use the new full-text search endpoint
@@ -120,7 +158,13 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
         }
 
         const data = await response.json();
-        setSessions(data.sessions || []);
+        const freshSessions = data.sessions || [];
+        
+        // Update cache with fresh data
+        const cachedSessions = sessionCache.fromApiResponse(freshSessions);
+        sessionCache.set(cachedSessions, user.id);
+        
+        setSessions(freshSessions);
       }
     } catch (error) {
       console.error('Error fetching chat history:', error);
@@ -131,14 +175,30 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
       });
     } finally {
       setIsLoading(false);
+      setIsLoadingFresh(false);
       setIsSearching(false);
     }
   }, [user, toast]);
 
-  // Initial load and refresh trigger
+  // Load cached data immediately when user becomes available
   useEffect(() => {
-    fetchChatHistory();
-  }, [fetchChatHistory, refreshTrigger]);
+    if (user) {
+      loadCachedSessions();
+    }
+  }, [user, loadCachedSessions]);
+
+  // Fetch fresh data after loading cache, or when refresh is triggered
+  useEffect(() => {
+    if (user) {
+      // If we have cached data and cache is fresh, don't fetch immediately
+      const hasCachedData = sessions.length > 0;
+      const isStale = sessionCache.isStale();
+      
+      if (!hasCachedData || isStale || refreshTrigger) {
+        fetchChatHistory("", true);
+      }
+    }
+  }, [user, refreshTrigger, fetchChatHistory, sessions.length]);
 
   // Search with debounce
   useEffect(() => {
@@ -192,6 +252,9 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
           ? { ...session, title: data.title }
           : session
       ));
+
+      // Update the cache as well
+      sessionCache.update(sessionId, { title: data.title });
 
       toast({
         title: "Title Generated",
@@ -292,6 +355,9 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
               <span className="font-semibold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Chat History</span>
+              {isLoadingFresh && (
+                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              )}
             </div>
             <Button
               variant="ghost"
