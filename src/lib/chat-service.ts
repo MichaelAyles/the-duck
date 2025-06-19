@@ -259,6 +259,31 @@ export class ChatService {
     }
   }
 
+  public async getCurrentSessionTitle(): Promise<string | null> {
+    try {
+      if (!this.userId) {
+        return null;
+      }
+
+      const response = await fetch(`/api/sessions/${this.sessionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.session?.title || null;
+      }
+      
+      return null;
+    } catch (error) {
+      console.warn('Failed to get session title:', error);
+      return null;
+    }
+  }
+
   public async endChatSession(): Promise<void> {
     try {
       const response = await fetch(`/api/sessions/${this.sessionId}`, {

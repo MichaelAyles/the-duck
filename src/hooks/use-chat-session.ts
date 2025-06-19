@@ -20,7 +20,7 @@ interface UseChatSessionReturn {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   chatServiceRef: React.MutableRefObject<ChatService | null>;
   loadSessionMessages: (sessionId: string) => Promise<void>;
-  createNewSession: () => Promise<string>;
+  createNewSession: (title?: string) => Promise<string>;
   // CRITICAL FIX: Add operation locking functions to prevent race conditions
   lockSession: () => void;
   unlockSession: () => void;
@@ -117,7 +117,7 @@ export function useChatSession({
   }, [userId, welcomeMessage, toast]);
 
   // Create a new session with operation locking safety and immediate persistence
-  const createNewSession = useCallback(async (): Promise<string> => {
+  const createNewSession = useCallback(async (title?: string): Promise<string> => {
     // CRITICAL FIX: Don't create new session if operation is in progress
     if (isOperationInProgress.current) {
       logger.dev.log('🚨 [RACE CONDITION PREVENTION] Blocked new session creation during operation');
@@ -134,7 +134,7 @@ export function useChatSession({
     // CRITICAL FIX: Immediately save empty session to database so it appears in sidebar
     if (userId) {
       try {
-        await chatServiceRef.current.saveChatSession([], DEFAULT_AI_MODEL, 'New Chat');
+        await chatServiceRef.current.saveChatSession([], DEFAULT_AI_MODEL, title || 'New Chat');
         logger.dev.log(`✅ Empty session ${newSessionId} saved to database for sidebar display`);
       } catch (error) {
         logger.error(`❌ Failed to save new empty session ${newSessionId}:`, error);

@@ -12,7 +12,7 @@ interface UseChatLifecycleProps {
   settings: ChatSettings;
   chatServiceRef: React.MutableRefObject<ChatService | null>;
   userId?: string;
-  createNewSession: () => Promise<string>;
+  createNewSession: (title?: string) => Promise<string>;
   setIsProcessingStorage: React.Dispatch<React.SetStateAction<boolean>>;
   onSessionUpdate?: (sessionId: string, newMessages: Message[]) => void;
 }
@@ -41,19 +41,22 @@ export function useChatLifecycle({
     setIsProcessingStorage(true);
     
     try {
+      // Get current session title before ending to preserve it
+      const currentTitle = await chatServiceRef.current?.getCurrentSessionTitle();
+      
       if (settings.storageEnabled && userId) {
         // Summarize chat and store preferences
         await chatServiceRef.current?.summarizeChat(messages);
         
         toast({
           title: "Chat Saved",
-          description: "Your conversation has been summarized and saved",
+          description: `"${currentTitle || 'Your conversation'}" has been summarized and saved`,
         });
       }
       
-      // Reset chat
+      // Reset chat and create new session with preserved or default title
       setMessages([]);
-      const newSessionId = await createNewSession();
+      const newSessionId = await createNewSession(currentTitle || undefined);
       
       // Notify parent about session change
       if (onSessionUpdate) {
