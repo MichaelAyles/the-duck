@@ -1,26 +1,16 @@
 "use client";
 
 import React from "react";
-import { ChatHeader } from "./chat-header";
-import { ChatMessages } from "./chat-messages";
-import { ChatInput } from "./chat-input";
-import { StorageIndicator } from "./storage-indicator";
-import { ErrorBoundary } from "@/components/error-boundary";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useChatSession } from "@/hooks/use-chat-session";
 import { useMessageHandling } from "@/hooks/use-message-handling";
 import { useChatSettings } from "@/hooks/use-chat-settings";
 import { useChatLifecycle } from "@/hooks/use-chat-lifecycle";
 import { Message } from "@/types/chat";
-
-export interface ChatSettings {
-  model: string;
-  tone: string;
-  storageEnabled: boolean;
-  memoryEnabled: boolean;
-  memorySummaryCount: number;
-}
+import { ChatInterfaceHeader } from "./chat-interface-header";
+import { ChatInterfaceInput } from "./chat-interface-input";
+import { ChatInterfaceBody } from "./chat-interface-body";
+import { ChatInterfaceFull } from "./chat-interface-full";
 
 interface ChatInterfaceProps {
   sessionId?: string | null;
@@ -83,7 +73,7 @@ export const ChatInterface = React.memo(({
   // Render only header
   if (renderHeaderOnly) {
     return (
-      <ChatHeader
+      <ChatInterfaceHeader
         settings={settings}
         onSettingsChange={handleSettingsChange}
         onEndChat={handleEndChat}
@@ -97,113 +87,44 @@ export const ChatInterface = React.memo(({
   // Render only input section
   if (renderInputOnly) {
     return (
-      <ErrorBoundary>
-        <div className="flex-none">
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            disabled={isLoading}
-            storageEnabled={settings.storageEnabled}
-            sessionId={sessionId || undefined}
-            userId={user?.id}
-          />
-        </div>
-        
-        <StorageIndicator
-          isVisible={isProcessingStorage}
-          message="Processing chat summary and storing preferences..."
-        />
-      </ErrorBoundary>
+      <ChatInterfaceInput
+        onSendMessage={handleSendMessage}
+        isLoading={isLoading}
+        settings={settings}
+        isProcessingStorage={isProcessingStorage}
+        sessionId={sessionId || undefined}
+        userId={user?.id}
+      />
     );
   }
 
   // Render only body (messages only, no input)
   if (renderBodyOnly) {
     return (
-      <ErrorBoundary>
-        <div className="flex flex-col h-full bg-gradient-to-br from-background via-background to-primary/5 min-h-0">
-          <ErrorBoundary>
-            <div
-              className={cn(
-                "flex-1 transition-all duration-300 relative min-h-0 flex flex-col",
-                settings.storageEnabled
-                  ? "bg-transparent"
-                  : "bg-muted/20"
-              )}
-            >
-              {/* Decorative duck waves pattern */}
-              <div className="absolute inset-0 opacity-5 pointer-events-none">
-                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary/20 to-transparent"></div>
-                <div className="absolute bottom-8 left-0 right-0 h-2 bg-primary/10 rounded-full"></div>
-                <div className="absolute bottom-16 left-8 right-8 h-1 bg-primary/15 rounded-full"></div>
-              </div>
-              
-              <ChatMessages
-                messages={messages}
-                isLoading={isLoading}
-                userId={user?.id}
-                sessionId={sessionId || undefined}
-              />
-            </div>
-          </ErrorBoundary>
-        </div>
-      </ErrorBoundary>
+      <ChatInterfaceBody
+        messages={messages}
+        isLoading={isLoading}
+        settings={settings}
+        sessionId={sessionId || undefined}
+        userId={user?.id}
+      />
     );
   }
 
   // Default full render (for non-authenticated users)
   return (
-    <ErrorBoundary>
-      <div className="flex flex-col h-screen bg-gradient-to-br from-background via-background to-primary/5">
-        <ChatHeader
-          settings={settings}
-          onSettingsChange={handleSettingsChange}
-          onEndChat={handleEndChat}
-          messageCount={messages.length - 1}
-          onToggleMobileSidebar={onToggleMobileSidebar}
-          userId={user?.id}
-        />
-        
-        <ErrorBoundary>
-          <div
-            className={cn(
-              "flex-1 transition-all duration-300 relative",
-              settings.storageEnabled
-                ? "bg-transparent"
-                : "bg-muted/20"
-            )}
-          >
-            {/* Decorative duck waves pattern */}
-            <div className="absolute inset-0 opacity-5 pointer-events-none">
-              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-primary/20 to-transparent"></div>
-              <div className="absolute bottom-8 left-0 right-0 h-2 bg-primary/10 rounded-full"></div>
-              <div className="absolute bottom-16 left-8 right-8 h-1 bg-primary/15 rounded-full"></div>
-            </div>
-            
-            <ChatMessages
-              messages={messages}
-              isLoading={isLoading}
-              userId={user?.id}
-              sessionId={sessionId || undefined}
-            />
-          </div>
-        </ErrorBoundary>
-        
-        <ErrorBoundary>
-          <ChatInput
-            onSendMessage={handleSendMessage}
-            disabled={isLoading}
-            storageEnabled={settings.storageEnabled}
-            sessionId={sessionId || undefined}
-            userId={user?.id}
-          />
-        </ErrorBoundary>
-        
-        <StorageIndicator
-          isVisible={isProcessingStorage}
-          message="Processing chat summary and storing preferences..."
-        />
-      </div>
-    </ErrorBoundary>
+    <ChatInterfaceFull
+      messages={messages}
+      isLoading={isLoading}
+      settings={settings}
+      isProcessingStorage={isProcessingStorage}
+      onSettingsChange={handleSettingsChange}
+      onEndChat={handleEndChat}
+      onSendMessage={handleSendMessage}
+      onToggleMobileSidebar={onToggleMobileSidebar}
+      sessionId={sessionId || undefined}
+      userId={user?.id}
+    />
   );
 });
 

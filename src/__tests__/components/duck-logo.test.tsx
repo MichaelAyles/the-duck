@@ -3,7 +3,8 @@ import { DuckLogo } from '@/components/duck-logo'
 
 // Mock Next.js Image component
 jest.mock('next/image', () => {
-  return function MockImage({ src, alt, ...props }: React.ComponentProps<'img'>) {
+  return function MockImage({ src, alt, ...props }: React.ComponentProps<'img'> & { priority?: boolean }) {
+    // Filter out Next.js specific props before passing to img element
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={src} alt={alt} {...props} />
   }

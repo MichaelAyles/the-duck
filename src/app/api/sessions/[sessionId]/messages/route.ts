@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
@@ -39,7 +40,7 @@ export async function GET(
       })
 
     if (messagesError) {
-      console.error('Failed to fetch messages:', messagesError)
+      logger.error('Failed to fetch messages:', messagesError)
       return NextResponse.json(
         { error: 'Failed to fetch messages' },
         { status: 500 }
@@ -68,7 +69,7 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error('Error in GET /api/sessions/[sessionId]/messages:', error)
+    logger.error('Error in GET /api/sessions/[sessionId]/messages:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

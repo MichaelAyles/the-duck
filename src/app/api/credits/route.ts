@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger';
 
 /**
  * 💳 Credits Management API
@@ -52,7 +53,7 @@ export async function GET() {
           
           credits = existingCredits
         } else {
-          console.error('Failed to create credits record:', upsertError)
+          logger.error('Failed to create credits record:', upsertError)
           return NextResponse.json({ error: 'Failed to initialize credits' }, { status: 500 })
         }
       } else {
@@ -108,7 +109,7 @@ export async function GET() {
       .order('timestamp', { ascending: false })
 
     if (usageError) {
-      console.error('Failed to fetch usage:', usageError)
+      logger.error('Failed to fetch usage:', usageError)
     }
 
     // Calculate usage by model
@@ -136,7 +137,7 @@ export async function GET() {
       remainingCredits: credits ? Math.max(0, credits.total_credits - credits.used_credits) : 0
     })
   } catch (error) {
-    console.error('Credits API error:', error)
+    logger.error('Credits API error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch credits information' },
       { status: 500 }
@@ -178,13 +179,13 @@ export async function PUT(req: NextRequest) {
       .single()
 
     if (updateError) {
-      console.error('Failed to update credits:', updateError)
+      logger.error('Failed to update credits:', updateError)
       return NextResponse.json({ error: 'Failed to update credits' }, { status: 500 })
     }
 
     return NextResponse.json({ credits })
   } catch (error) {
-    console.error('Credits update error:', error)
+    logger.error('Credits update error:', error)
     return NextResponse.json(
       { error: 'Failed to update credits' },
       { status: 500 }

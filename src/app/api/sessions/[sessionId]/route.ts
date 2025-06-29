@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger';
 
 export async function GET(
   request: NextRequest,
@@ -31,7 +32,7 @@ export async function GET(
           { status: 404 }
         )
       }
-      console.error('Failed to fetch chat session:', error)
+      logger.error('Failed to fetch chat session:', error)
       return NextResponse.json(
         { error: 'Failed to fetch chat session' },
         { status: 500 }
@@ -40,7 +41,7 @@ export async function GET(
 
     return NextResponse.json({ session: data })
   } catch (error) {
-    console.error('Error in GET /api/sessions/[sessionId]:', error)
+    logger.error('Error in GET /api/sessions/[sessionId]:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -90,7 +91,7 @@ export async function PUT(
           { status: 404 }
         )
       }
-      console.error('Failed to update chat session:', error)
+      logger.error('Failed to update chat session:', error)
       return NextResponse.json(
         { error: 'Failed to update chat session' },
         { status: 500 }
@@ -99,7 +100,7 @@ export async function PUT(
 
     return NextResponse.json({ session: data })
   } catch (error) {
-    console.error('Error in PUT /api/sessions/[sessionId]:', error)
+    logger.error('Error in PUT /api/sessions/[sessionId]:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -131,7 +132,7 @@ export async function DELETE(
 
     if (summaryError) {
       // Log error but don't fail the operation if summary deletion fails
-      console.warn('Failed to delete chat summary:', summaryError)
+      logger.warn('Failed to delete chat summary:', summaryError)
     }
 
     // Delete the session
@@ -155,7 +156,7 @@ export async function DELETE(
         )
       }
       
-      console.error('Failed to delete chat session:', error)
+      logger.error('Failed to delete chat session:', error)
       return NextResponse.json(
         { error: 'Failed to delete chat session' },
         { status: 500 }
@@ -164,7 +165,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error in DELETE /api/sessions/[sessionId]:', error)
+    logger.error('Error in DELETE /api/sessions/[sessionId]:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

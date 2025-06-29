@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/types/supabase'
+import { logger } from '@/lib/logger';
 
 type NewChatSession = Database['public']['Tables']['chat_sessions']['Insert']
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query
 
     if (error) {
-      console.error('Failed to fetch chat sessions:', error)
+      logger.error('Failed to fetch chat sessions:', error)
       return NextResponse.json(
         { error: 'Failed to fetch chat sessions' },
         { status: 500 }
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ sessions: data || [] })
   } catch (error) {
-    console.error('Error in GET /api/sessions:', error)
+    logger.error('Error in GET /api/sessions:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Failed to save chat session:', error)
+      logger.error('Failed to save chat session:', error)
       return NextResponse.json(
         { error: 'Failed to save chat session' },
         { status: 500 }
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ session: data })
   } catch (error) {
-    console.error('Error in POST /api/sessions:', error)
+    logger.error('Error in POST /api/sessions:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

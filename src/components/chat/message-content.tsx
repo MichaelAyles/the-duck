@@ -11,6 +11,7 @@ import { Message } from "@/types/chat";
 import { useArtifacts } from "@/hooks/use-artifacts";
 import { useArtifactPanel } from "@/contexts/artifact-panel-context";
 import { Play, Code2 } from "lucide-react";
+import { logger } from '@/lib/logger';
 
 interface MessageContentProps {
   content: string;
@@ -115,7 +116,7 @@ export function MessageContent({ content, message, userId, sessionId }: MessageC
       setCopiedCode(text);
       setTimeout(() => setCopiedCode(null), 2000);
     } catch (err) {
-      console.error("Failed to copy text: ", err);
+      logger.error("Failed to copy text: ", err);
     }
   };
 
@@ -124,7 +125,7 @@ export function MessageContent({ content, message, userId, sessionId }: MessageC
   
   // Debug logging for artifact rendering
   if (process.env.NODE_ENV === 'development' && message) {
-    console.log(`MessageContent for message ${message.id}:`, {
+    logger.dev.log(`MessageContent for message ${message.id}:`, {
       hasMessage: !!message,
       messageArtifacts: message.artifacts,
       processedArtifacts: artifacts,

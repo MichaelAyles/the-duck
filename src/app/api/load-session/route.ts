@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger';
 
 /**
  * 📚 Load a specific chat session
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ session: data.session })
 
   } catch (error) {
-    console.error('Load session error:', error)
+    logger.error('Load session error:', error)
     return NextResponse.json(
       { 
         error: 'Failed to load chat session',

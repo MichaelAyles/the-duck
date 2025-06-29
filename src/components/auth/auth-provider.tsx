@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -28,14 +29,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!isConfigured || !supabase) {
       // If Supabase is not configured or client is null, set loading to false immediately
       setDebugInfo('Supabase not configured - running without auth');
-      if (process.env.NODE_ENV === 'development') console.log('Auth: Supabase not configured - proceeding without authentication');
+      if (process.env.NODE_ENV === 'development') logger.dev.log('Auth: Supabase not configured - proceeding without authentication');
       setLoading(false);
       return;
     }
 
     // Timeout fallback to prevent infinite loading
     const timeout = setTimeout(() => {
-      console.warn('Auth loading timeout - proceeding without authentication');
+      logger.warn('Auth loading timeout - proceeding without authentication');
       setDebugInfo('Auth timeout - proceeding without session');
       setLoading(false);
     }, 1000); // Reduced to 1 second timeout for faster loading
@@ -44,22 +45,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const getInitialSession = async () => {
       try {
         setDebugInfo('Checking for existing session...');
-        if (process.env.NODE_ENV === 'development') console.log('Auth: Checking for existing session...');
+        if (process.env.NODE_ENV === 'development') logger.dev.log('Auth: Checking for existing session...');
         
         // Double-check supabase client exists and has auth methods
         if (supabase && supabase.auth && typeof supabase.auth.getSession === 'function') {
-          if (process.env.NODE_ENV === 'development') console.log('Auth: Supabase client available, getting session');
+          if (process.env.NODE_ENV === 'development') logger.dev.log('Auth: Supabase client available, getting session');
           const { data: { session } } = await supabase.auth.getSession();
-          if (process.env.NODE_ENV === 'development') console.log('Auth: Session retrieved:', session ? 'authenticated' : 'no session');
+          if (process.env.NODE_ENV === 'development') logger.dev.log('Auth: Session retrieved:', session ? 'authenticated' : 'no session');
           setSession(session);
           setUser(session?.user ?? null);
           setDebugInfo(session ? 'User authenticated' : 'No active session');
         } else {
-          console.warn('Supabase client not available - skipping session retrieval');
+          logger.warn('Supabase client not available - skipping session retrieval');
           setDebugInfo('Supabase client unavailable');
         }
       } catch (error) {
-        console.error('Error getting session:', error);
+        logger.error('Error getting session:', error);
         setDebugInfo(`Auth error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
         clearTimeout(timeout);
@@ -84,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
         unsubscribe = () => subscription.unsubscribe();
       } catch (error) {
-        console.error('Error setting up auth state listener:', error);
+        logger.error('Error setting up auth state listener:', error);
         clearTimeout(timeout);
         setLoading(false);
       }

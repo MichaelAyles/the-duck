@@ -8,6 +8,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { useArtifactPanel } from "@/contexts/artifact-panel-context";
 import { cn } from "@/lib/utils";
+import { logger } from '@/lib/logger';
 
 export function ChatLayout() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export function ChatLayout() {
 
     try {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🔄 Loading session: ${sessionId}`);
+        logger.dev.log(`🔄 Loading session: ${sessionId}`);
       }
       const response = await fetch(`/api/load-session?sessionId=${sessionId}`);
       if (!response.ok) {
@@ -40,7 +41,7 @@ export function ChatLayout() {
       const title = data.session?.title || 'Untitled Chat';
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Loaded session ${sessionId}:`, {
+        logger.dev.log(`Loaded session ${sessionId}:`, {
           title,
           messageCount: messages.length,
           hasMessages: messages.length > 0
@@ -53,7 +54,7 @@ export function ChatLayout() {
         description: `Successfully loaded session: ${title.slice(0, 30)}...`,
       });
     } catch (error) {
-      console.error("Error loading session:", error);
+      logger.error("Error loading session:", error);
       toast({
         title: "Error",
         description: "Could not load the selected chat session.",
@@ -85,21 +86,21 @@ export function ChatLayout() {
       });
       
       if (response.ok) {
-        console.log(`✅ New empty session ${newSessionId} created and saved to database`);
+        logger.dev.log(`✅ New empty session ${newSessionId} created and saved to database`);
         
         // Update local state
         setCurrentSessionId(newSessionId);
         setMessages([]);
         setRefreshTrigger(prev => prev + 1); // Refresh history to show new chat
       } else {
-        console.error('Failed to create new session:', await response.text());
+        logger.error('Failed to create new session:', await response.text());
         // Fallback to old behavior
         setCurrentSessionId(null);
         setMessages([]);
         setRefreshTrigger(prev => prev + 1);
       }
     } catch (error) {
-      console.error('Error creating new chat session:', error);
+      logger.error('Error creating new chat session:', error);
       // Fallback to old behavior
       setCurrentSessionId(null);
       setMessages([]);
@@ -115,7 +116,7 @@ export function ChatLayout() {
 
   const handleTitleGenerated = useCallback((sessionId: string, title: string) => {
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🏷️ Title generated for session ${sessionId}: ${title}`);
+      logger.dev.log(`🏷️ Title generated for session ${sessionId}: ${title}`);
     }
     setRefreshTrigger(prev => prev + 1); // Refresh sidebar to show new title
   }, []);

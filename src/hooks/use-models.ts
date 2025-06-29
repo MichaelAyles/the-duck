@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import { useStarredModels } from './use-starred-models'
+import { logger } from '@/lib/logger'
 
 interface Model {
   id: string
@@ -70,14 +71,14 @@ export function useModels() {
       }
   }, [isStarred, isActive]) // Dependencies for the callback
   
-  // Initialize curated models on first call
-  const [hasInitialized, setHasInitialized] = useState(false)
+  // Initialize curated models on first call using ref to avoid re-renders
+  const hasInitializedRef = useRef(false)
   const initializeCuratedModels = useCallback(async () => {
-    if (!hasInitialized) {
-      setHasInitialized(true)
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true
       await fetchCuratedModels()
     }
-  }, [hasInitialized, fetchCuratedModels])
+  }, [fetchCuratedModels])
 
   const fetchAllModels = useCallback(async () => {
     if (allModels.length > 0) return // Already fetched
@@ -108,7 +109,7 @@ export function useModels() {
       
       // Log the top 5 models for debugging
       if (data.top5) {
-        console.log('OpenRouter top 5 models:', data.top5)
+        logger.dev.log('OpenRouter top 5 models:', data.top5)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger';
 
 export interface LearningPreference {
   id: string
@@ -58,11 +59,11 @@ export async function GET(request: NextRequest) {
     const { data: preferences, error: prefError } = await query
 
     if (prefError) {
-      console.error('Failed to fetch learning preferences:', prefError)
+      logger.error('Failed to fetch learning preferences:', prefError)
       
       // If table doesn't exist yet, return empty state
       if (prefError.message?.includes('relation') || prefError.message?.includes('does not exist')) {
-        console.warn('Learning preferences table not yet deployed, returning empty state')
+        logger.warn('Learning preferences table not yet deployed, returning empty state')
         return NextResponse.json({
           preferences: [],
           summary: {
@@ -86,11 +87,11 @@ export async function GET(request: NextRequest) {
       .rpc('get_user_learning_summary', { target_user_id: user.id })
 
     if (summaryError) {
-      console.error('Failed to fetch learning summary:', summaryError)
+      logger.error('Failed to fetch learning summary:', summaryError)
       
       // If function doesn't exist yet, use default summary
       if (summaryError.message?.includes('function') || summaryError.message?.includes('does not exist')) {
-        console.warn('Learning summary function not yet deployed, using default summary')
+        logger.warn('Learning summary function not yet deployed, using default summary')
       } else {
         return NextResponse.json(
           { error: 'Failed to fetch learning summary' },
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
       summary
     })
   } catch (error) {
-    console.error('Error in GET /api/learning-preferences:', error)
+    logger.error('Error in GET /api/learning-preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (upsertError) {
-      console.error('Failed to upsert learning preference:', upsertError)
+      logger.error('Failed to upsert learning preference:', upsertError)
       
       // Check if it's a limit violation
       if (upsertError.message?.includes('1000 learning preferences')) {
@@ -216,7 +217,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (fetchError) {
-      console.error('Failed to fetch updated preference:', fetchError)
+      logger.error('Failed to fetch updated preference:', fetchError)
       return NextResponse.json(
         { error: 'Preference saved but failed to retrieve' },
         { status: 500 }
@@ -228,7 +229,7 @@ export async function POST(request: NextRequest) {
       message: 'Learning preference updated successfully'
     })
   } catch (error) {
-    console.error('Error in POST /api/learning-preferences:', error)
+    logger.error('Error in POST /api/learning-preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -297,7 +298,7 @@ export async function PUT(request: NextRequest) {
       message: `Updated ${results.length} preferences${errors.length > 0 ? ` with ${errors.length} errors` : ''}`
     })
   } catch (error) {
-    console.error('Error in PUT /api/learning-preferences:', error)
+    logger.error('Error in PUT /api/learning-preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -331,7 +332,7 @@ export async function DELETE(request: NextRequest) {
         .eq('id', id)
 
       if (deleteError) {
-        console.error('Failed to delete learning preference:', deleteError)
+        logger.error('Failed to delete learning preference:', deleteError)
         return NextResponse.json(
           { error: 'Failed to delete learning preference' },
           { status: 500 }
@@ -353,7 +354,7 @@ export async function DELETE(request: NextRequest) {
         .eq('preference_key', preference_key)
 
       if (deleteError) {
-        console.error('Failed to delete learning preference:', deleteError)
+        logger.error('Failed to delete learning preference:', deleteError)
         return NextResponse.json(
           { error: 'Failed to delete learning preference' },
           { status: 500 }
@@ -372,7 +373,7 @@ export async function DELETE(request: NextRequest) {
       .eq('user_id', user.id)
 
     if (deleteError) {
-      console.error('Failed to delete all learning preferences:', deleteError)
+      logger.error('Failed to delete all learning preferences:', deleteError)
       
       // If table doesn't exist yet, return success
       if (deleteError.message?.includes('relation') || deleteError.message?.includes('does not exist')) {
@@ -394,7 +395,7 @@ export async function DELETE(request: NextRequest) {
       .eq('user_id', user.id)
 
     if (summaryError) {
-      console.error('Failed to delete chat summaries:', summaryError)
+      logger.error('Failed to delete chat summaries:', summaryError)
       // Don't fail the request if summaries can't be deleted
     }
 
@@ -402,7 +403,7 @@ export async function DELETE(request: NextRequest) {
       message: 'All learning preferences and summaries deleted successfully' 
     })
   } catch (error) {
-    console.error('Error in DELETE /api/learning-preferences:', error)
+    logger.error('Error in DELETE /api/learning-preferences:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

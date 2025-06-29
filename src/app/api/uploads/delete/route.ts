@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -46,7 +47,7 @@ export async function DELETE(request: NextRequest) {
       .in('id', uploadIds);
 
     if (fetchError) {
-      console.error('Error fetching uploads for deletion:', fetchError);
+      logger.error('Error fetching uploads for deletion:', fetchError);
       return NextResponse.json(
         { error: 'Failed to fetch uploads for deletion' },
         { status: 500 }
@@ -69,7 +70,7 @@ export async function DELETE(request: NextRequest) {
             .remove([upload.storage_path]);
           
           if (error) {
-            console.error(`Error deleting file from storage: ${upload.storage_path}`, error);
+            logger.error(`Error deleting file from storage: ${upload.storage_path}`, error);
             throw error;
           }
         }
@@ -85,7 +86,7 @@ export async function DELETE(request: NextRequest) {
       .in('id', uploadIds);
 
     if (dbError) {
-      console.error('Error deleting upload records:', dbError);
+      logger.error('Error deleting upload records:', dbError);
       return NextResponse.json(
         { error: 'Failed to delete upload records' },
         { status: 500 }
@@ -102,7 +103,7 @@ export async function DELETE(request: NextRequest) {
     );
 
     if (failedStorageDeletions.length > 0) {
-      console.warn(`Failed to delete ${failedStorageDeletions.length} files from storage:`, 
+      logger.warn(`Failed to delete ${failedStorageDeletions.length} files from storage:`, 
         failedStorageDeletions.map(result => result.status === 'rejected' ? result.reason : null)
       );
     }
@@ -115,7 +116,7 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error in upload deletion API:', error);
+    logger.error('Error in upload deletion API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

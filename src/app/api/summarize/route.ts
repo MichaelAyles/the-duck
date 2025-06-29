@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { Message } from '@/types/chat'
 import { createClient } from '@/lib/supabase/server'
 import { nanoid } from 'nanoid'
+import { logger } from '@/lib/logger';
 
 // Helper function to create a fallback summary
 function createFallbackSummary(messages: Message[]) {
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
 
     // Check if OpenRouter API key is available
     if (!process.env.OPENROUTER_API_KEY) {
-      console.warn('OpenRouter API key not configured, using fallback summary')
+      logger.warn('OpenRouter API key not configured, using fallback summary')
       return NextResponse.json(createFallbackSummary(messages))
     }
 
@@ -149,7 +150,7 @@ Assign weights based on:
     })
 
     if (!response.ok) {
-      console.warn(`OpenRouter API failed (${response.status}), using fallback summary`)
+      logger.warn(`OpenRouter API failed (${response.status}), using fallback summary`)
       return NextResponse.json(createFallbackSummary(messages))
     }
 
@@ -157,7 +158,7 @@ Assign weights based on:
     const summaryText = data.choices[0]?.message?.content
 
     if (!summaryText) {
-      console.warn('No summary content received, using fallback')
+      logger.warn('No summary content received, using fallback')
       return NextResponse.json(createFallbackSummary(messages))
     }
 
@@ -180,7 +181,7 @@ Assign weights based on:
           cleanedText = jsonMatch[0]
         } else {
           // If no JSON found, the model returned plain text - use fallback
-          console.warn('Model returned plain text instead of JSON, using fallback')
+          logger.warn('Model returned plain text instead of JSON, using fallback')
           return NextResponse.json(createFallbackSummary(messages))
         }
       }
@@ -210,9 +211,9 @@ Assign weights based on:
             })
 
           if (error) {
-            console.error('Failed to save chat summary to database:', error)
+            logger.error('Failed to save chat summary to database:', error)
           } else {
-            console.log(`✅ Saved chat summary for session: ${sessionId}`)
+            logger.dev.log(`✅ Saved chat summary for session: ${sessionId}`)
           }
 
           // Save learning preferences if they exist
@@ -232,34 +233,34 @@ Assign weights based on:
                   })
 
                 if (prefError) {
-                  console.error(`Failed to save learning preference: ${pref.preference_key}`, prefError)
+                  logger.error(`Failed to save learning preference: ${pref.preference_key}`, prefError)
                 } else {
-                  console.log(`✅ Saved learning preference: ${pref.category}/${pref.preference_key} (weight: ${pref.weight})`)
+                  logger.dev.log(`✅ Saved learning preference: ${pref.category}/${pref.preference_key} (weight: ${pref.weight})`)
                 }
               } catch (prefSaveError) {
-                console.error('Error saving individual learning preference:', prefSaveError)
+                logger.error('Error saving individual learning preference:', prefSaveError)
               }
             }
             
-            console.log(`✅ Processed ${summary.learningPreferences.length} learning preferences from chat summary`)
+            logger.dev.log(`✅ Processed ${summary.learningPreferences.length} learning preferences from chat summary`)
           }
         } catch (dbError) {
-          console.error('Error saving summary to database:', dbError)
+          logger.error('Error saving summary to database:', dbError)
         }
       }
       
       return NextResponse.json(summary)
     } catch (parseError) {
-      console.warn('Failed to parse summary JSON, using fallback:', parseError)
+      logger.warn('Failed to parse summary JSON, using fallback:', parseError)
       if (process.env.NODE_ENV === 'development') {
-        console.warn('Raw response was:', summaryText)
-        console.warn('Cleaned text was:', cleanedText)
+        logger.warn('Raw response was:', summaryText)
+        logger.warn('Cleaned text was:', cleanedText)
       }
       return NextResponse.json(createFallbackSummary(messages))
     }
 
   } catch (error) {
-    console.error('Error in summarize endpoint:', error)
+    logger.error('Error in summarize endpoint:', error)
     // Return fallback summary instead of error
     const { messages } = await req.json().catch(() => ({ messages: [] }))
     return NextResponse.json(createFallbackSummary(messages))

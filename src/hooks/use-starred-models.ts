@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
 import { cachedFetch, invalidateCache } from '@/lib/request-cache'
 import { preferencesCache } from '@/lib/local-preferences-cache'
+import { logger } from '@/lib/logger'
 
 export interface UseStarredModelsReturn {
   starredModels: string[]
@@ -62,10 +63,10 @@ export function useStarredModels(): UseStarredModelsReturn {
       })
       
       if (data.message) {
-        if (process.env.NODE_ENV === 'development') console.log('Starred models loaded:', data.message)
+        logger.dev.log('Starred models loaded:', data.message)
       }
     } catch (err) {
-      console.error('Error loading starred models:', err)
+      logger.error('Error loading starred models:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       // Don't set any default models on error - let the UI handle the empty state
       setStarredModels([])
@@ -148,7 +149,7 @@ export function useStarredModels(): UseStarredModelsReturn {
         preferencesCache.update({ defaultModel: newActiveModel })
       }
     } catch (err) {
-      console.error('Error toggling starred model:', err)
+      logger.error('Error toggling starred model:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       
       // CRITICAL FIX: Don't call loadStarredModels to prevent loops, just revert optimistically
@@ -197,7 +198,7 @@ export function useStarredModels(): UseStarredModelsReturn {
       setStarredModels(data.starredModels || starredModels)
       setActiveModelState(data.activeModel || data.primaryModel || modelId)
     } catch (err) {
-      console.error('Error setting active model:', err)
+      logger.error('Error setting active model:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       
       // CRITICAL FIX: Don't call loadStarredModels to prevent loops, just revert optimistically
@@ -253,7 +254,7 @@ export function useStarredModels(): UseStarredModelsReturn {
       setStarredModels(preferences.starredModels || [...DEFAULT_ACTIVE_MODELS])
       setActiveModelState(preferences.primaryModel || DEFAULT_ACTIVE_MODELS[0])
     } catch (err) {
-      console.error('Error resetting model preferences:', err)
+      logger.error('Error resetting model preferences:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       
       // CRITICAL FIX: Don't call loadStarredModels to prevent loops

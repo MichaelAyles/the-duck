@@ -308,7 +308,7 @@ Return only the title.`
         .single()
 
       if (sessionError || !session) {
-        console.warn('Chat session not found or access denied, continuing without database update')
+        logger.warn('Chat session not found or access denied, continuing without database update')
         updateSuccessful = false;
       } else {
         existingTitle = session.title || 'New Chat'

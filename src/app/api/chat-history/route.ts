@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger';
 
 /**
  * 📜 Chat History API
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
       }
     })
   } catch (error) {
-    console.error('Chat history error:', error)
+    logger.error('Chat history error:', error)
     return NextResponse.json(
       { 
         error: 'Failed to fetch chat history',
@@ -123,7 +124,7 @@ export async function DELETE(req: NextRequest) {
         .eq('user_id', user.id)
 
       if (deleteError) {
-        console.error('Failed to delete all chat sessions:', deleteError)
+        logger.error('Failed to delete all chat sessions:', deleteError)
         return NextResponse.json(
           { error: 'Failed to delete chat history' },
           { status: 500 }
@@ -137,7 +138,7 @@ export async function DELETE(req: NextRequest) {
         .eq('user_id', user.id)
 
       if (summaryError) {
-        console.error('Failed to delete chat summaries:', summaryError)
+        logger.error('Failed to delete chat summaries:', summaryError)
         // Don't fail the request if summaries can't be deleted
       }
 
@@ -175,7 +176,7 @@ export async function DELETE(req: NextRequest) {
       message: 'Chat session deleted successfully'
     })
   } catch (error) {
-    console.error('Delete chat error:', error)
+    logger.error('Delete chat error:', error)
     return NextResponse.json(
       { 
         error: 'Failed to delete chat session',

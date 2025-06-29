@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useLearningPreferences } from "@/hooks/use-learning-preferences";
 import { LearningPreference } from "@/lib/learning-preferences";
+import { logger } from '@/lib/logger';
 
 interface AddPreferenceFormData {
   category: string;
@@ -119,7 +120,7 @@ export function LearningPreferencesTab() {
       });
       setShowAddForm(false);
     } catch (error) {
-      console.error("Failed to add preference:", error);
+      logger.error("Failed to add preference:", error);
     }
   }, [addForm, addPreference]);
 
@@ -130,7 +131,7 @@ export function LearningPreferencesTab() {
         weight: newWeight
       });
     } catch (error) {
-      console.error("Failed to update preference:", error);
+      logger.error("Failed to update preference:", error);
     }
   };
 
@@ -138,7 +139,7 @@ export function LearningPreferencesTab() {
     try {
       await deletePreference(id);
     } catch (error) {
-      console.error("Failed to delete preference:", error);
+      logger.error("Failed to delete preference:", error);
     }
   };
 

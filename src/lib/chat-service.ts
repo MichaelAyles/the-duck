@@ -194,7 +194,7 @@ export class ChatService {
       throw lastError || new Error('Failed to load session after all retries')
       
     } catch (error) {
-      console.warn('Failed to load chat session:', error)
+      logger.warn('Failed to load chat session:', error)
       return []
     }
   }
@@ -238,7 +238,7 @@ export class ChatService {
 
       return summary
     } catch (error) {
-      console.warn('Chat summarization failed (storage may be disabled):', error)
+      logger.warn('Chat summarization failed (storage may be disabled):', error)
       
       // Return a default summary in case of failure
       return {
@@ -279,7 +279,7 @@ export class ChatService {
       
       return null;
     } catch (error) {
-      console.warn('Failed to get session title:', error);
+      logger.warn('Failed to get session title:', error);
       return null;
     }
   }
@@ -302,7 +302,7 @@ export class ChatService {
 
       this.clearInactivityTimer()
     } catch (error) {
-      console.warn('Failed to end chat session:', error)
+      logger.warn('Failed to end chat session:', error)
     }
   }
 
@@ -353,7 +353,7 @@ export class ChatService {
         isActive: session.is_active,
       }))
     } catch (error) {
-      console.warn('Failed to load chat history:', error)
+      logger.warn('Failed to load chat history:', error)
       return []
     }
   }
@@ -373,7 +373,7 @@ export class ChatService {
         throw new Error('Failed to delete chat session')
       }
     } catch (error) {
-      console.warn('Failed to delete chat session:', error)
+      logger.warn('Failed to delete chat session:', error)
       throw error
     }
   }
@@ -410,7 +410,7 @@ export class ChatService {
         messageCount: Array.isArray(session.messages) ? session.messages.length : 0,
       }))
     } catch (error) {
-      console.warn('Failed to search chat sessions:', error)
+      logger.warn('Failed to search chat sessions:', error)
       return []
     }
   }
@@ -482,7 +482,7 @@ export class ChatService {
         recentActivity,
       }
     } catch (error) {
-      console.warn('Failed to get user activity:', error)
+      logger.warn('Failed to get user activity:', error)
       return null
     }
   }

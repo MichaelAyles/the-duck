@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { ChatService } from '@/lib/chat-service';
 import { Message } from '@/types/chat';
-import { ChatSettings } from '@/components/chat/chat-interface';
+import { ChatSettings } from '@/components/chat/chat-types';
 import { useToast } from '@/hooks/use-toast';
 import { API_ENDPOINTS } from '@/lib/config';
 import type { FileUpload } from '@/types/file-upload';
@@ -47,11 +47,26 @@ export function useMessageHandling({
   const lastSummarizeTime = useRef<number>(0);
   const messagesRef = useRef<Message[]>(messages);
   const { processMessageForArtifacts } = useArtifacts({ userId, sessionId: sessionId || undefined });
+  const isMounted = useRef<boolean>(true);
+  const artifactTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep messages ref up to date
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  // Track mounted state and cleanup timeouts
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      // Clear any pending timeouts on unmount
+      if (artifactTimeoutRef.current) {
+        clearTimeout(artifactTimeoutRef.current);
+        artifactTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Generate title with new logic: try AI, fallback to existing title on failure
   const generateTitleIfNeeded = useCallback(async (messages: Message[], sessionId: string): Promise<string | null> => {
@@ -333,13 +348,23 @@ export function useMessageHandling({
                 if (sessionId && userId && settings.storageEnabled) {
                   setMessages(currentMessages => {
                     // Process artifacts in the completed assistant message
-                    setTimeout(async () => {
+                    // Clear any existing timeout
+                    if (artifactTimeoutRef.current) {
+                      clearTimeout(artifactTimeoutRef.current);
+                    }
+                    
+                    artifactTimeoutRef.current = setTimeout(async () => {
+                      // Check if component is still mounted before updating state
+                      if (!isMounted.current) {
+                        return;
+                      }
+                      
                       // Process the last assistant message for artifacts
                       const lastMessage = currentMessages[currentMessages.length - 1];
                       if (lastMessage && lastMessage.role === 'assistant') {
                         try {
                           const processedMessage = await processMessageForArtifacts(lastMessage);
-                          if (processedMessage !== lastMessage) {
+                          if (processedMessage !== lastMessage && isMounted.current) {
                             // Update the message with artifact information
                             setMessages(prev => {
                               const updated = [...prev];
@@ -354,6 +379,9 @@ export function useMessageHandling({
                           logger.error('Failed to process artifacts:', error);
                         }
                       }
+                      
+                      // Clear the timeout ref after execution
+                      artifactTimeoutRef.current = null;
                     }, 100);
 
                     // SINGLE SAVE STRATEGY: Save the complete conversation once at the end

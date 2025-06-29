@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Github } from 'lucide-react';
 import { getOAuthRedirectUrl } from '@/lib/auth-config';
 import { DuckLogo } from '@/components/duck-logo';
+import { logger } from '@/lib/logger';
 
 export function LoginForm() {
   const { isConfigured } = useAuth();
@@ -45,11 +46,11 @@ export function LoginForm() {
           }
         });
         if (error) {
-          console.error('Google login error:', error);
+          logger.error('Google login error:', error);
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -66,11 +67,11 @@ export function LoginForm() {
           }
         });
         if (error) {
-          console.error('GitHub login error:', error);
+          logger.error('GitHub login error:', error);
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger';
 
 /**
  * 📊 Usage Statistics API
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
       .order('timestamp', { ascending: false })
 
     if (usageError) {
-      console.error('Failed to fetch usage:', usageError)
+      logger.error('Failed to fetch usage:', usageError)
       return NextResponse.json({ error: 'Failed to fetch usage data' }, { status: 500 })
     }
 
@@ -150,7 +151,7 @@ export async function GET(req: NextRequest) {
       startDate: startDate.toISOString()
     })
   } catch (error) {
-    console.error('Usage API error:', error)
+    logger.error('Usage API error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch usage statistics' },
       { status: 500 }

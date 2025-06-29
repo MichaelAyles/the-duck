@@ -22,6 +22,7 @@ import {
   Move
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 interface DuckPondViewerProps {
   artifact: Artifact;
@@ -188,14 +189,14 @@ export function DuckPondViewer({
         iframe.style.pointerEvents = 'auto';
         iframe.style.overflow = 'hidden';
         
-        console.log('🦆 DuckPond artifact executed:', {
+        logger.dev.log('🦆 DuckPond artifact executed:', {
           type: artifact.type,
           title: artifact.title,
           interactive: artifact.type === 'react-component'
         });
       }
     } catch (error) {
-      console.error('DuckPond execution error:', error);
+      logger.error('DuckPond execution error:', error);
       updateExecution((prev: ArtifactExecution) => ({
         ...prev,
         status: 'error' as const,
@@ -342,9 +343,9 @@ export function DuckPondViewer({
         lastExecuted: undefined,
       }));
       
-      console.log('🔄 DuckPond reset - ready for new execution');
+      logger.dev.log('🔄 DuckPond reset - ready for new execution');
     } catch (error) {
-      console.error('Reset error:', error);
+      logger.error('Reset error:', error);
     }
   }, [updateExecution]);
 
@@ -711,8 +712,8 @@ function createReactSandbox(content: string): string {
         window.performance = { now: () => Date.now() };
       }
       
-      console.log('🦆 DuckPond Interactive Environment Ready');
-      console.log('📦 Available React hooks:', {
+      logger.dev.log('🦆 DuckPond Interactive Environment Ready');
+      logger.dev.log('📦 Available React hooks:', {
         useState: !!useState,
         useEffect: !!useEffect,
         useRef: !!useRef,
@@ -720,7 +721,7 @@ function createReactSandbox(content: string): string {
         useMemo: !!useMemo,
         useReducer: !!useReducer
       });
-      console.log('🎬 Animation APIs:', {
+      logger.dev.log('🎬 Animation APIs:', {
         requestAnimationFrame: !!window.requestAnimationFrame,
         performance: !!window.performance,
         setTimeout: !!window.setTimeout
@@ -755,8 +756,8 @@ function createReactSandbox(content: string): string {
         Component = window[interactiveNames[0]] || window[componentNames[0]];
       }
       
-      console.log('🔍 Found component names:', componentNames);
-      console.log('🎯 Selected component:', Component?.name || 'unnamed');
+      logger.dev.log('🔍 Found component names:', componentNames);
+      logger.dev.log('🎯 Selected component:', Component?.name || 'unnamed');
       
       if (Component && typeof Component === 'function') {
         // Wait a bit to ensure DOM is ready
@@ -767,9 +768,9 @@ function createReactSandbox(content: string): string {
               const root = ReactDOM.createRoot(rootElement);
               const element = React.createElement(Component);
               root.render(element);
-              console.log('✅ Interactive component rendered successfully');
+              logger.dev.log('✅ Interactive component rendered successfully');
             } catch (renderError) {
-              console.error('❌ Render error:', renderError);
+              logger.error('❌ Render error:', renderError);
               rootElement.innerHTML = 
                 '<div class="error">Render error: ' + renderError.message + 
                 '<br><br>💡 Tips for interactive components:' +
@@ -782,7 +783,7 @@ function createReactSandbox(content: string): string {
           }
         }, 50); // Small delay to ensure everything is ready
       } else {
-        console.log('❌ No component found');
+        logger.dev.log('❌ No component found');
         const rootElement = document.getElementById('root');
         if (rootElement) {
           rootElement.innerHTML = 
@@ -797,7 +798,7 @@ function createReactSandbox(content: string): string {
         }
       }
     } catch (error) {
-      console.error('🚨 DuckPond execution error:', error);
+      logger.error('🚨 DuckPond execution error:', error);
       const rootElement = document.getElementById('root');
       if (rootElement) {
         rootElement.innerHTML = 
@@ -852,7 +853,7 @@ function createJavaScriptSandbox(content: string): string {
       div.className = 'error';
       div.textContent = 'Error: ' + error.message;
       output.appendChild(div);
-      console.error('DuckPond execution error:', error);
+      logger.error('DuckPond execution error:', error);
     }
   </script>
 </body>

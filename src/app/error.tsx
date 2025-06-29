@@ -4,6 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import Link from 'next/link';
+import { logger } from '@/lib/logger';
 
 interface ErrorPageProps {
   error: Error & { digest?: string };
@@ -19,7 +20,7 @@ interface ErrorPageProps {
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   React.useEffect(() => {
     // Log error details for debugging
-    console.error('Global error caught:', {
+    logger.error('Global error caught:', {
       message: error.message,
       digest: error.digest,
       stack: error.stack,

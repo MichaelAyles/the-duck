@@ -11,6 +11,7 @@ import {
   SECURITY_CONFIG 
 } from '@/lib/security'
 import { getUserId } from '@/lib/auth'
+import { logger } from '@/lib/logger';
 
 // Move getTop5Models function here since it's just a utility function
 interface ModelData {
@@ -60,7 +61,7 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
           starredModels = preferences.starredModels
         }
       } catch (error) {
-        console.warn('Could not fetch starred models, using defaults:', error)
+        logger.warn('Could not fetch starred models, using defaults:', error)
       }
     }
 
@@ -72,7 +73,7 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
     const allModels = await client.getModels()
     
     if (!apiKey) {
-      console.warn('OpenRouter API key not configured, using default active models')
+      logger.warn('OpenRouter API key not configured, using default active models')
     }
     
     // Get user preferences for primary model info
@@ -85,7 +86,7 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
           primaryModel = preferences.primaryModel
         }
       } catch (error) {
-        console.warn('Could not fetch primary model, using default:', error)
+        logger.warn('Could not fetch primary model, using default:', error)
       }
     }
 
@@ -126,7 +127,7 @@ async function handleModelsRequest(request: NextRequest): Promise<NextResponse> 
       { status: 400 }
     )
   } catch (error) {
-    console.error('Models API error:', error)
+    logger.error('Models API error:', error)
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Internal server error',

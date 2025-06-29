@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { createRateLimiter } from '@/lib/redis';
 import { isAllowedFileType, MAX_FILE_SIZE } from '@/types/file-upload';
+import { logger } from '@/lib/logger';
 
 const fileUploadSchema = z.object({
   file_name: z.string().min(1).max(255),
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (dbError) {
-      console.error('Database error:', dbError);
+      logger.error('Database error:', dbError);
       return NextResponse.json(
         { error: 'Failed to save file metadata' },
         { status: 500 }
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(fileUpload);
   } catch (error) {
-    console.error('File upload API error:', error);
+    logger.error('File upload API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -151,7 +152,7 @@ export async function GET(request: NextRequest) {
     const { data: files, error: dbError } = await query;
 
     if (dbError) {
-      console.error('Database error:', dbError);
+      logger.error('Database error:', dbError);
       return NextResponse.json(
         { error: 'Failed to fetch files' },
         { status: 500 }
@@ -160,7 +161,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(files || []);
   } catch (error) {
-    console.error('File list API error:', error);
+    logger.error('File list API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

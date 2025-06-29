@@ -215,16 +215,19 @@ export function useChatSession({
   }, [initialMessages, initialSessionId]);
 
   // Main session initialization and management effect with operation locking
-  // CRITICAL FIX: Use ref to store generated session ID to prevent recreation
+  // CRITICAL FIX: Use lazy initialization to prevent race conditions
   const generatedSessionIdRef = useRef<string | null>(null);
   
-  useEffect(() => {
-    // Generate session ID once and reuse
+  // Lazy initialization function to ensure UUID is generated only once
+  const getOrGenerateSessionId = useCallback(() => {
     if (!generatedSessionIdRef.current && !initialSessionId) {
       generatedSessionIdRef.current = crypto.randomUUID();
     }
-    
-    const currentSessionId = initialSessionId || generatedSessionIdRef.current;
+    return initialSessionId || generatedSessionIdRef.current;
+  }, [initialSessionId]);
+  
+  useEffect(() => {
+    const currentSessionId = getOrGenerateSessionId();
     
     // Ensure we have a valid session ID before proceeding
     if (!currentSessionId) {
@@ -276,35 +279,55 @@ export function useChatSession({
   // Note: loadSessionMessages intentionally omitted to prevent circular dependency
 
   // Add welcome message when messages are empty and not loading
-  // CRITICAL FIX: Use separate boolean state to prevent competing updates
-  const [shouldShowWelcome, setShouldShowWelcome] = useState(false);
+  // CRITICAL FIX: Use refs to prevent race conditions
+  const welcomeMessageTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasWelcomeMessageRef = useRef<boolean>(false);
   
-  // Check if we should show welcome message
+  // Add welcome message when needed with race condition protection
   useEffect(() => {
-    if (messages.length === 0 && sessionId && !lastLoadedSessionId.current) {
-      setShouldShowWelcome(true);
-    } else {
-      setShouldShowWelcome(false);
+    // Clear any existing timer
+    if (welcomeMessageTimerRef.current) {
+      clearTimeout(welcomeMessageTimerRef.current);
+      welcomeMessageTimerRef.current = null;
     }
-  }, [messages.length, sessionId]);
-  
-  // Add welcome message when needed
-  useEffect(() => {
-    if (shouldShowWelcome) {
-      const timer = setTimeout(() => {
+    
+    // Check if we should add welcome message
+    const shouldAddWelcome = messages.length === 0 && 
+                           sessionId && 
+                           !lastLoadedSessionId.current &&
+                           !hasWelcomeMessageRef.current &&
+                           !isOperationInProgress.current;
+    
+    if (shouldAddWelcome) {
+      // Use a shorter delay to reduce race condition window
+      welcomeMessageTimerRef.current = setTimeout(() => {
         setMessages(current => {
-          // Only add if still empty and no welcome message exists
-          if (current.length === 0 && !current.some(msg => msg.id === 'welcome-message')) {
+          // Double-check conditions inside setState to prevent race conditions
+          if (current.length === 0 && 
+              !current.some(msg => msg.id === 'welcome-message') &&
+              !isOperationInProgress.current &&
+              sessionId === lockedSessionId.current || !lockedSessionId.current) {
             logger.dev.log('Adding welcome message to empty chat');
+            hasWelcomeMessageRef.current = true;
             return [welcomeMessage];
           }
           return current;
         });
-        setShouldShowWelcome(false); // Reset flag after adding
-      }, 100);
-      return () => clearTimeout(timer);
+      }, 50); // Reduced delay from 100ms to 50ms
+    } else if (messages.length > 0) {
+      // Reset flag when messages are present
+      hasWelcomeMessageRef.current = false;
     }
-  }, [shouldShowWelcome, welcomeMessage]);
+    
+    // Cleanup function
+    return () => {
+      if (welcomeMessageTimerRef.current) {
+        clearTimeout(welcomeMessageTimerRef.current);
+        welcomeMessageTimerRef.current = null;
+      }
+    };
+  }, [messages.length, sessionId, welcomeMessage]);  
+  // isOperationInProgress and lockedSessionId intentionally read from refs
 
   // CRITICAL FIX: Operation locking functions to prevent race conditions
   const lockSession = useCallback(() => {

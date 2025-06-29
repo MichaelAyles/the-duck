@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { preferencesCache, type CachedUserPreferences } from '@/lib/local-preferences-cache'
 import { useAuth } from '@/components/auth/auth-provider'
+import { logger } from '@/lib/logger'
 // Import removed - DEFAULT_ACTIVE_MODELS not needed in this hook
 
 export interface UseUserPreferencesReturn {
@@ -102,7 +103,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       setPreferences(mergedPreferences)
 
     } catch (err) {
-      console.error('Error loading user preferences:', err)
+      logger.error('Error loading user preferences:', err)
       setError(err instanceof Error ? err.message : 'Failed to load preferences')
     } finally {
       isLoadingRef.current = false
@@ -141,7 +142,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       preferencesCache.update(updatedPrefs)
 
     } catch (err) {
-      console.error('Error updating chat settings:', err)
+      logger.error('Error updating chat settings:', err)
       setError(err instanceof Error ? err.message : 'Failed to update settings')
       // Reload to get correct state
       loadFreshPreferences(true)
@@ -182,7 +183,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       })
 
     } catch (err) {
-      console.error('Error toggling starred model:', err)
+      logger.error('Error toggling starred model:', err)
       setError(err instanceof Error ? err.message : 'Failed to update starred model')
       // Reload to get correct state
       loadFreshPreferences(true)
@@ -215,7 +216,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       }
 
     } catch (err) {
-      console.error('Error updating learning preferences:', err)
+      logger.error('Error updating learning preferences:', err)
       setError(err instanceof Error ? err.message : 'Failed to update learning preferences')
       // Reload to get correct state
       loadFreshPreferences(true)
@@ -239,7 +240,7 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       // Note: This might need a dedicated API endpoint if active models are stored separately
 
     } catch (err) {
-      console.error('Error updating active models:', err)
+      logger.error('Error updating active models:', err)
       setError(err instanceof Error ? err.message : 'Failed to update active models')
     }
   }, [user, preferences])

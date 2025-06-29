@@ -164,6 +164,11 @@ Object.defineProperty(globalThis, 'crypto', {
   }
 })
 
+// Mock nanoid
+jest.mock('nanoid', () => ({
+  nanoid: () => Math.random().toString(36).substring(2, 15),
+}))
+
 // Mock HTMLElement methods that might not be available in jsdom
 HTMLElement.prototype.scrollIntoView = jest.fn()
 HTMLElement.prototype.hasPointerCapture = jest.fn()

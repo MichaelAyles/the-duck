@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching upload history:', error);
+      logger.error('Error fetching upload history:', error);
       return NextResponse.json(
         { error: 'Failed to fetch upload history' },
         { status: 500 }
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
               .createSignedUrl(upload.storage_path, 3600); // 1 hour expiry
 
             if (urlError) {
-              console.error('Supabase storage error for file:', upload.id, urlError);
+              logger.error('Supabase storage error for file:', upload.id, urlError);
               return {
                 ...upload,
                 url: null
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
           }
           return upload;
         } catch (urlError) {
-          console.error('Error generating signed URL for file:', upload.id, urlError);
+          logger.error('Error generating signed URL for file:', upload.id, urlError);
           return upload;
         }
       })
@@ -87,7 +88,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error in upload history API:', error);
+    logger.error('Error in upload history API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

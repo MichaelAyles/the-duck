@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -20,7 +21,7 @@ export async function GET() {
       .single() as { data: { total_size: number; file_count: number; deleted_size: number; deleted_count: number } | null; error: Error | null };
 
     if (dbError) {
-      console.error('Database error:', dbError);
+      logger.error('Database error:', dbError);
       return NextResponse.json(
         { error: 'Failed to get storage usage' },
         { status: 500 }
@@ -34,7 +35,7 @@ export async function GET() {
       deleted_count: usage?.deleted_count || 0,
     });
   } catch (error) {
-    console.error('Storage usage API error:', error);
+    logger.error('Storage usage API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

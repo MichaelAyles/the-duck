@@ -24,6 +24,7 @@ const formatDistanceToNow = (date: Date): string => {
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { FileUpload } from '@/types/file-upload';
+import { logger } from '@/lib/logger';
 
 interface UploadHistoryProps {
   userId?: string;
@@ -73,7 +74,7 @@ export function UploadHistory({ userId }: UploadHistoryProps) {
       setUploads(data.uploads || []);
       setTotalStorage(data.totalStorage || 0);
     } catch (error) {
-      console.error('Error fetching uploads:', error);
+      logger.error('Error fetching uploads:', error);
       toast({
         title: "Error",
         description: "Failed to load upload history. Please try again.",
@@ -144,7 +145,7 @@ export function UploadHistory({ userId }: UploadHistoryProps) {
       setSelectedUploads(new Set());
       await fetchUploads(); // Refresh the list
     } catch (error) {
-      console.error('Error deleting files:', error);
+      logger.error('Error deleting files:', error);
       toast({
         title: "Error",
         description: "Failed to delete files. Please try again.",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -13,10 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Settings, MessageSquare, Moon, Sun, Monitor, Loader2, RotateCcw, Menu, Trash2, ChevronDown, Filter } from "lucide-react";
 import { useTheme } from "next-themes";
-import { ChatSettings } from "./chat-interface";
+import { ChatSettings } from "./chat-types";
 import { useModels } from "@/hooks/use-models";
 import { DuckLogo } from "@/components/duck-logo";
 import { UserMenu } from "@/components/auth/user-menu";
+import { ModelSelect } from "./model-select";
 import { LearningPreferencesTab } from "./learning-preferences-tab";
 import { UsageSummary } from "@/components/settings/usage-summary";
 import { UploadHistory } from "@/components/settings/upload-history";
@@ -40,7 +41,7 @@ const TONE_OPTIONS = [
   { value: "duck", label: "Duck Mode", description: "Your personal duck responds in quacks!" },
 ];
 
-export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount, onToggleMobileSidebar, userId }: ChatHeaderProps) {
+function ChatHeaderComponent({ settings, onSettingsChange, onEndChat, messageCount, onToggleMobileSidebar, userId }: ChatHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [isResetKnowledgeOpen, setIsResetKnowledgeOpen] = useState(false);
@@ -224,8 +225,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
       }
       
       setPreloadComplete(true);
-    } catch (error) {
-      console.error('Failed to preload data:', error);
+    } catch {
     } finally {
       setIsPreloading(false);
     }
@@ -339,8 +339,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
     try {
       await resetToDefaults?.();
       setIsResetDialogOpen(false);
-    } catch (error) {
-      console.error('Failed to reset model preferences:', error);
+    } catch {
     }
   };
 
@@ -360,8 +359,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
         description: "All learned preferences have been cleared.",
       });
       setIsResetKnowledgeOpen(false);
-    } catch (error) {
-      console.error('Failed to reset knowledge:', error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to reset knowledge. Please try again.",
@@ -395,8 +393,7 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
       
       // Trigger a new chat since all history is gone
       onEndChat();
-    } catch (error) {
-      console.error('Failed to delete chat history:', error);
+    } catch {
       toast({
         title: "Error",
         description: "Failed to delete chat history. Please try again.",
@@ -434,16 +431,15 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
           <div className="hidden md:flex items-center gap-3">
             <div className="flex items-center gap-3 bg-secondary/30 backdrop-blur-sm rounded-xl px-4 py-2 border border-border/20">
               <span className="text-sm text-muted-foreground font-medium">Model:</span>
-              <Select value={settings.model} onValueChange={handleModelChange} onOpenChange={handleModelDropdownOpenChange}>
-                <SelectTrigger className="w-64 bg-background/50 border-border/30 shadow-sm hover:shadow-md transition-all duration-300 rounded-lg">
-                  <SelectValue className="truncate font-medium">
-                    {currentModelName}
-                  </SelectValue>
-                </SelectTrigger>
-              <SelectContent className="w-80">
-                {modelOptions}
-              </SelectContent>
-            </Select>
+              <ModelSelect
+                value={settings.model}
+                onChange={handleModelChange}
+                onOpenChange={handleModelDropdownOpenChange}
+                modelOptions={modelOptions}
+                currentModelName={currentModelName}
+                triggerClassName="w-64 bg-background/50 border-border/30 shadow-sm hover:shadow-md transition-all duration-300 rounded-lg"
+                contentClassName="w-80"
+              />
             </div>
           </div>
         </div>
@@ -1160,3 +1156,17 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
     </header>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const ChatHeader = React.memo(ChatHeaderComponent, (prevProps, nextProps) => {
+  // Custom comparison for complex props
+  return (
+    prevProps.messageCount === nextProps.messageCount &&
+    prevProps.userId === nextProps.userId &&
+    prevProps.settings.model === nextProps.settings.model &&
+    prevProps.settings.tone === nextProps.settings.tone &&
+    prevProps.settings.storageEnabled === nextProps.settings.storageEnabled &&
+    prevProps.settings.memoryEnabled === nextProps.settings.memoryEnabled &&
+    prevProps.settings.memorySummaryCount === nextProps.settings.memorySummaryCount
+  );
+});

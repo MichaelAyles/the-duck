@@ -206,7 +206,7 @@ export class AppendOnlyChatService {
       }))
       
     } catch (error) {
-      console.warn('Failed to load chat session:', error)
+      logger.warn('Failed to load chat session:', error)
       return []
     }
   }
@@ -260,7 +260,7 @@ export class AppendOnlyChatService {
       }
       
     } catch (error) {
-      console.warn('Failed to get session info:', error)
+      logger.warn('Failed to get session info:', error)
       return null
     }
   }
@@ -276,7 +276,7 @@ export class AppendOnlyChatService {
       return info?.session.title || null
       
     } catch (error) {
-      console.warn('Failed to get session title:', error)
+      logger.warn('Failed to get session title:', error)
       return null
     }
   }
@@ -350,7 +350,7 @@ export class AppendOnlyChatService {
       return summary
       
     } catch (error) {
-      console.warn('Chat summarization failed (storage may be disabled):', error)
+      logger.warn('Chat summarization failed (storage may be disabled):', error)
       
       return {
         summary: 'Chat session completed',

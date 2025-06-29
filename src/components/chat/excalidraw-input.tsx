@@ -10,6 +10,7 @@ import type { FileUpload } from '@/types/file-upload';
 
 // Import Excalidraw styles
 import '@excalidraw/excalidraw/index.css';
+import { logger } from '@/lib/logger';
 
 // Configure Excalidraw to use local fonts
 if (typeof window !== 'undefined') {
@@ -51,13 +52,13 @@ export function ExcalidrawInput({ onDrawingCreate, onFileUploaded, userId, disab
       setIsLoading(true);
       import('@excalidraw/excalidraw')
         .then((module) => {
-          console.log('Excalidraw module loaded:', module);
+          logger.dev.log('Excalidraw module loaded:', module);
           setExcalidrawComponent(module.Excalidraw);
           setExportToCanvas(() => module.exportToCanvas);
           setIsLoading(false);
         })
         .catch((error) => {
-          console.error('Failed to load Excalidraw:', error);
+          logger.error('Failed to load Excalidraw:', error);
           toast({
             title: "Error",
             description: "Failed to load drawing component. Please try again.",
@@ -156,7 +157,7 @@ export function ExcalidrawInput({ onDrawingCreate, onFileUploaded, userId, disab
                 throw new Error(uploadResult.error || 'Upload failed');
               }
             } catch (uploadError) {
-              console.error('Error uploading drawing:', uploadError);
+              logger.error('Error uploading drawing:', uploadError);
               toast({
                 title: "Upload failed",
                 description: "Failed to upload your drawing. Please try again.",
@@ -168,7 +169,7 @@ export function ExcalidrawInput({ onDrawingCreate, onFileUploaded, userId, disab
         }, 'image/png', 0.9);
       });
     } catch (error) {
-      console.error('Error exporting drawing:', error);
+      logger.error('Error exporting drawing:', error);
       toast({
         title: "Export failed",
         description: "Failed to export your drawing. Please try again.",

@@ -3,6 +3,8 @@
  * Similar to how Gemini and other chat services provide instant access
  */
 
+import { logger } from '@/lib/logger';
+
 export interface CachedSession {
   id: string
   title: string
@@ -30,7 +32,7 @@ export const sessionCache = {
       const cached = localStorage.getItem(CACHE_KEY)
       return cached ? JSON.parse(cached) : []
     } catch (error) {
-      console.error('Failed to read session cache:', error)
+      logger.error('Failed to read session cache:', error)
       return []
     }
   },
@@ -49,7 +51,7 @@ export const sessionCache = {
         } as CacheMetadata)
       )
     } catch (error) {
-      console.error('Failed to write session cache:', error)
+      logger.error('Failed to write session cache:', error)
     }
   },
 

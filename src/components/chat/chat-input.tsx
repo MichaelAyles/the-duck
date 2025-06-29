@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Paperclip } from "lucide-react";
@@ -30,7 +30,7 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
   const [showFileUpload, setShowFileUpload] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     
     if ((message.trim() || attachments.length > 0) && !disabled) {
@@ -42,18 +42,18 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
         textareaRef.current.style.height = "auto";
       }
     }
-  };
+  }, [message, attachments, disabled, onSendMessage]);
 
-  const handleFileUploaded = (file: FileUpload, url: string) => {
-    setAttachments([...attachments, { ...file, url } as FileUpload & { url: string }]);
+  const handleFileUploaded = useCallback((file: FileUpload, url: string) => {
+    setAttachments(prev => [...prev, { ...file, url } as FileUpload & { url: string }]);
     setShowFileUpload(false);
-  };
+  }, []);
 
-  const handleRemoveAttachment = (fileId: string) => {
-    setAttachments(attachments.filter(a => a.id !== fileId));
-  };
+  const handleRemoveAttachment = useCallback((fileId: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== fileId));
+  }, []);
 
-  const handleDrawingCreate = async (imageData: Blob, metadata: { 
+  const handleDrawingCreate = useCallback(async (imageData: Blob, metadata: { 
     name: string; 
     elements: unknown[]; 
     mimeType: string;
@@ -74,20 +74,24 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
       };
 
       // Add to attachments immediately
-      setAttachments([...attachments, drawingFile]);
+      setAttachments(prev => [...prev, drawingFile]);
 
       logger.dev.log('🎨 Drawing created:', metadata.name, 'Size:', imageData.size);
     } catch (error) {
-      console.error('Error handling drawing creation:', error);
+      logger.error('Error handling drawing creation:', error);
     }
-  };
+  }, [userId, sessionId]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
-  };
+  }, [handleSubmit]);
+
+  const handleMessageChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -121,7 +125,7 @@ export function ChatInput({ onSendMessage, disabled = false, storageEnabled, ses
             <Textarea
               ref={textareaRef}
               value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={handleMessageChange}
               onKeyDown={handleKeyDown}
               placeholder={
                 storageEnabled

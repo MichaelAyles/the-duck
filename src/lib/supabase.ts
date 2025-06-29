@@ -1,5 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '@/types/supabase'
+import { logger } from '@/lib/logger'
 
 /**
  * ☁️ Supabase Client Configuration
@@ -19,7 +20,7 @@ const supabaseAnonKey = rawSupabaseAnonKey
   ?.replace(/^["']|["']$/g, '')
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase environment variables are missing. Authentication will be disabled.')
+  logger.warn('Supabase environment variables are missing. Authentication will be disabled.')
 }
 
 // Initialize Supabase client with fallback for missing env vars

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { logger } from '@/lib/logger'
 
 // Schema for message validation
 const AppendMessageSchema = z.object({
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       })
 
     if (appendError) {
-      console.error('Failed to append message:', appendError)
+      logger.error('Failed to append message:', appendError)
       return NextResponse.json(
         { error: 'Failed to append message' },
         { status: 500 }
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (fetchError || !newMessage) {
-      console.error('Failed to fetch new message:', fetchError)
+      logger.error('Failed to fetch new message:', fetchError)
       return NextResponse.json(
         { error: 'Message created but failed to retrieve' },
         { status: 500 }
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error in POST /api/messages/append:', error)
+    logger.error('Error in POST /api/messages/append:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

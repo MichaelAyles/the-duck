@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { User, Loader2 } from "lucide-react";
@@ -10,6 +10,7 @@ import { DuckLogo } from "@/components/duck-logo";
 import { cn } from "@/lib/utils";
 import { FilePreview } from "./file-preview";
 import type { FileUpload } from "@/types/file-upload";
+import { logger } from '@/lib/logger';
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -18,7 +19,7 @@ interface ChatMessagesProps {
   sessionId?: string;
 }
 
-export function ChatMessages({ messages, isLoading, userId, sessionId }: ChatMessagesProps) {
+function ChatMessagesComponent({ messages, isLoading, userId, sessionId }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [fadingWelcome, setFadingWelcome] = useState(false);
   const prevMessagesRef = useRef<Message[]>([]);
@@ -35,7 +36,7 @@ export function ChatMessages({ messages, isLoading, userId, sessionId }: ChatMes
   }, [messages]);
   
   if (process.env.NODE_ENV === 'development' && debugMessages.length > 0) {
-    console.log('ChatMessages render - messages:', debugMessages, 'isLoading:', isLoading);
+    logger.dev.log('ChatMessages render - messages:', debugMessages, 'isLoading:', isLoading);
   }
 
   const scrollToBottom = useCallback(() => {
@@ -60,7 +61,7 @@ export function ChatMessages({ messages, isLoading, userId, sessionId }: ChatMes
     if ((hadWelcomeMessage && !hasWelcomeMessage) || 
         (hasWelcomeMessage && hasNonWelcomeMessages && !hadNonWelcomeMessages)) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('Triggering welcome message fade');
+        logger.dev.log('Triggering welcome message fade');
       }
       setFadingWelcome(true);
       
@@ -176,3 +177,20 @@ export function ChatMessages({ messages, isLoading, userId, sessionId }: ChatMes
     </div>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export const ChatMessages = React.memo(ChatMessagesComponent, (prevProps, nextProps) => {
+  // Custom comparison function for better performance
+  return (
+    prevProps.isLoading === nextProps.isLoading &&
+    prevProps.userId === nextProps.userId &&
+    prevProps.sessionId === nextProps.sessionId &&
+    prevProps.messages.length === nextProps.messages.length &&
+    // Deep compare last message if lengths are same
+    (prevProps.messages.length === 0 || 
+     (prevProps.messages[prevProps.messages.length - 1].id === 
+      nextProps.messages[nextProps.messages.length - 1].id &&
+      prevProps.messages[prevProps.messages.length - 1].content === 
+      nextProps.messages[nextProps.messages.length - 1].content))
+  );
+});

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { OpenRouterClient } from '@/lib/openrouter'
 import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
+import { logger } from '@/lib/logger'
 import { 
   withSecurity, 
   withRateLimit, 
@@ -177,7 +178,7 @@ async function handleSearchModelsRequest(request: NextRequest): Promise<NextResp
         }
       }
     } catch (error) {
-      console.warn('Could not fetch user preferences, using defaults:', error)
+      logger.warn('Could not fetch user preferences, using defaults:', error)
     }
 
     let results: Model[]
@@ -236,7 +237,7 @@ async function handleSearchModelsRequest(request: NextRequest): Promise<NextResp
       }
     })
   } catch (error) {
-    console.error('Search models API error:', error)
+    logger.error('Search models API error:', error)
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Internal server error',

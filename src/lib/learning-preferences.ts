@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/logger'
 
 // New optimized types for JSON-based preferences
 export interface LearningPreferenceItem {
@@ -55,11 +56,11 @@ export async function getUserLearningPreferences(userId: string): Promise<Learni
   if (error) {
     // If v2 table doesn't exist, fall back to old table for backward compatibility
     if (error.message?.includes('relation') || error.message?.includes('does not exist')) {
-      console.warn('Learning preferences v2 table not yet deployed, falling back to legacy table')
+      logger.warn('Learning preferences v2 table not yet deployed, falling back to legacy table')
       return getUserLearningPreferencesLegacy(userId)
     }
     
-    console.error('Failed to fetch learning preferences:', error)
+    logger.error('Failed to fetch learning preferences:', error)
     return []
   }
 
@@ -86,7 +87,7 @@ async function getUserLearningPreferencesLegacy(userId: string): Promise<Learnin
     .limit(50) // Limit to most important preferences to avoid token bloat
 
   if (error) {
-    console.error('Failed to fetch learning preferences from legacy table:', error)
+    logger.error('Failed to fetch learning preferences from legacy table:', error)
     return []
   }
 
@@ -297,7 +298,7 @@ For HTML/CSS demos:
 For JavaScript utilities:
 <duckpond type="javascript" title="Utility Name" description="Brief description">
 // Your JavaScript code here
-console.log("Hello from DuckPond!");
+logger.dev.log("Hello from DuckPond!");
 </duckpond>
 
 IMPORTANT DUCKPOND RULES:

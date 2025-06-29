@@ -5,6 +5,7 @@ import {
   SECURITY_CONFIG 
 } from '@/lib/security'
 import { DEFAULT_ACTIVE_MODELS } from '@/lib/config'
+import { logger } from '@/lib/logger';
 
 const DEFAULT_PRIMARY_MODEL = DEFAULT_ACTIVE_MODELS[0]
 
@@ -36,7 +37,7 @@ async function handleStarredModelsGet(request: NextRequest): Promise<NextRespons
       message: 'User preferences loaded successfully'
     })
   } catch (error) {
-    console.error('Starred models GET error:', error)
+    logger.error('Starred models GET error:', error)
     return NextResponse.json({ 
       starredModels: [...DEFAULT_ACTIVE_MODELS],
       primaryModel: DEFAULT_PRIMARY_MODEL,
@@ -110,7 +111,7 @@ async function handleStarredModelsPost(request: NextRequest): Promise<NextRespon
       message
     })
   } catch (error) {
-    console.error('Starred models POST error:', error)
+    logger.error('Starred models POST error:', error)
     
     return NextResponse.json(
       { 

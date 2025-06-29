@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { RefreshCw, PoundSterling, Activity, TrendingUp, Settings } from 'lucide-react'
+import { logger } from '@/lib/logger';
 
 interface CreditInfo {
   user_id: string
@@ -49,7 +50,7 @@ export function UsageSummary() {
       const data = await response.json()
       setUsageData(data)
     } catch (error) {
-      console.error('Error fetching usage data:', error)
+      logger.error('Error fetching usage data:', error)
       toast({
         title: "Error",
         description: "Failed to load usage data. Please try again.",
@@ -81,7 +82,7 @@ export function UsageSummary() {
         description: "Credit settings updated successfully.",
       })
     } catch (error) {
-      console.error('Error updating credit settings:', error)
+      logger.error('Error updating credit settings:', error)
       toast({
         title: "Error",
         description: "Failed to update credit settings. Please try again.",

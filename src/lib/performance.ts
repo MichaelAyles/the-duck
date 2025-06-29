@@ -1,5 +1,6 @@
 // TypeScript import for React
 import React from 'react';
+import { logger } from '@/lib/logger';
 
 /**
  * 🚀 Performance Monitoring & Optimization Utilities
@@ -104,7 +105,7 @@ export function useRenderTimer(componentName: string) {
       setRenderTime(duration);
       
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🚀 ${componentName} render time: ${duration.toFixed(2)}ms`);
+        logger.dev.log(`🚀 ${componentName} render time: ${duration.toFixed(2)}ms`);
       }
     }
   }, [componentName]);
@@ -227,7 +228,7 @@ export const PerformanceUtils = {
     const end = performance.now();
     
     if (process.env.NODE_ENV === 'development') {
-      console.log(`⚡ ${name} execution time: ${(end - start).toFixed(2)}ms`);
+      logger.dev.log(`⚡ ${name} execution time: ${(end - start).toFixed(2)}ms`);
     }
     
     return result;
@@ -277,7 +278,7 @@ export class PerformanceReporter {
         }),
       });
     } catch (error) {
-      console.warn('Failed to report performance metrics:', error);
+      logger.warn('Failed to report performance metrics:', error);
     }
   }
 
@@ -421,8 +422,8 @@ if (typeof window !== 'undefined') {
       if (process.env.NODE_ENV === 'development') {
         console.group('🚀 Performance Report');
         console.table(report.metrics);
-        console.log('📦 Bundle Metrics:', report.bundleMetrics);
-        console.log('💡 Recommendations:', report.recommendations);
+        logger.dev.log('📦 Bundle Metrics:', report.bundleMetrics);
+        logger.dev.log('💡 Recommendations:', report.recommendations);
         console.groupEnd();
       }
     }, 2000); // Wait 2s for metrics to settle

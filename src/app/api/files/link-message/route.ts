@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 const linkMessageSchema = z.object({
   file_ids: z.array(z.string().uuid()),
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id);
 
     if (updateError) {
-      console.error('Database error:', updateError);
+      logger.error('Database error:', updateError);
       return NextResponse.json(
         { error: 'Failed to link files to message' },
         { status: 500 }
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Link message API error:', error);
+    logger.error('Link message API error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

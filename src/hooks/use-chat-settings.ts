@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
-import { ChatSettings } from '@/components/chat/chat-interface';
+import { ChatSettings } from '@/components/chat/chat-types';
 import { useStarredModels } from '@/hooks/use-starred-models';
 import { useToast } from '@/hooks/use-toast';
 import { DEFAULT_CHAT_SETTINGS } from '@/lib/config';
 import { preferencesCache } from '@/lib/local-preferences-cache';
+import { logger } from '@/lib/logger';
 
 interface UseChatSettingsReturn {
   settings: ChatSettings;
@@ -73,7 +74,7 @@ export function useChatSettings(): UseChatSettingsReturn {
       try {
         // Check if the new model is starred, and if so, set it as active
         if (isStarred?.(newSettings.model)) {
-          console.log('Setting new active model:', newSettings.model);
+          logger.dev.log('Setting new active model:', newSettings.model);
           await setActive?.(newSettings.model);
           
           toast({
@@ -82,7 +83,7 @@ export function useChatSettings(): UseChatSettingsReturn {
           });
         }
       } catch (error) {
-        console.error('Error setting active model:', error);
+        logger.error('Error setting active model:', error);
         
         toast({
           title: "Error",

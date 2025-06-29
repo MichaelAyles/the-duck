@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/hooks/use-toast";
 import { sessionCache, type CachedSession } from "@/lib/local-session-cache";
+import { logger } from '@/lib/logger';
 
 export interface ChatSession {
   id: string;
@@ -167,7 +168,7 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
         setSessions(freshSessions);
       }
     } catch (error) {
-      console.error('Error fetching chat history:', error);
+      logger.error('Error fetching chat history:', error);
       toast({
         title: "Error",
         description: search ? "Failed to search messages" : "Failed to load chat history",
@@ -262,7 +263,7 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
       });
 
     } catch (error) {
-      console.error('Error generating title:', error);
+      logger.error('Error generating title:', error);
       toast({
         title: "Error",
         description: "Failed to generate title",
@@ -297,7 +298,7 @@ export const ChatHistorySidebar = React.memo(function ChatHistorySidebar({
       }
 
     } catch (error) {
-      console.error('Error deleting session:', error);
+      logger.error('Error deleting session:', error);
       toast({
         title: "Error",
         description: "Failed to delete chat session",
