@@ -52,3 +52,4 @@ debug-*.js
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Test CI trigger
