@@ -143,7 +143,7 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
         
         // Warn if running low on credits (less than 10% remaining)
         if (remainingCredits < credits.total_credits * 0.1) {
-          console.warn(`User ${user.id} running low on credits: ${remainingCredits} pence remaining out of £${(credits.total_credits / 100).toFixed(2)}`)
+          logger.dev.warn(`User ${user.id} running low on credits: ${remainingCredits} pence remaining out of £${(credits.total_credits / 100).toFixed(2)}`)
         }
       }
     }
@@ -157,7 +157,7 @@ async function handleChatRequest(request: NextRequest, validatedData: ChatReques
           logger.dev.log('🎯 Learning preferences loaded:', learningPreferences.map(p => `${p.category}/${p.preference_key} (${p.weight})`))
         }
       } catch (error) {
-        console.warn('Failed to fetch learning preferences:', error)
+        logger.dev.warn('Failed to fetch learning preferences:', error)
         // Continue without preferences rather than fail the chat
       }
     }

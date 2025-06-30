@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 
 interface ModelSearchFilters {
   provider?: string
@@ -64,7 +65,7 @@ export function useModelSearch(): UseModelSearchReturn {
 
       setSearchResults(data.models || [])
     } catch (err) {
-      console.error('Error searching models:', err)
+      logger.error('Error searching models:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       setSearchResults([])
     } finally {
@@ -92,7 +93,7 @@ export function useModelSearch(): UseModelSearchReturn {
 
       setSearchResults(data.models || [])
     } catch (err) {
-      console.error('Error getting recommended models:', err)
+      logger.error('Error getting recommended models:', err)
       setError(err instanceof Error ? err.message : 'Unknown error')
       setSearchResults([])
     } finally {

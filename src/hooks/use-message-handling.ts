@@ -318,45 +318,47 @@ export function useMessageHandling({
             if (line.startsWith('data: ')) {
               const data = line.slice(6).trim();
               if (data === '[DONE]') {
-                if (process.env.NODE_ENV === 'development') logger.dev.log('🏁 Stream complete - setting isLoading to false');
+                logger.dev.log('🏁 Stream complete - setting isLoading to false');
                 setIsLoading(false);
                 
                 // CRITICAL FIX: Unlock session when streaming completes successfully
                 if (unlockSession) {
                   unlockSession();
-                  if (process.env.NODE_ENV === 'development') {
-                    logger.dev.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after successful streaming`);
-                  }
+                  logger.dev.log(`🔓 [RACE CONDITION PREVENTION] Session unlocked after successful streaming`);
                 }
                 
                 // Save final session and update title when response is complete
                 if (sessionId && userId && settings.storageEnabled) {
-                  setMessages(currentMessages => {
-                    // Process artifacts in the completed assistant message
-                    setTimeout(async () => {
-                      // Process the last assistant message for artifacts
-                      const lastMessage = currentMessages[currentMessages.length - 1];
-                      if (lastMessage && lastMessage.role === 'assistant') {
-                        try {
-                          const processedMessage = await processMessageForArtifacts(lastMessage);
-                          if (processedMessage !== lastMessage) {
-                            // Update the message with artifact information
-                            setMessages(prev => {
-                              const updated = [...prev];
-                              updated[updated.length - 1] = processedMessage;
-                              return updated;
-                            });
-                            if (process.env.NODE_ENV === 'development') {
+                  // Process artifacts asynchronously outside of setState
+                  (async () => {
+                    try {
+                      setMessages(currentMessages => {
+                        const lastMessage = currentMessages[currentMessages.length - 1];
+                        if (lastMessage && lastMessage.role === 'assistant') {
+                          // Process artifacts asynchronously and update message
+                          processMessageForArtifacts(lastMessage).then(processedMessage => {
+                            if (processedMessage !== lastMessage) {
+                              setMessages(prev => {
+                                const updated = [...prev];
+                                updated[updated.length - 1] = processedMessage;
+                                return updated;
+                              });
                               logger.dev.log(`Processed artifacts for message: ${lastMessage.id}`);
                             }
-                          }
-                        } catch (error) {
-                          logger.error('Failed to process artifacts:', error);
+                          }).catch(error => {
+                            logger.error('Failed to process artifacts:', error);
+                          });
                         }
-                      }
-                    }, 100);
-
-                    // SINGLE SAVE STRATEGY: Save the complete conversation once at the end
+                        return currentMessages;
+                      });
+                    } catch (error) {
+                      logger.error('Error in artifact processing:', error);
+                    }
+                  })();
+                  
+                  // Save final session asynchronously outside of setState
+                  setMessages(currentMessages => {
+                    // Execute save operation asynchronously without delay
                     setTimeout(async () => {
                       try {
                         const userMessages = currentMessages.filter(msg => msg.role === 'user');
@@ -385,9 +387,7 @@ export function useMessageHandling({
                           model: settings.model
                         });
                         
-                        if (process.env.NODE_ENV === 'development') {
-                          logger.dev.log(`✅ SINGLE SAVE: Successfully saved complete conversation with ${currentMessages.length} messages`);
-                        }
+                        logger.dev.log(`✅ SINGLE SAVE: Successfully saved complete conversation with ${currentMessages.length} messages`);
                       } catch (error) {
                         logger.error('❌ CRITICAL: Failed to save final chat session:', error);
                         // Show user that their conversation may not be saved
@@ -422,51 +422,21 @@ export function useMessageHandling({
                     const lastMessage = updated[lastMessageIndex];
                     if (lastMessage && lastMessage.role === 'assistant') {
                       if (!hasReceivedFirstChunk && lastMessage.metadata?.isThinking) {
-                        // First chunk: calculate if we need to delay
+                        // First chunk: update immediately for better performance
                         const thinkingDuration = Date.now() - thinkingStartTime;
-                        const minimumThinkingTime = 800; // Show thinking for at least 800ms
+                        logger.dev.log(`🎯 Thinking duration: ${thinkingDuration}ms`);
                         
-                        if (thinkingDuration < minimumThinkingTime) {
-                          // Delay replacing the thinking message
-                          const remainingTime = minimumThinkingTime - thinkingDuration;
-                          if (process.env.NODE_ENV === 'development') logger.dev.log(`🎯 Delaying thinking message replacement by ${remainingTime}ms`);
-                          
-                          // Store the content to accumulate
-                          accumulatedContent = parsed.content;
-                          
-                          setTimeout(() => {
-                            setMessages(prev => {
-                              const updated = [...prev];
-                              const lastIdx = updated.length - 1;
-                              if (updated[lastIdx] && updated[lastIdx].role === 'assistant') {
-                                updated[lastIdx] = {
-                                  ...updated[lastIdx],
-                                  content: accumulatedContent,
-                                  metadata: {
-                                    ...updated[lastIdx].metadata,
-                                    isThinking: false,
-                                  },
-                                };
-                              }
-                              return updated;
-                            });
-                          }, remainingTime);
-                          
-                          hasReceivedFirstChunk = true;
-                          return prev; // Don't update yet
-                        } else {
-                          // Enough time has passed, replace immediately
-                          if (process.env.NODE_ENV === 'development') logger.dev.log('🎯 First chunk received - replacing thinking message');
-                          hasReceivedFirstChunk = true;
-                          updated[lastMessageIndex] = {
-                            ...lastMessage,
-                            content: parsed.content,
-                            metadata: {
-                              ...lastMessage.metadata,
-                              isThinking: false,
-                            },
-                          };
-                        }
+                        // Replace thinking message immediately
+                        logger.dev.log('🎯 First chunk received - replacing thinking message');
+                        hasReceivedFirstChunk = true;
+                        updated[lastMessageIndex] = {
+                          ...lastMessage,
+                          content: parsed.content,
+                          metadata: {
+                            ...lastMessage.metadata,
+                            isThinking: false,
+                          },
+                        };
                       } else {
                         // Subsequent chunks: append content
                         if (accumulatedContent) {

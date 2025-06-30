@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { LearningPreference } from '@/lib/learning-preferences'
+import { logger } from '@/lib/logger'
 
 // Local interface for the response
 interface LearningPreferencesResponse {
@@ -70,7 +71,7 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
         
         // If table doesn't exist yet, fail silently with empty state
         if (response.status === 500 && (errorData.error?.includes('relation') || errorData.error?.includes('table'))) {
-          console.warn('Learning preferences table not yet deployed, using empty state')
+          logger.dev.warn('Learning preferences table not yet deployed, using empty state')
           setPreferences([])
           setSummary({
             total_preferences: 0,
@@ -92,7 +93,7 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error loading preferences'
       setError(errorMessage)
-      console.error('Error loading learning preferences:', err)
+      logger.error('Error loading learning preferences:', err)
     } finally {
       setLoading(false)
     }
@@ -147,7 +148,7 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error adding preference'
       setError(errorMessage)
-      console.error('Error adding learning preference:', err)
+      logger.error('Error adding learning preference:', err)
       throw err
     } finally {
       setLoading(false)
@@ -185,7 +186,7 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error updating preference'
       setError(errorMessage)
-      console.error('Error updating learning preference:', err)
+      logger.error('Error updating learning preference:', err)
       throw err
     } finally {
       setLoading(false)
@@ -215,7 +216,7 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error deleting preference'
       setError(errorMessage)
-      console.error('Error deleting learning preference:', err)
+      logger.error('Error deleting learning preference:', err)
       throw err
     } finally {
       setLoading(false)
@@ -246,7 +247,7 @@ export function useLearningPreferences(): UseLearningPreferencesReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error bulk updating preferences'
       setError(errorMessage)
-      console.error('Error bulk updating learning preferences:', err)
+      logger.error('Error bulk updating learning preferences:', err)
       throw err
     } finally {
       setLoading(false)

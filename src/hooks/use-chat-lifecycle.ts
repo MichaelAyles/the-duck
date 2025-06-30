@@ -5,6 +5,7 @@ import { ChatService } from '@/lib/chat-service';
 import { Message } from '@/types/chat';
 import { ChatSettings } from '@/components/chat/chat-interface';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 interface UseChatLifecycleProps {
   messages: Message[];
@@ -64,7 +65,7 @@ export function useChatLifecycle({
       }
       
     } catch (error) {
-      console.error("Error ending chat:", error);
+      logger.error("Error ending chat:", error);
       
       toast({
         title: "Error",

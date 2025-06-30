@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { logger } from '@/lib/logger'
 
 /**
  * 🔐 Server-side Authentication Utilities
@@ -42,12 +43,12 @@ export async function getAuthenticatedUser(request: NextRequest) {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
     if (sessionError) {
-      console.error('Session error:', sessionError)
+      logger.error('Session error:', sessionError)
       return null
     }
     
     if (!session) {
-      console.log('No session found')
+      logger.dev.log('No session found')
       return null
     }
     
@@ -55,19 +56,19 @@ export async function getAuthenticatedUser(request: NextRequest) {
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
     if (userError) {
-      console.error('User error:', userError)
+      logger.error('User error:', userError)
       return null
     }
 
     if (!user) {
-      console.log('No user found despite having session')
+      logger.dev.log('No user found despite having session')
       return null
     }
 
-    console.log('Successfully authenticated user:', user.id, user.email)
+    logger.dev.log('Successfully authenticated user:', user.id, user.email)
     return user
   } catch (error) {
-    console.error('Error getting authenticated user:', error)
+    logger.error('Error getting authenticated user:', error)
     return null
   }
 }

@@ -28,6 +28,8 @@ interface UseChatSessionReturn {
   unlockSession: () => void;
   // DuckPond artifact tracking
   detectedArtifacts: ParsedArtifact[];
+  // Loading state for session operations
+  isLoadingSession: boolean;
 }
 
 export function useChatSession({
@@ -36,9 +38,12 @@ export function useChatSession({
   userId,
   onSessionUpdate,
 }: UseChatSessionProps): UseChatSessionReturn {
+  // CRITICAL FIX: Use ref for stable session ID to prevent race conditions
+  const sessionIdRef = useRef<string | null>(initialSessionId || null);
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const [messages, setMessages] = useState<Message[]>(initialMessages || []);
   const [detectedArtifacts, setDetectedArtifacts] = useState<ParsedArtifact[]>([]);
+  const [isLoadingSession, setIsLoadingSession] = useState(false);
   const chatServiceRef = useRef<ChatService | null>(null);
   const lastLoadedSessionId = useRef<string | null>(null);
   const { toast } = useToast();
@@ -83,6 +88,7 @@ export function useChatSession({
       
       logger.dev.log(`🔄 Loading session messages for: ${sessionId}`);
       lastLoadedSessionId.current = `loading-${sessionId}`;
+      setIsLoadingSession(true);
       
       // Load messages using ChatService (now with retry logic)
       const loadedMessages = await chatServiceRef.current.loadChatSession();
@@ -142,6 +148,8 @@ export function useChatSession({
       // On error, show welcome message and clear artifacts
       setMessages([welcomeMessage]);
       setDetectedArtifacts([]);
+    } finally {
+      setIsLoadingSession(false);
     }
   }, [userId, welcomeMessage, toast]);
 
@@ -238,8 +246,9 @@ export function useChatSession({
     }
     
     // Only update session ID if it actually changed
-    if (currentSessionId !== sessionId) {
-      logger.dev.log(`🔄 Session ID changing from ${sessionId} to ${currentSessionId}`);
+    if (currentSessionId !== sessionIdRef.current) {
+      logger.dev.log(`🔄 Session ID changing from ${sessionIdRef.current} to ${currentSessionId}`);
+      sessionIdRef.current = currentSessionId;
       setSessionId(currentSessionId);
       // Reset loading state when session changes
       lastLoadedSessionId.current = null;
@@ -254,7 +263,7 @@ export function useChatSession({
     return () => {
       chatServiceRef.current?.clearInactivityTimer();
     };
-  }, [initialSessionId, userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialSessionId, userId]);  
   // CRITICAL FIX: sessionId intentionally omitted to prevent infinite loop
   
   // Separate effect for loading messages to prevent infinite loops
@@ -276,44 +285,25 @@ export function useChatSession({
   // Note: loadSessionMessages intentionally omitted to prevent circular dependency
 
   // Add welcome message when messages are empty and not loading
-  // CRITICAL FIX: Use separate boolean state to prevent competing updates
-  const [shouldShowWelcome, setShouldShowWelcome] = useState(false);
-  
-  // Check if we should show welcome message
+  // CRITICAL FIX: Simplify welcome message logic to prevent race conditions
   useEffect(() => {
     if (messages.length === 0 && sessionId && !lastLoadedSessionId.current) {
-      setShouldShowWelcome(true);
-    } else {
-      setShouldShowWelcome(false);
+      // Check if we should show welcome message
+      const hasWelcomeMessage = messages.some(msg => msg.id === 'welcome-message');
+      if (!hasWelcomeMessage) {
+        logger.dev.log('Adding welcome message to empty chat');
+        setMessages([welcomeMessage]);
+      }
     }
-  }, [messages.length, sessionId]);
-  
-  // Add welcome message when needed
-  useEffect(() => {
-    if (shouldShowWelcome) {
-      const timer = setTimeout(() => {
-        setMessages(current => {
-          // Only add if still empty and no welcome message exists
-          if (current.length === 0 && !current.some(msg => msg.id === 'welcome-message')) {
-            logger.dev.log('Adding welcome message to empty chat');
-            return [welcomeMessage];
-          }
-          return current;
-        });
-        setShouldShowWelcome(false); // Reset flag after adding
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [shouldShowWelcome, welcomeMessage]);
+  }, [messages.length, sessionId, welcomeMessage]);
 
   // CRITICAL FIX: Operation locking functions to prevent race conditions
   const lockSession = useCallback(() => {
-    const currentSessionId = sessionId; // Capture current session ID
+    const currentSessionId = sessionIdRef.current; // Use ref for stable value
     logger.dev.log(`🔒 Locking session: ${currentSessionId}`);
     isOperationInProgress.current = true;
     lockedSessionId.current = currentSessionId;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // sessionId intentionally captured in closure to prevent unnecessary recreations
+  }, []);
 
   const unlockSession = useCallback(() => {
     logger.dev.log(`🔓 Unlocking session: ${lockedSessionId.current}`);
@@ -331,5 +321,6 @@ export function useChatSession({
     lockSession,
     unlockSession,
     detectedArtifacts,
+    isLoadingSession,
   };
 }

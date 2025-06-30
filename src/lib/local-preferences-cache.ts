@@ -3,6 +3,8 @@
  * Caches user preferences, starred models, learning preferences, etc.
  */
 
+import { logger } from '@/lib/logger';
+
 export interface CachedUserPreferences {
   // Chat settings
   defaultModel: string
@@ -53,7 +55,7 @@ export const preferencesCache = {
       const cached = localStorage.getItem(PREFERENCES_CACHE_KEY)
       return cached ? JSON.parse(cached) : null
     } catch (error) {
-      console.error('Failed to read preferences cache:', error)
+      logger.error('Failed to read preferences cache:', error)
       return null
     }
   },
@@ -73,7 +75,7 @@ export const preferencesCache = {
         } as PreferencesCacheMetadata)
       )
     } catch (error) {
-      console.error('Failed to write preferences cache:', error)
+      logger.error('Failed to write preferences cache:', error)
     }
   },
 

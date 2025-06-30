@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { Ratelimit, Duration } from '@upstash/ratelimit';
+import { logger } from '@/lib/logger';
 
 // Initialize Redis client
 let redis: Redis | null = null;
@@ -78,7 +79,7 @@ export const cache = {
       
       return data as T;
     } catch (error) {
-      console.error('Redis cache get error:', error);
+      logger.error('Redis cache get error:', error);
       return null;
     }
   },
@@ -92,7 +93,7 @@ export const cache = {
         await redis.set(key, JSON.stringify(value));
       }
     } catch (error) {
-      console.error('Redis cache set error:', error);
+      logger.error('Redis cache set error:', error);
     }
   },
 
@@ -101,7 +102,7 @@ export const cache = {
       const redis = getRedis();
       await redis.del(key);
     } catch (error) {
-      console.error('Redis cache delete error:', error);
+      logger.error('Redis cache delete error:', error);
     }
   },
 
@@ -113,7 +114,7 @@ export const cache = {
         await redis.del(...keys);
       }
     } catch (error) {
-      console.error('Redis cache invalidate pattern error:', error);
+      logger.error('Redis cache invalidate pattern error:', error);
     }
   },
 };
