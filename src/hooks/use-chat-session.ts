@@ -159,7 +159,7 @@ export function useChatSession({
     if (isOperationInProgress.current) {
       logger.dev.log('🚨 [RACE CONDITION PREVENTION] Blocked new session creation during operation');
       // Return the locked session ID to prevent race condition
-      return lockedSessionId.current || sessionId || crypto.randomUUID();
+      return lockedSessionId.current || sessionId || generatedSessionIdRef.current || 'temp-session';
     }
     
     const newSessionId = crypto.randomUUID();
@@ -185,7 +185,7 @@ export function useChatSession({
     // Reset loading state for fresh session
     lastLoadedSessionId.current = null;
     return newSessionId;
-  }, [userId, sessionId]);  
+  }, [userId]);  
   // sessionId intentionally omitted to prevent unnecessary recreations
 
   // When initialMessages changes, update our state and scan for artifacts
@@ -287,15 +287,12 @@ export function useChatSession({
   // Add welcome message when messages are empty and not loading
   // CRITICAL FIX: Simplify welcome message logic to prevent race conditions
   useEffect(() => {
-    if (messages.length === 0 && sessionId && !lastLoadedSessionId.current) {
-      // Check if we should show welcome message
-      const hasWelcomeMessage = messages.some(msg => msg.id === 'welcome-message');
-      if (!hasWelcomeMessage) {
-        logger.dev.log('Adding welcome message to empty chat');
-        setMessages([welcomeMessage]);
-      }
+    if (messages.length === 0 && sessionId && !isLoadingSession && !lastLoadedSessionId.current) {
+      // Only add welcome message if we're not currently loading and have no messages
+      logger.dev.log('Adding welcome message to empty chat');
+      setMessages([welcomeMessage]);
     }
-  }, [messages.length, sessionId, welcomeMessage]);
+  }, [sessionId, isLoadingSession, welcomeMessage]); // Remove messages.length dependency to prevent loops
 
   // CRITICAL FIX: Operation locking functions to prevent race conditions
   const lockSession = useCallback(() => {
