@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { cache, cacheKeys, CACHE_TTL } from '@/lib/redis';
+import { logger } from '@/lib/logger';
 
 /**
  * 🗄️ Server-side Database Operations
@@ -93,13 +94,13 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     // First check if user is properly authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      console.warn('No authenticated user found, using defaults')
+      logger.dev.warn('No authenticated user found, using defaults')
       return DEFAULT_USER_PREFERENCES
     }
 
     // Verify the userId matches the authenticated user
     if (user.id !== userId) {
-      console.warn('User ID mismatch, using defaults')
+      logger.dev.warn('User ID mismatch, using defaults')
       return DEFAULT_USER_PREFERENCES
     }
 
@@ -114,7 +115,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     }
 
     if (!data) {
-      console.log('No user preferences found, creating defaults for user:', userId)
+      logger.dev.log('No user preferences found, creating defaults for user:', userId)
       return await createUserPreferencesWithDynamicDefaults(userId)
     }
 
@@ -131,7 +132,7 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     
     return preferences;
   } catch (error) {
-    console.error('Error getting user preferences:', error)
+    logger.error('Error getting user preferences:', error)
     // Return defaults instead of throwing to prevent app crashes
     return DEFAULT_USER_PREFERENCES
   }
@@ -162,24 +163,24 @@ export async function createUserPreferencesWithDynamicDefaults(userId: string): 
         const { data: allModels } = await response.json()
         if (Array.isArray(allModels) && allModels.length > 0) {
           const top5Models = getTop5Models(allModels)
-          console.log('Selected top 5 models:', top5Models)
+          logger.dev.log('Selected top 5 models:', top5Models)
           
           if (top5Models.length > 0) {
             dynamicDefaults.starredModels = top5Models
             dynamicDefaults.primaryModel = top5Models[0]
-            console.log('✨ Using dynamic top 5 models for new user:', top5Models)
+            logger.dev.log('✨ Using dynamic top 5 models for new user:', top5Models)
           }
         }
       }
     } catch (apiError) {
-      console.warn('Failed to fetch dynamic models, using static defaults:', apiError)
+      logger.dev.warn('Failed to fetch dynamic models, using static defaults:', apiError)
       // Continue with static defaults if API call fails
     }
 
     // Create preferences with the determined defaults
     return await createUserPreferences(userId, dynamicDefaults)
   } catch (error) {
-    console.error('Error creating user preferences with dynamic defaults:', error)
+    logger.error('Error creating user preferences with dynamic defaults:', error)
     // Return defaults instead of throwing
     return DEFAULT_USER_PREFERENCES
   }
@@ -198,7 +199,7 @@ export async function createUserPreferences(
     // Verify user is authenticated and matches the userId
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user || user.id !== userId) {
-      console.warn('Authentication check failed for createUserPreferences')
+      logger.dev.warn('Authentication check failed for createUserPreferences')
       return preferences // Return the preferences without saving
     }
 
@@ -218,7 +219,7 @@ export async function createUserPreferences(
       .single()
 
     if (error) {
-      console.error('Failed to create user preferences:', error.message)
+      logger.error('Failed to create user preferences:', error.message)
       return preferences // Return the preferences without saving
     }
 
@@ -230,10 +231,10 @@ export async function createUserPreferences(
       primaryModel: data.default_model || preferences.primaryModel
     }
     
-    console.log('Created user preferences for user:', userId)
+    logger.dev.log('Created user preferences for user:', userId)
     return apiPreferences
   } catch (error) {
-    console.error('Error creating user preferences:', error)
+    logger.error('Error creating user preferences:', error)
     return preferences // Return the preferences without saving
   }
 }
@@ -255,7 +256,7 @@ export async function updateUserPreferences(
     // Verify authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user || user.id !== userId) {
-      console.warn('Authentication check failed for updateUserPreferences')
+      logger.dev.warn('Authentication check failed for updateUserPreferences')
       return updated
     }
 
@@ -271,7 +272,7 @@ export async function updateUserPreferences(
       .single()
 
     if (error) {
-      console.error('Failed to update user preferences:', error.message)
+      logger.error('Failed to update user preferences:', error.message)
       return updated
     }
 
@@ -292,7 +293,7 @@ export async function updateUserPreferences(
 
     return newPreferences;
   } catch (error) {
-    console.error('Error updating user preferences:', error)
+    logger.error('Error updating user preferences:', error)
     throw error
   }
 }
@@ -314,7 +315,7 @@ export async function toggleStarredModel(userId: string, modelId: string): Promi
     
     return await updateUserPreferences(userId, { starredModels })
   } catch (error) {
-    console.error('Error toggling starred model:', error)
+    logger.error('Error toggling starred model:', error)
     throw error
   }
 }
@@ -337,7 +338,7 @@ export async function setPrimaryModel(userId: string, modelId: string): Promise<
       starredModels 
     })
   } catch (error) {
-    console.error('Error setting primary model:', error)
+    logger.error('Error setting primary model:', error)
     throw error
   }
 } 

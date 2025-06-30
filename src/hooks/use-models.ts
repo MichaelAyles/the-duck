@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useStarredModels } from './use-starred-models'
+import { logger } from '@/lib/logger'
 
 interface Model {
   id: string
@@ -25,6 +26,10 @@ export function useModels() {
   const [allModels, setAllModels] = useState<Model[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0)
+  
+  // Cache TTL: 5 minutes for models to improve performance
+  const MODELS_CACHE_TTL = 5 * 60 * 1000;
   
   const { 
     starredModels, 
@@ -37,8 +42,14 @@ export function useModels() {
     loading: starredLoading 
   } = useStarredModels()
 
-  // Fetch curated models only when explicitly requested
-  const fetchCuratedModels = useCallback(async () => {
+  // Fetch curated models only when explicitly requested with smart caching
+  const fetchCuratedModels = useCallback(async (force = false) => {
+      // Check cache freshness - avoid fetching if recently loaded
+      const now = Date.now();
+      if (!force && curatedModels.length > 0 && (now - lastFetchTime) < MODELS_CACHE_TTL) {
+        return; // Use cached data for better performance
+      }
+      
       try {
         setIsLoading(true)
         const response = await fetch('/api/models?type=curated&include_starred=true')
@@ -61,6 +72,7 @@ export function useModels() {
         }))
         
         setCuratedModels(modelsWithStarred)
+        setLastFetchTime(now) // Update cache timestamp
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error')
         // Don't set fallback models - let the UI show the error state
@@ -68,7 +80,7 @@ export function useModels() {
       } finally {
         setIsLoading(false)
       }
-  }, [isStarred, isActive]) // Dependencies for the callback
+  }, [isStarred, isActive, curatedModels.length, lastFetchTime, MODELS_CACHE_TTL]) // Enhanced dependencies
   
   // Initialize curated models on first call
   const [hasInitialized, setHasInitialized] = useState(false)
@@ -79,8 +91,12 @@ export function useModels() {
     }
   }, [hasInitialized, fetchCuratedModels])
 
-  const fetchAllModels = useCallback(async () => {
-    if (allModels.length > 0) return // Already fetched
+  const fetchAllModels = useCallback(async (force = false) => {
+    // Enhanced caching: check both length and cache age
+    const now = Date.now();
+    if (!force && allModels.length > 0 && (now - lastFetchTime) < MODELS_CACHE_TTL) {
+      return; // Use cached data for better performance
+    }
 
     try {
       setIsLoading(true)
@@ -105,17 +121,18 @@ export function useModels() {
       }))
       
       setAllModels(modelsWithStarred)
+      setLastFetchTime(now) // Update cache timestamp
       
       // Log the top 5 models for debugging
       if (data.top5) {
-        console.log('OpenRouter top 5 models:', data.top5)
+        logger.dev.log('OpenRouter top 5 models:', data.top5)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setIsLoading(false)
     }
-  }, [allModels.length, isStarred, isActive])
+  }, [allModels.length, isStarred, isActive, lastFetchTime, MODELS_CACHE_TTL])
 
   // Memoize the return object to prevent infinite re-renders
   return useMemo(() => ({

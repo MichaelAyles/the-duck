@@ -3,6 +3,7 @@ import {
   ParsedArtifact, 
   ArtifactType 
 } from '@/types/artifact';
+import { logger } from '@/lib/logger';
 
 export class ArtifactParser {
   /**
@@ -13,10 +14,8 @@ export class ArtifactParser {
     let cleanedContent = content;
 
     // Debug logging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ArtifactParser.parseContent called with content length:', content.length);
-      console.log('Content preview:', content.substring(0, 200));
-    }
+    logger.dev.log('ArtifactParser.parseContent called with content length:', content.length);
+    logger.dev.log('Content preview:', content.substring(0, 200));
 
     // Check for DuckPond artifacts
     const duckpondArtifacts = this.extractDuckPondArtifacts(content);
@@ -33,10 +32,8 @@ export class ArtifactParser {
     artifacts.push(...htmlArtifacts.artifacts);
     cleanedContent = htmlArtifacts.cleanedContent;
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('ArtifactParser found artifacts:', artifacts.length);
-      artifacts.forEach(a => console.log('- Artifact:', a.type, a.title));
-    }
+    logger.dev.log('ArtifactParser found artifacts:', artifacts.length);
+    artifacts.forEach(a => logger.dev.log('- Artifact:', a.type, a.title));
 
     return {
       hasArtifacts: artifacts.length > 0,

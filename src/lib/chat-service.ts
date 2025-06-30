@@ -66,9 +66,7 @@ export class ChatService {
   public async saveChatSession(messages: Message[], model: string, title?: string) {
     // Don't save if no user is authenticated
     if (!this.userId) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.dev.log('Skipping chat session save - no user authenticated')
-      }
+      logger.dev.log('Skipping chat session save - no user authenticated')
       return
     }
 
@@ -95,9 +93,7 @@ export class ChatService {
         })
 
         if (response.ok) {
-          if (process.env.NODE_ENV === 'development') {
-            logger.dev.log(`✅ Session ${this.sessionId} saved successfully on attempt ${attempt}`)
-          }
+          logger.dev.log(`✅ Session ${this.sessionId} saved successfully on attempt ${attempt}`)
           return // Success - exit retry loop
         }
 
@@ -110,9 +106,7 @@ export class ChatService {
         if (attempt < maxRetries) {
           // Wait before retrying: 200ms, 400ms, 800ms
           const delay = 200 * Math.pow(2, attempt - 1);
-          if (process.env.NODE_ENV === 'development') {
-            logger.dev.log(`⚠️ Session save failed (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
-          }
+          logger.dev.log(`⚠️ Session save failed (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`);
           await new Promise(resolve => setTimeout(resolve, delay))
           continue
         }
@@ -131,9 +125,7 @@ export class ChatService {
         return []
       }
 
-      if (process.env.NODE_ENV === 'development') {
-        logger.dev.log(`Loading session ${this.sessionId} for user ${this.userId}`)
-      }
+      logger.dev.log(`Loading session ${this.sessionId} for user ${this.userId}`);
       
       // Retry logic to handle race conditions between session creation and retrieval
       const maxRetries = 3;
@@ -151,9 +143,7 @@ export class ChatService {
           if (response.ok) {
             const data = await response.json()
             const session = data.session
-            if (process.env.NODE_ENV === 'development') {
-              logger.dev.log(`✅ Session ${this.sessionId} loaded successfully on attempt ${attempt}`)
-            }
+            logger.dev.log(`✅ Session ${this.sessionId} loaded successfully on attempt ${attempt}`)
             return this.parseSessionMessages(session)
           }
           
@@ -161,15 +151,11 @@ export class ChatService {
             if (attempt < maxRetries) {
               // Wait before retrying: 100ms, 200ms, 400ms
               const delay = 100 * Math.pow(2, attempt - 1);
-              if (process.env.NODE_ENV === 'development') {
-                logger.dev.log(`⏳ Session ${this.sessionId} not found (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`)
-              }
+              logger.dev.log(`⏳ Session ${this.sessionId} not found (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`);
               await new Promise(resolve => setTimeout(resolve, delay))
               continue
             } else {
-              if (process.env.NODE_ENV === 'development') {
-                logger.dev.log(`❌ Session ${this.sessionId} not found after ${maxRetries} attempts`)
-              }
+              logger.dev.log(`❌ Session ${this.sessionId} not found after ${maxRetries} attempts`)
               return []
             }
           }
@@ -181,9 +167,7 @@ export class ChatService {
           lastError = error instanceof Error ? error : new Error('Unknown error')
           if (attempt < maxRetries) {
             const delay = 100 * Math.pow(2, attempt - 1);
-            if (process.env.NODE_ENV === 'development') {
-              logger.dev.log(`⚠️ Error loading session (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`)
-            }
+            logger.dev.log(`⚠️ Error loading session (attempt ${attempt}/${maxRetries}):`, error, `- retrying in ${delay}ms`);
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
           }
@@ -194,22 +178,18 @@ export class ChatService {
       throw lastError || new Error('Failed to load session after all retries')
       
     } catch (error) {
-      console.warn('Failed to load chat session:', error)
+      logger.dev.warn('Failed to load chat session:', error)
       return []
     }
   }
 
   private parseSessionMessages(session: { messages?: unknown[] }): Message[] {
     if (session && Array.isArray(session.messages)) {
-      if (process.env.NODE_ENV === 'development') {
-        logger.dev.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
-      }
+      logger.dev.log(`Found ${session.messages.length} messages in session ${this.sessionId}`)
       return session.messages as Message[]
     }
     
-    if (process.env.NODE_ENV === 'development') {
-      logger.dev.log(`No messages found for session ${this.sessionId}`)
-    }
+    logger.dev.log(`No messages found for session ${this.sessionId}`);
     return []
   }
 
@@ -238,7 +218,7 @@ export class ChatService {
 
       return summary
     } catch (error) {
-      console.warn('Chat summarization failed (storage may be disabled):', error)
+      logger.dev.warn('Chat summarization failed (storage may be disabled):', error)
       
       // Return a default summary in case of failure
       return {
@@ -279,7 +259,7 @@ export class ChatService {
       
       return null;
     } catch (error) {
-      console.warn('Failed to get session title:', error);
+      logger.dev.warn('Failed to get session title:', error);
       return null;
     }
   }
@@ -302,7 +282,7 @@ export class ChatService {
 
       this.clearInactivityTimer()
     } catch (error) {
-      console.warn('Failed to end chat session:', error)
+      logger.dev.warn('Failed to end chat session:', error)
     }
   }
 
@@ -353,7 +333,7 @@ export class ChatService {
         isActive: session.is_active,
       }))
     } catch (error) {
-      console.warn('Failed to load chat history:', error)
+      logger.dev.warn('Failed to load chat history:', error)
       return []
     }
   }
@@ -373,7 +353,7 @@ export class ChatService {
         throw new Error('Failed to delete chat session')
       }
     } catch (error) {
-      console.warn('Failed to delete chat session:', error)
+      logger.dev.warn('Failed to delete chat session:', error)
       throw error
     }
   }
@@ -410,7 +390,7 @@ export class ChatService {
         messageCount: Array.isArray(session.messages) ? session.messages.length : 0,
       }))
     } catch (error) {
-      console.warn('Failed to search chat sessions:', error)
+      logger.dev.warn('Failed to search chat sessions:', error)
       return []
     }
   }
@@ -482,7 +462,7 @@ export class ChatService {
         recentActivity,
       }
     } catch (error) {
-      console.warn('Failed to get user activity:', error)
+      logger.dev.warn('Failed to get user activity:', error)
       return null
     }
   }

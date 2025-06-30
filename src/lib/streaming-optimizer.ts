@@ -4,6 +4,8 @@
  * Basic streaming utilities for chat responses
  */
 
+import { logger } from '@/lib/logger';
+
 interface StreamingConfig {
   chunkSize: number;
   timeoutMs: number;
@@ -72,7 +74,7 @@ export class StreamingOptimizer {
 
           controller.close();
         } catch (error) {
-          console.error('Streaming error:', error);
+          logger.error('Streaming error:', error);
           
           controller.enqueue(encoder.encode(`\n\ndata: ${JSON.stringify({ 
             type: 'error',
