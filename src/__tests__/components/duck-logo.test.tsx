@@ -111,8 +111,8 @@ describe('DuckLogo', () => {
     
     const image = screen.getByAltText('Duck Logo')
     expect(image).toHaveStyle({
-      width: 'auto',
-      height: 'auto'
+      maxWidth: '32px',
+      maxHeight: '32px'
     })
   })
 
