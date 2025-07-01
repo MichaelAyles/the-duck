@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { preferencesCache, type CachedUserPreferences } from '@/lib/local-preferences-cache'
+import { cachedFetch } from '@/lib/request-cache'
 import { useAuth } from '@/components/auth/auth-provider'
 import { logger } from '@/lib/logger'
 // Import removed - DEFAULT_ACTIVE_MODELS not needed in this hook
@@ -63,23 +64,23 @@ export function useUserPreferences(): UseUserPreferencesReturn {
       setIsLoadingFresh(true)
       setError(null)
 
-      // Fetch from all preference endpoints in parallel
+      // Fetch from all preference endpoints in parallel using cached requests
       const [userPrefsResponse, starredModelsResponse, learningPrefsResponse] = await Promise.allSettled([
-        fetch('/api/user/preferences'),
-        fetch('/api/starred-models'),
-        fetch('/api/learning-preferences'),
+        cachedFetch.userPreferences(),
+        cachedFetch.starredModels(),
+        fetch('/api/learning-preferences'), // Learning prefs not yet cached
       ])
 
-      // Process user preferences
+      // Process user preferences (cached fetch returns JSON directly)
       let userPrefs = {}
-      if (userPrefsResponse.status === 'fulfilled' && userPrefsResponse.value.ok) {
-        userPrefs = await userPrefsResponse.value.json()
+      if (userPrefsResponse.status === 'fulfilled') {
+        userPrefs = userPrefsResponse.value
       }
 
-      // Process starred models
+      // Process starred models (cached fetch returns JSON directly)
       let starredModels: string[] = []
-      if (starredModelsResponse.status === 'fulfilled' && starredModelsResponse.value.ok) {
-        const starredData = await starredModelsResponse.value.json()
+      if (starredModelsResponse.status === 'fulfilled') {
+        const starredData = starredModelsResponse.value
         starredModels = starredData.starredModels || []
       }
 
