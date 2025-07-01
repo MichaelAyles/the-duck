@@ -185,7 +185,7 @@ export function useChatSession({
     // Reset loading state for fresh session
     lastLoadedSessionId.current = null;
     return newSessionId;
-  }, [userId]);  
+  }, [userId]);
   // sessionId intentionally omitted to prevent unnecessary recreations
 
   // When initialMessages changes, update our state and scan for artifacts
