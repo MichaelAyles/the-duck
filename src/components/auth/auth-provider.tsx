@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isConfigured = isSupabaseConfigured;
 
   // Warm caches for instant sidebar/settings after auth resolves
+  // Safe: this hook is client-only (file is 'use client'), so window exists at runtime
   useBootstrapPreload();
 
   useEffect(() => {
