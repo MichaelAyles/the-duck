@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
+import { useBootstrapPreload } from '@/hooks/use-bootstrap-preload';
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +25,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   // Check if Supabase is properly configured
   const isConfigured = isSupabaseConfigured;
+
+  // Warm caches for instant sidebar/settings after auth resolves
+  useBootstrapPreload();
 
   useEffect(() => {
     if (!isConfigured || !supabase) {
@@ -116,4 +120,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+}
