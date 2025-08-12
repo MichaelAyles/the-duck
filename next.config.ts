@@ -5,6 +5,8 @@ import type { NextConfig } from "next";
  * 
  * Optimized configuration for development and production environments
  */
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig: NextConfig = {
   // 🚀 Performance optimizations
   experimental: {
@@ -13,10 +15,25 @@ const nextConfig: NextConfig = {
       'lucide-react', 
       '@radix-ui/react-icons',
       'react-markdown',
-      'remark-gfm'
+      'remark-gfm',
+      ...(isDev ? [] : ['@excalidraw/excalidraw']) // Skip heavy optimization in dev
     ],
     // Enable webpack build worker for faster builds
     webpackBuildWorker: true,
+    // Enable faster builds with turbo mode (if available)
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
+    // Development-specific optimizations
+    ...(isDev && {
+      optimizeCss: false,
+      esmExternals: 'loose',
+    }),
   },
 
   // 📦 Build optimizations
@@ -131,6 +148,37 @@ const nextConfig: NextConfig = {
       ...(config.ignoreWarnings || []),
       /Critical dependency: the request of a dependency is an expression/,
     ];
+
+    // Development performance optimizations
+    if (dev) {
+      // Faster incremental builds in development
+      config.cache = {
+        type: 'filesystem',
+        buildDependencies: {
+          config: [__filename],
+        },
+      };
+      
+      // Reduce bundle analysis overhead in dev
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false,
+      };
+    }
+
+    // Optimize large libraries
+    if (!isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        // Use lighter alternatives for development
+        '@excalidraw/excalidraw': dev 
+          ? '@excalidraw/excalidraw/dist/excalidraw.development.js'
+          : '@excalidraw/excalidraw'
+      };
+    }
+
     return config;
   },
 
