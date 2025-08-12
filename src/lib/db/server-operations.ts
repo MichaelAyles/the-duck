@@ -62,8 +62,8 @@ export function getTop5Models(allModels: OpenRouterModel[]): string[] {
 
 // Re-export the default preferences and utilities
 export const DEFAULT_USER_PREFERENCES: UserPreferencesData = {
-  starredModels: ["google/gemini-2.5-flash-preview-05-20", "google/gemini-2.5-pro-preview-05-06", "deepseek/deepseek-chat-v3-0324", "anthropic/claude-sonnet-4", "openai/gpt-4o-mini"],
-  primaryModel: "google/gemini-2.5-flash-preview-05-20",
+  starredModels: ["google/gemini-2.5-flash", "deepseek/deepseek-chat-v3-0324", "openrouter/horizon-beta", "qwen/qwen3-coder", "z-ai/glm-4.5"],
+  primaryModel: "google/gemini-2.5-flash",
   theme: 'system',
   responseTone: 'match',
   storageEnabled: true,

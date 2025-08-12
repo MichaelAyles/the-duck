@@ -80,7 +80,7 @@ export function ChatLayout() {
           id: newSessionId,
           title: 'New Chat',
           messages: [],
-          model: 'google/gemini-2.5-flash-preview-05-20', // Default model
+          model: 'google/gemini-2.5-flash', // Default model
         }),
       });
       
