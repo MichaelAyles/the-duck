@@ -1044,13 +1044,13 @@ export function ChatHeader({ settings, onSettingsChange, onEndChat, messageCount
               <br /><br />
               • Google Gemini 2.5 Flash (Primary)
               <br />
-              • Google Gemini 2.5 Pro
+              • DeepSeek Chat v3
               <br />
-              • DeepSeek v3
+              • Horizon Beta
               <br />
-              • Claude Sonnet 4
+              • Qwen3 Coder
               <br />
-              • GPT-4o Mini
+              • GLM-4.5
               <br /><br />
               This action cannot be undone.
             </AlertDialogDescription>
