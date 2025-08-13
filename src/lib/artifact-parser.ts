@@ -32,6 +32,11 @@ export class ArtifactParser {
     artifacts.push(...htmlArtifacts.artifacts);
     cleanedContent = htmlArtifacts.cleanedContent;
 
+    // Check for Circuit artifacts
+    const circuitArtifacts = this.extractCircuitArtifacts(cleanedContent);
+    artifacts.push(...circuitArtifacts.artifacts);
+    cleanedContent = circuitArtifacts.cleanedContent;
+
     logger.dev.log('ArtifactParser found artifacts:', artifacts.length);
     artifacts.forEach(a => logger.dev.log('- Artifact:', a.type, a.title));
 
@@ -164,6 +169,76 @@ export class ArtifactParser {
   }
 
   /**
+   * Extract Circuit artifacts using <circuit> or <circuitjs> tags
+   */
+  private static extractCircuitArtifacts(content: string): ArtifactDetectionResult {
+    const artifacts: ParsedArtifact[] = [];
+    let cleanedContent = content;
+
+    // Regex to match both <circuit> and <circuitjs> tags
+    const circuitRegex = /<(circuit|circuitjs)\s+([^>]*?)>([\s\S]*?)<\/\1>/gi;
+    let match;
+
+    while ((match = circuitRegex.exec(content)) !== null) {
+      const tagName = match[1]; // 'circuit' or 'circuitjs'
+      const attributesStr = match[2];
+      const artifactContent = match[3].trim();
+      
+      // Parse attributes
+      const attributes = this.parseAttributes(attributesStr);
+      const title = attributes.title || `CircuitJS1 ${tagName === 'circuit' ? 'Circuit' : 'Simulation'}`;
+      const description = attributes.description || `Interactive electronic circuit simulation`;
+
+      // Validate circuit content (basic netlist format check)
+      if (this.isValidNetlist(artifactContent)) {
+        artifacts.push({
+          type: 'circuit',
+          title,
+          description,
+          content: artifactContent,
+          metadata: {
+            circuitType: tagName,
+            // Parse additional metadata if needed
+          },
+        });
+
+        // Replace with placeholder
+        const placeholder = `\n\n**🦆 DuckPond Artifact: ${title}**\n*${description}*\n\n`;
+        cleanedContent = cleanedContent.replace(match[0], placeholder);
+      } else {
+        logger.dev.log('Invalid circuit netlist format detected, skipping:', artifactContent.substring(0, 100));
+      }
+    }
+
+    return {
+      hasArtifacts: artifacts.length > 0,
+      artifacts,
+      cleanedContent,
+    };
+  }
+
+  /**
+   * Basic validation for CircuitJS1 netlist format
+   */
+  private static isValidNetlist(content: string): boolean {
+    if (!content || content.trim().length === 0) {
+      return false;
+    }
+
+    const lines = content.trim().split('\n');
+    
+    // Check if first line starts with $ (CircuitJS1 simulation parameters)
+    if (lines.length > 0 && lines[0].trim().startsWith('$')) {
+      return true;
+    }
+
+    // Also accept netlists without $ line (component-only)
+    // Check if content contains typical component codes
+    const componentCodes = /^[a-zA-Z0-9]+\s+\d+\s+\d+\s+\d+\s+\d+/m;
+    return componentCodes.test(content);
+  }
+
+  /**
    * Parse XML-like attributes from a string
    */
   private static parseAttributes(attributesStr: string): Record<string, string> {
@@ -205,6 +280,9 @@ export class ArtifactParser {
         break;
       case 'javascript':
         this.validateJavaScript(artifact.content, errors);
+        break;
+      case 'circuit':
+        this.validateCircuit(artifact.content, errors);
         break;
     }
 
@@ -275,6 +353,30 @@ export class ArtifactParser {
     }
   }
 
+  private static validateCircuit(content: string, errors: string[]): void {
+    // Validate circuit netlist format
+    if (!this.isValidNetlist(content)) {
+      errors.push('Invalid circuit netlist format');
+    }
+
+    // Check for reasonable content length
+    if (content.length > 50000) {
+      errors.push('Circuit netlist too large (>50KB)');
+    }
+
+    // Basic security check - circuit netlists should only contain printable ASCII
+    const nonPrintableRegex = /[^\x20-\x7E\n\r\t]/;
+    if (nonPrintableRegex.test(content)) {
+      errors.push('Circuit netlist contains non-printable characters');
+    }
+
+    // Check for excessive number of components (performance limit)
+    const lines = content.split('\n').filter(line => line.trim() && !line.trim().startsWith('$') && !line.trim().startsWith('#'));
+    if (lines.length > 1000) {
+      errors.push('Circuit has too many components (>1000)');
+    }
+  }
+
   /**
    * Generate a file name for an artifact
    */
@@ -298,6 +400,8 @@ export class ArtifactParser {
         return `${sanitizedTitle}-${timestamp}.css`;
       case 'json':
         return `${sanitizedTitle}-${timestamp}.json`;
+      case 'circuit':
+        return `${sanitizedTitle}-${timestamp}.txt`;
       default:
         return `${sanitizedTitle}-${timestamp}.artifact`;
     }
@@ -318,6 +422,8 @@ export class ArtifactParser {
         return 'text/css';
       case 'json':
         return 'application/json';
+      case 'circuit':
+        return 'text/plain';
       default:
         return 'text/x-duckpond-artifact';
     }

@@ -399,9 +399,11 @@ export class OpenRouterClient {
 
   private getModelDisplayName(modelId: string): string {
     const displayNames: Record<string, string> = {
-      'google/gemini-2.5-flash-preview-05-20': 'Gemini 2.5 Flash Preview',
-      'google/gemini-2.5-pro-preview-05-06': 'Gemini 2.5 Pro Preview', 
+      'google/gemini-2.5-flash': 'Gemini 2.5 Flash',
       'deepseek/deepseek-chat-v3-0324': 'DeepSeek Chat v3',
+      'openrouter/horizon-beta': 'Horizon Beta',
+      'qwen/qwen3-coder': 'Qwen3 Coder',
+      'z-ai/glm-4.5': 'GLM-4.5',
       'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
       'openai/gpt-4o-mini': 'GPT-4o Mini'
     }
@@ -413,14 +415,8 @@ export class OpenRouterClient {
 // Default curated models for the dropdown
 export const CURATED_MODELS = [
   {
-    id: 'google/gemini-2.5-flash-preview-05-20',
-    name: 'Gemini 2.5 Flash Preview',
-    provider: 'Google',
-    starred: true,
-  },
-  {
-    id: 'google/gemini-2.5-pro-preview-05-06',
-    name: 'Gemini 2.5 Pro Preview',
+    id: 'google/gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
     provider: 'Google',
     starred: true,
   },
@@ -431,15 +427,21 @@ export const CURATED_MODELS = [
     starred: true,
   },
   {
-    id: 'anthropic/claude-sonnet-4',
-    name: 'Claude Sonnet 4',
-    provider: 'Anthropic',
+    id: 'openrouter/horizon-beta',
+    name: 'Horizon Beta',
+    provider: 'OpenRouter',
     starred: true,
   },
   {
-    id: 'openai/gpt-4o-mini',
-    name: 'GPT-4o Mini',
-    provider: 'OpenAI',
+    id: 'qwen/qwen3-coder',
+    name: 'Qwen3 Coder',
+    provider: 'Qwen',
+    starred: true,
+  },
+  {
+    id: 'z-ai/glm-4.5',
+    name: 'GLM-4.5',
+    provider: 'Z-AI',
     starred: true,
   },
 ]

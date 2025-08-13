@@ -84,6 +84,7 @@ export class ChatService {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include', // Include cookies for authentication
           body: JSON.stringify({
             id: this.sessionId,
             title: sessionTitle,
@@ -138,6 +139,7 @@ export class ChatService {
             headers: {
               'Content-Type': 'application/json',
             },
+            credentials: 'include', // Include cookies for authentication
           })
 
           if (response.ok) {
@@ -201,6 +203,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
         body: JSON.stringify({ 
           messages,
           sessionId: this.sessionId 
@@ -250,6 +253,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       });
 
       if (response.ok) {
@@ -271,6 +275,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
         body: JSON.stringify({
           is_active: false,
         }),
@@ -316,6 +321,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       })
 
       if (!response.ok) {
@@ -347,6 +353,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       })
 
       if (!response.ok) {
@@ -374,6 +381,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       })
 
       if (!response.ok) {
@@ -419,6 +427,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       })
 
       if (!response.ok) {
@@ -475,6 +484,7 @@ export class ChatService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
       })
 
       if (!response.ok) {

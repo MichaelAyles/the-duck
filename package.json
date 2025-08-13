@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 12000 --hostname 0.0.0.0",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev --port 12000 --hostname 0.0.0.0",
+    "dev:turbo": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next dev --port 12000 --hostname 0.0.0.0 --turbo",
     "build": "next build",
     "start": "next start --port 12000 --hostname 0.0.0.0",
     "lint": "next lint",
@@ -72,6 +73,7 @@
     "@types/react-dom": "^19.0.2",
     "@types/react-syntax-highlighter": "^15.5.13",
     "autoprefixer": "^10.4.20",
+    "cross-env": "^10.0.0",
     "eslint": "^9.17.0",
     "eslint-config-next": "15.3.3",
     "jest": "^30.0.1",

@@ -1,4 +1,4 @@
-export type ArtifactType = 'react-component' | 'html' | 'javascript' | 'css' | 'json';
+export type ArtifactType = 'react-component' | 'html' | 'javascript' | 'css' | 'json' | 'circuit';
 
 export interface Artifact {
   id: string;
@@ -14,6 +14,7 @@ export interface Artifact {
     dependencies?: string[];
     props?: Record<string, unknown>;
     exports?: string[];
+    circuitType?: string; // For circuit artifacts: 'circuit' or 'circuitjs'
   };
   createdAt: Date;
   updatedAt: Date;
@@ -89,6 +90,14 @@ export const ARTIFACT_MARKERS = {
   HTML: {
     start: '<html-artifact',
     end: '</html-artifact>',
+  },
+  CIRCUIT: {
+    start: '<circuit',
+    end: '</circuit>',
+  },
+  CIRCUITJS: {
+    start: '<circuitjs',
+    end: '</circuitjs>',
   },
 } as const;
 

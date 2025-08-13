@@ -625,6 +625,8 @@ function createSandboxContent(artifact: Artifact): string {
       return artifact.content;
     case 'javascript':
       return createJavaScriptSandbox(artifact.content);
+    case 'circuit':
+      return createCircuitSandbox(artifact.content, artifact.title || 'Circuit');
     default:
       return `<pre>${artifact.content}</pre>`;
   }
@@ -859,6 +861,105 @@ function createJavaScriptSandbox(content: string): string {
 </html>`;
 }
 
+function createCircuitSandbox(netlist: string, title: string): string {
+  // URL encode the netlist for use as a query parameter
+  const encodedNetlist = encodeURIComponent(netlist);
+  
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DuckPond Circuit: ${title}</title>
+  <style>
+    body { 
+      margin: 0; 
+      padding: 0; 
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
+    iframe {
+      width: 100vw;
+      height: 100vh;
+      border: none;
+    }
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #666;
+    }
+    .error {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #e74c3c;
+      background: #fee;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #f5c6cb;
+      max-width: 500px;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading" id="loading">
+    <div style="font-size: 24px; margin-bottom: 10px;">⚡</div>
+    <div>Loading CircuitJS1 Simulator...</div>
+  </div>
+  
+  <iframe 
+    id="circuit-iframe"
+    src="/circuitjs/circuitjs1.html?cct=${encodedNetlist}"
+    style="display: none;"
+    onload="showCircuit()"
+    onerror="showError()">
+  </iframe>
+  
+  <script>
+    function showCircuit() {
+      console.log('CircuitJS1 iframe loaded successfully');
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('circuit-iframe').style.display = 'block';
+      
+      // Give CircuitJS1 additional time to initialize after iframe loads
+      setTimeout(() => {
+        console.log('CircuitJS1 should be fully initialized now');
+      }, 3000);
+    }
+    
+    function showError() {
+      document.getElementById('loading').innerHTML = \`
+        <div class="error">
+          <h3>Failed to load CircuitJS1</h3>
+          <p>Circuit simulation could not be initialized. Please check that the circuit netlist is valid.</p>
+          <details style="margin-top: 10px; text-align: left;">
+            <summary>Netlist Content</summary>
+            <pre style="background: #f5f5f5; padding: 8px; border-radius: 4px; font-size: 12px; overflow: auto; max-height: 200px;">${netlist.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+          </details>
+        </div>
+      \`;
+    }
+    
+    // Debug logging
+    console.log('CircuitJS1 iframe URL:', document.getElementById('circuit-iframe').src);
+    console.log('Circuit netlist:', \`${netlist}\`);
+    
+    // Timeout fallback in case iframe doesn't load  
+    setTimeout(() => {
+      if (document.getElementById('circuit-iframe').style.display === 'none') {
+        showError();
+      }
+    }, 15000); // 15 second timeout for CircuitJS1 to fully load
+  </script>
+</body>
+</html>`;
+}
+
 function getFileExtension(type: string): string {
   const extensions: Record<string, string> = {
     'react-component': 'jsx',
@@ -866,6 +967,7 @@ function getFileExtension(type: string): string {
     'javascript': 'js',
     'css': 'css',
     'json': 'json',
+    'circuit': 'txt',
   };
   
   return extensions[type] || 'txt';

@@ -185,8 +185,7 @@ export function useChatSession({
     // Reset loading state for fresh session
     lastLoadedSessionId.current = null;
     return newSessionId;
-  }, [userId]);
-  // sessionId intentionally omitted to prevent unnecessary recreations
+  }, [userId, sessionId]);
 
   // When initialMessages changes, update our state and scan for artifacts
   useEffect(() => {
@@ -292,7 +291,7 @@ export function useChatSession({
       logger.dev.log('Adding welcome message to empty chat');
       setMessages([welcomeMessage]);
     }
-  }, [sessionId, isLoadingSession, welcomeMessage]); // Remove messages.length dependency to prevent loops
+  }, [sessionId, isLoadingSession, welcomeMessage, messages.length]);
 
   // CRITICAL FIX: Operation locking functions to prevent race conditions
   const lockSession = useCallback(() => {

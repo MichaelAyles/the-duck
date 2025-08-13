@@ -52,11 +52,11 @@ function getTop5Models(allModels: OpenRouterModel[]): string[] {
   }
 
   const curatedTopModels = [
-    'google/gemini-2.5-flash-preview-05-20',
-    'google/gemini-2.5-pro-preview-05-06', 
+    'google/gemini-2.5-flash',
     'deepseek/deepseek-chat-v3-0324',
-    'anthropic/claude-sonnet-4',
-    'openai/gpt-4o-mini',
+    'openrouter/horizon-beta',
+    'qwen/qwen3-coder',
+    'z-ai/glm-4.5',
     'anthropic/claude-3.5-sonnet',
     'openai/gpt-4o',
     'google/gemini-flash-1.5',

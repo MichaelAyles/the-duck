@@ -1,0 +1,17 @@
+# CircuitJS1 Circuit Examples
+# This file lists available example circuits
+
+# Basic Circuits
+resistor.txt Basic Resistor Circuit
+capacitor.txt Basic Capacitor Circuit
+inductor.txt Basic Inductor Circuit
+
+# Electronic Circuits  
+diode.txt Diode Circuit
+transistor.txt Transistor Circuit
+opamp.txt Op-Amp Circuit
+
+# Digital Logic
+logic.txt Logic Gates
+flipflop.txt Flip-Flop Circuit
+counter.txt Counter Circuit

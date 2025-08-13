@@ -5,6 +5,8 @@ import type { NextConfig } from "next";
  * 
  * Optimized configuration for development and production environments
  */
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig: NextConfig = {
   // 🚀 Performance optimizations
   experimental: {
@@ -13,10 +15,21 @@ const nextConfig: NextConfig = {
       'lucide-react', 
       '@radix-ui/react-icons',
       'react-markdown',
-      'remark-gfm'
+      'remark-gfm',
+      ...(isDev ? [] : ['@excalidraw/excalidraw']) // Skip heavy optimization in dev
     ],
     // Enable webpack build worker for faster builds
     webpackBuildWorker: true,
+  },
+
+  // Turbopack configuration (stable in Next.js 15)
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
+      },
+    },
   },
 
   // 📦 Build optimizations
@@ -131,6 +144,24 @@ const nextConfig: NextConfig = {
       ...(config.ignoreWarnings || []),
       /Critical dependency: the request of a dependency is an expression/,
     ];
+
+    // Development performance optimizations
+    if (dev) {
+      // Faster incremental builds in development
+      config.cache = {
+        type: 'filesystem',
+        allowCollectingMemory: true,
+      };
+      
+      // Reduce bundle analysis overhead in dev
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false,
+      };
+    }
+
     return config;
   },
 
