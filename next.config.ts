@@ -20,20 +20,16 @@ const nextConfig: NextConfig = {
     ],
     // Enable webpack build worker for faster builds
     webpackBuildWorker: true,
-    // Enable faster builds with turbo mode (if available)
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+  },
+
+  // Turbopack configuration (stable in Next.js 15)
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
-    // Development-specific optimizations
-    ...(isDev && {
-      optimizeCss: false,
-      esmExternals: 'loose',
-    }),
   },
 
   // 📦 Build optimizations
@@ -154,9 +150,7 @@ const nextConfig: NextConfig = {
       // Faster incremental builds in development
       config.cache = {
         type: 'filesystem',
-        buildDependencies: {
-          config: [__filename],
-        },
+        allowCollectingMemory: true,
       };
       
       // Reduce bundle analysis overhead in dev
@@ -165,17 +159,6 @@ const nextConfig: NextConfig = {
         removeAvailableModules: false,
         removeEmptyChunks: false,
         splitChunks: false,
-      };
-    }
-
-    // Optimize large libraries
-    if (!isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        // Use lighter alternatives for development
-        '@excalidraw/excalidraw': dev 
-          ? '@excalidraw/excalidraw/dist/excalidraw.development.js'
-          : '@excalidraw/excalidraw'
       };
     }
 
