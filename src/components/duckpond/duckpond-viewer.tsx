@@ -914,7 +914,7 @@ function createCircuitSandbox(netlist: string, title: string): string {
   
   <iframe 
     id="circuit-iframe"
-    src="/circuitjs/circuitjs1.html?cct=${encodedNetlist}&running=true&hideSidebar=false&editable=true"
+    src="/circuitjs/circuitjs1.html?cct=${encodedNetlist}"
     style="display: none;"
     onload="showCircuit()"
     onerror="showError()">
@@ -922,8 +922,14 @@ function createCircuitSandbox(netlist: string, title: string): string {
   
   <script>
     function showCircuit() {
+      console.log('CircuitJS1 iframe loaded successfully');
       document.getElementById('loading').style.display = 'none';
       document.getElementById('circuit-iframe').style.display = 'block';
+      
+      // Give CircuitJS1 additional time to initialize after iframe loads
+      setTimeout(() => {
+        console.log('CircuitJS1 should be fully initialized now');
+      }, 3000);
     }
     
     function showError() {
@@ -939,12 +945,16 @@ function createCircuitSandbox(netlist: string, title: string): string {
       \`;
     }
     
-    // Timeout fallback in case iframe doesn't load
+    // Debug logging
+    console.log('CircuitJS1 iframe URL:', document.getElementById('circuit-iframe').src);
+    console.log('Circuit netlist:', \`${netlist}\`);
+    
+    // Timeout fallback in case iframe doesn't load  
     setTimeout(() => {
       if (document.getElementById('circuit-iframe').style.display === 'none') {
         showError();
       }
-    }, 10000); // 10 second timeout
+    }, 15000); // 15 second timeout for CircuitJS1 to fully load
   </script>
 </body>
 </html>`;
