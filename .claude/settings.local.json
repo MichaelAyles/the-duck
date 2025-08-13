@@ -17,7 +17,9 @@
       "WebFetch(domain:www.falstad.com)",
       "Bash(git clone:*)",
       "Bash(curl:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(npm run dev:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }

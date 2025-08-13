@@ -957,3 +957,14 @@ This file is a direct re-export and styling of Radix UI's `Tabs` components, fol
 
 **Detailed Recommendations for `textarea.tsx`:**
 This file is a simple wrapper around a standard HTML `textarea` element, applying styles and forwarding refs, following the `shadcn/ui` pattern. It is clean and well-structured for its purpose. No specific recommendations.
+
+## ✅ DOCUMENTATION UPDATE - COMPLETED
+
+**Issues Resolved**:
+1. ✅ Redundant and fragmented documentation in `README.md`, `GEMINI.md`, and `CLAUDE.md`.
+2. ✅ Lack of a central place for contributor guidelines.
+
+**Changes Made**:
+- ✅ Created a new `CONTRIBUTING.md` file with consolidated development workflow, architectural overview, and commit guidelines.
+- ✅ Simplified `README.md` to be a more concise project overview, linking to the new `CONTRIBUTING.md`.
+- ✅ Archived `GEMINI.md` and `CLAUDE.md` into a `docs/archive` directory to preserve history without cluttering the root.
