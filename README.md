@@ -59,6 +59,14 @@
 -   **Error Handling**: Comprehensive error boundaries and user-friendly error messages
 -   **Download & Export**: Save artifacts as standalone files for external use
 
+### ⚡ **CircuitJS1 Circuit Simulation**
+-   **Electronic Circuit Simulation**: Interactive electronic circuit simulations using CircuitJS1
+-   **Comprehensive Component Library**: Supports resistors, capacitors, transistors, op-amps, logic gates, and more
+-   **Real-time Analysis**: Live voltage and current measurements with oscilloscope functionality
+-   **Educational Tool**: Perfect for learning electronics, circuit analysis, and electrical engineering concepts
+-   **Netlists Support**: Direct integration with CircuitJS1 netlist format for complex circuits
+-   **Visual Circuit Building**: Interactive schematic editor with component placement and wiring
+
 ![DuckPond Artifact Creation](Screenshots/Screenshot%202025-06-19%20at%2016.06.43.png)
 *Tools Available to The Duck*
 
@@ -174,6 +182,7 @@ DuckPond is The Duck's revolutionary feature that brings code to life directly i
 - **JavaScript Visualizations**: Dynamic scripts with console output and DOM manipulation
 - **CSS Experiments**: Styling demonstrations and animation showcases
 - **JSON Data**: Structured data visualization and manipulation
+- **CircuitJS1 Simulations**: Electronic circuit simulations with comprehensive component libraries
 
 ### **Security Features:**
 - **Iframe Sandboxing**: All code runs in isolated environments
@@ -203,6 +212,7 @@ DuckPond is The Duck's revolutionary feature that brings code to life directly i
 -   **Model Management**: Dynamic preferences with OpenRouter rankings
 -   **Chat Features**: Streaming, summaries, title generation
 -   **DuckPond Artifacts**: Interactive code execution with secure sandboxing
+-   **Circuit Simulation**: Integrated CircuitJS1 for electronic circuit analysis and education
 
 ### **Development & Deployment**
 -   **Build System**: Next.js with TypeScript strict mode
@@ -427,6 +437,7 @@ Whether you're tackling complex problems, brainstorming ideas, or just want to c
 **Features that make The Duck special:**
 - 🔐 **Secure Authentication**: Your conversations are private and persistent
 - 🦆 **DuckPond Interactive Artifacts**: Execute React components, HTML demos, and visualizations directly in chat
+- ⚡ **CircuitJS1 Integration**: Simulate electronic circuits with comprehensive component libraries
 - 📁 **Advanced File System**: Upload files, create drawings, and manage your content
 - 🎨 **Excalidraw Integration**: Native drawing and diagram creation in chat
 - 🌊 **Flow Mode**: Intelligent context-aware conversations with chat summaries
