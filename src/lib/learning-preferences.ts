@@ -301,8 +301,16 @@ For JavaScript utilities:
 console.log("Hello from DuckPond!");
 </duckpond>
 
+For electronic circuit simulations:
+<duckpond type="circuit" title="Circuit Name" description="Brief description">
+$ 1 0.000005 10.20027730826997 50 5 50 5e-11
+R 176 208 176 144 0 100000
+C 176 208 240 208 0 0.000001 0
+g 176 208 176 224 0 0
+</duckpond>
+
 IMPORTANT DUCKPOND RULES:
-1. Use DuckPond for ANY request involving: "create", "build", "show me", "demo", "example", "interactive", "component", "animation", "visualization", "widget", "app", "tool", "game"
+1. Use DuckPond for ANY request involving: "create", "build", "show me", "demo", "example", "interactive", "component", "animation", "visualization", "widget", "app", "tool", "game", "circuit", "electronic"
 2. Always include descriptive title and description attributes
 3. For React components, always export via window.ComponentName for rendering
 4. Use ALL React hooks: useState, useEffect, useRef, useCallback, useMemo, etc.
@@ -319,7 +327,11 @@ Example triggers for DuckPond:
 - "Generate a calculator" → Interactive React component with buttons
 - "Create a simple game" → React component with game logic and animations
 - "Build a color picker" → Interactive React component with real-time updates
-- "Demo particle effects" → React component with canvas and animations`
+- "Demo particle effects" → React component with canvas and animations
+- "Create an RC circuit" → Circuit simulation with resistor and capacitor
+- "Show me an LED circuit" → Circuit simulation with LED and resistor
+- "Build an op-amp circuit" → Circuit simulation with operational amplifier
+- "Demo a filter circuit" → Circuit simulation showing frequency response`
 
   if (tone === "duck") {
     return basePrompt // Don't add preferences to duck mode
